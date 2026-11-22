@@ -145,6 +145,10 @@ Debug helpers: `fir_pick.py <fir> x,y` (draws under a pixel), `fir_disasm.py <fi
 
 ## 8. Open items (next steps, roughly by value)
 
+**Running live (2026-11-23): stage A, the live mirror, has its camera working**: FM3 streams its camera
+(`FM3_LIVE`), `frame-ir\live.cmd` follows it in Godot, matching the game's grid and in-car views. Everything about it
+(how to run, the stream, the checks, what comes next: cars live) is in **`LIVE.md`**. The items below still apply.
+
 1. Far grid cars (Beetle, PT Cruiser, Focus, C4, Tuscani) are still the captured low-detail draws: find their LOD
    files or use the full `.carbin` with a fit from the few captured pieces.
 2. Car paint reflections: use the same environment cube as the windows (`fm3_glass.gdshader` approach).

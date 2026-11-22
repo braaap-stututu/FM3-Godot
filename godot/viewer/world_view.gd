@@ -16,6 +16,21 @@ var _pitch := 0.0
 var _bench := 0  # --bench N: after the picture, render N more frames and report the frame rate
 var _bench_t0 := 0
 var _screen_size := Vector2i(1280, 720)
+# --live <port>: follow the running game's camera (FM3_LIVE, FM3-ReGPU recomp src/hooks/live_camera.cpp; LIVE.md).
+# The window stays open; Tab switches to the next camera director seen (player view, rear-view mirror, ...); Esc quits;
+# creating the file <--out>.shot saves the next frame to --out.
+var _live_port := 0
+var _udp: PacketPeerUDP
+var _live_director := 0
+var _live_dirs: Array[int] = []
+var _live_tab := false
+var _live_packets := 0
+var _live_last_ms := 0
+# Game world -> glTF world for the camera: mirror signs per axis, then the signs for the game camera's right and up.
+# Fitted on the frozen grid (tools/live_listen.py --compare grid.gltf, 2026-11-23): FM3's world with z mirrored, the
+# F = diag(1, 1, -1) of fm3_track_export.py, and the director's axes as they are (the 180 deg screen turn that
+# fir_world.py undoes is in the projection, not the view matrix): 0.000 m, 0.00 deg. --live-axes sx,sy,sz,sr,su overrides.
+var _live_axes := PackedFloat32Array([1, 1, -1, 1, 1])
 const TripleCameras = preload("res://triple_cameras.gd")
 const BAKED_SHADER = preload("res://viewer/fm3_baked.gdshader")
 const BAKED_BLEND_SHADER = preload("res://viewer/fm3_baked_blend.gdshader")
@@ -58,6 +73,12 @@ func _init() -> void:
 				look_at = args[i + 1]; i += 1
 			"--fly":
 				_fly = true
+			"--live":
+				_live_port = int(args[i + 1]); i += 1
+			"--live-director":
+				_live_director = args[i + 1].hex_to_int(); i += 1
+			"--live-axes":
+				_live_axes = PackedFloat32Array(Array(args[i + 1].split_floats(","))); i += 1
 			"--id":
 				id_mode = true
 			"--grey-shadow":
@@ -254,6 +275,10 @@ func _init() -> void:
 	print("world_view: camera ", cam.global_transform if cam.is_inside_tree() else cam.transform, " parent ", cam.get_parent().name)
 	print("world_view: %d surfaces lit by FM3's baked lightmaps (%d without an albedo texture)" % [baked, baked_no_tex])
 	print("world_view: %d mesh instances, camera fov %.2f near %.3f" % [meshes, cam.fov, cam.near])
+	if _live_port > 0:
+		_udp = PacketPeerUDP.new()
+		var err := _udp.bind(_live_port, "127.0.0.1")
+		print("world_view: live camera on udp 127.0.0.1:%d (%s; start FM3 with FM3_LIVE=%d)" % [_live_port, "listening" if err == OK else "bind failed: %d" % err, _live_port])
 
 
 func _blended(m: BaseMaterial3D) -> bool:
@@ -375,8 +400,78 @@ func _fly_step(delta: float) -> void:
 			c.global_transform = TripleCameras.screen_transform(_fly_xf, float(scr.get("rot_y", 0.0)))
 
 
+# The game camera (one FM3_LIVE datagram) as a Godot camera transform in the glTF's world.
+static func live_transform(b: PackedByteArray, axes: PackedFloat32Array) -> Transform3D:
+	var v := PackedFloat32Array()
+	v.resize(16)
+	for k in 16:
+		v[k] = b.decode_float(16 + 4 * k)
+	# p_cam = p_world * V (row vectors): the 3x3's columns are the camera's axes in the world, row 3 = -(c . axis).
+	var right := Vector3(v[0], v[4], v[8])
+	var up := Vector3(v[1], v[5], v[9])
+	var fwd := Vector3(v[2], v[6], v[10])
+	var c := -(right * v[12] + up * v[13] + fwd * v[14])
+	var s := Vector3(axes[0], axes[1], axes[2])
+	var x := s * right * axes[3]
+	var y := s * up * axes[4]
+	var z := -(s * fwd)
+	return Transform3D(Basis(x, y, z).orthonormalized(), s * c)
+
+
+func _set_view(xf: Transform3D) -> void:
+	if _screens.is_empty():
+		_cam.global_transform = xf
+	else:
+		for scr in _screens:
+			var c: Camera3D = scr["camera"]
+			c.global_transform = TripleCameras.screen_transform(xf, float(scr.get("rot_y", 0.0)))
+
+
+func _live_step() -> void:
+	if Input.is_key_pressed(KEY_ESCAPE):
+		quit(0)
+		return
+	var tab := Input.is_key_pressed(KEY_TAB)
+	if tab and not _live_tab and _live_dirs.size() > 1:
+		_live_director = _live_dirs[(_live_dirs.find(_live_director) + 1) % _live_dirs.size()]
+		print("world_view: live director %08X" % _live_director)
+	_live_tab = tab
+	# A picture on request: create <out>.shot and the next frame is saved to <out> (the file is removed).
+	if _out != "" and FileAccess.file_exists(_out + ".shot"):
+		DirAccess.remove_absolute(_out + ".shot")
+		root.get_texture().get_image().save_png(_out)
+		print("world_view: saved ", _out)
+	var latest := PackedByteArray()
+	while _udp.get_available_packet_count() > 0:
+		var b := _udp.get_packet()
+		if b.size() != 96 or b.slice(0, 4).get_string_from_ascii() != "FM3C" or b.decode_u32(4) != 1:
+			continue
+		var director := int(b.decode_u32(12))
+		if not _live_dirs.has(director):
+			_live_dirs.append(director)
+			print("world_view: live director %08X seen (camera vtable %08X, fov %.2f deg)%s" % [director, b.decode_u32(84),
+				rad_to_deg(b.decode_float(80)), "" if _live_dirs.size() > 1 else " (following it; Tab = next)"])
+		if _live_director == 0:
+			_live_director = director
+		if director == _live_director:
+			latest = b
+	if latest.is_empty():
+		return
+	_live_packets += 1
+	_set_view(live_transform(latest, _live_axes))
+	if _screens.is_empty():
+		_cam.fov = rad_to_deg(latest.decode_float(80))
+	if Time.get_ticks_msec() - _live_last_ms > 5000:
+		_live_last_ms = Time.get_ticks_msec()
+		print("world_view: live camera ", _cam.global_transform if _screens.is_empty() else _screens[0]["camera"].global_transform,
+			" fov %.2f (%d frames followed)" % [rad_to_deg(latest.decode_float(80)), _live_packets])
+
+
 func _process(_delta: float) -> bool:
 	_frames += 1
+	if _live_port > 0 and _frames > 3:
+		_live_step()
+		return false
 	if _fly and _frames > 3:
 		if _frames == 4:
 			_fly_xf = _cam.global_transform
