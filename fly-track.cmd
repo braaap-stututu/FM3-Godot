@@ -2,7 +2,7 @@
 rem Free-fly the whole Ladera track from FM3's own files (frame-ir\out\world\ladera.gltf: track, props placed by
 rem the short layout's .pvs (Ribbon_04), sky dome, plus the captured grid's cars and people), made by
 rem tools\fm3_track_export.py <extracted CrownJewel bin.zip> out\world\ladera.gltf --camera-from out\world\grid.gltf
-rem --dynamic-from out\world\grid.gltf --texmap out\world\capmap --pvs <Tracks\CrownJewel\Ribbon_04\crownjewel_04.pvs>
+rem --dynamic-from out\world\grid.gltf --carbins <extracted .carbin folder> --texmap out\world\capmap --pvs <Tracks\CrownJewel\Ribbon_04\crownjewel_04.pvs>
 rem (M1.md, "Matching the game's frame").
 rem WASD move, Q/E down/up, hold right mouse to look, Shift fast, Ctrl slow, Esc quits.
 set ROOT=%~dp0
