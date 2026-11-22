@@ -1,0 +1,10 @@
+*.fir
+*.exe
+*.obj
+*.pdb
+__pycache__/
+godot/.godot/
+
+out/
+tools/fm3unzip/*.exe
+tools/fm3unzip/*.obj

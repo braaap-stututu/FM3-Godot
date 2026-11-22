@@ -1,0 +1,808 @@
+/*
+ * frame_ir.h — Frame IR v0.2 draft binary layout.
+ *
+ * Meaning of every record and field: see SPEC.md (it wins on any disagreement).
+ *
+ * Layout rules (enforced by the static asserts at the bottom):
+ *   - little-endian, plain data, no pointers
+ *   - every record size is a multiple of 8
+ *   - every 64-bit field sits at an 8-byte offset; all padding is explicit (_pad*)
+ * so the same bytes are valid in a 32-bit game process, a 64-bit core process and
+ * a capture file. Compile with MSVC /we4820 (or -Wpadded -Werror) to keep it so.
+ *
+ * Valid as C11 and C++11.
+ */
+#ifndef FRAME_IR_H
+#define FRAME_IR_H
+
+#include <stdint.h>
+#include <stddef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#define FIR_STATIC_ASSERT(c, m) static_assert(c, m)
+#else
+#define FIR_STATIC_ASSERT(c, m) _Static_assert(c, m)
+#endif
+
+#define FIR_VERSION_MAJOR 0
+#define FIR_VERSION_MINOR 2
+#define FIR_MAGIC 0x31524946u /* "FIR1" */
+
+/* ------------------------------------------------------------------------- */
+/* Basic types                                                               */
+/* ------------------------------------------------------------------------- */
+
+typedef uint32_t fir_handle;       /* per-session; 0 = none */
+typedef uint64_t fir_instance_key; /* stable object identity; 0 = none */
+
+typedef struct fir_hash128 { uint64_t lo, hi; } fir_hash128; /* XXH3-128 */
+
+typedef struct fir_blob_ref {
+    uint64_t offset; /* from start of the packet's blob area, 16-byte aligned */
+    uint64_t size;   /* 0 = absent */
+} fir_blob_ref;
+
+typedef struct fir_vec4 { float x, y, z, w; } fir_vec4;
+
+/* Column-vector math, row-major storage. mat3x4 = top three rows of an affine 4x4. */
+typedef struct fir_mat3x4 { float m[3][4]; } fir_mat3x4;
+typedef struct fir_mat4   { float m[4][4]; } fir_mat4;
+
+/* ------------------------------------------------------------------------- */
+/* Enums (stored in the integer width of the field that uses them)           */
+/* ------------------------------------------------------------------------- */
+
+enum fir_direction { FIR_DIR_FORWARD = 0, FIR_DIR_REVERSE = 1 };
+
+enum fir_platform {
+    FIR_PLATFORM_UNKNOWN = 0,
+    FIR_PLATFORM_PC_D3D,      /* D3D3..9; version in frontend_name/flags */
+    FIR_PLATFORM_PC_OPENGL,
+    FIR_PLATFORM_PC_GLIDE,
+    FIR_PLATFORM_PS1,
+    FIR_PLATFORM_PS2,
+    FIR_PLATFORM_PS3,
+    FIR_PLATFORM_XBOX,
+    FIR_PLATFORM_XBOX360,
+    FIR_PLATFORM_N64,
+    FIR_PLATFORM_GAMECUBE,
+    FIR_PLATFORM_WII,
+    FIR_PLATFORM_WIIU,
+    FIR_PLATFORM_DREAMCAST,
+    FIR_PLATFORM_SATURN,
+    FIR_PLATFORM_PSP,
+    FIR_PLATFORM_3DS,
+    FIR_PLATFORM_VITA
+};
+
+enum fir_host_kind {
+    FIR_HOST_UNKNOWN = 0,
+    FIR_HOST_STATIC_RECOMP,
+    FIR_HOST_EMULATOR,
+    FIR_HOST_PC_PROXY,
+    FIR_HOST_SOURCE_PORT
+};
+
+enum fir_axis { FIR_AXIS_UNKNOWN = 0, FIR_AXIS_POS_X, FIR_AXIS_NEG_X, FIR_AXIS_POS_Y,
+                FIR_AXIS_NEG_Y, FIR_AXIS_POS_Z, FIR_AXIS_NEG_Z };
+enum fir_handedness { FIR_HANDED_UNKNOWN = 0, FIR_HANDED_RIGHT, FIR_HANDED_LEFT };
+
+enum fir_record_type {
+    /* forward 0x0000-0x7FFF */
+    FIR_REC_SESSION_BEGIN     = 0x0001,
+    FIR_REC_SESSION_END       = 0x0002,
+    FIR_REC_FRAME_BEGIN       = 0x0010,
+    FIR_REC_FRAME_END         = 0x0011,
+
+    FIR_REC_TEXTURE_CREATE    = 0x0100,
+    FIR_REC_TEXTURE_DATA      = 0x0101,
+    FIR_REC_TEXTURE_CONTENT   = 0x0102,
+    FIR_REC_GEOMETRY          = 0x0110,
+    FIR_REC_SHADER            = 0x0120,
+    FIR_REC_RESOURCE_DESTROY  = 0x01F0,
+
+    FIR_REC_TARGET            = 0x0200,
+    FIR_REC_PASS_BEGIN        = 0x0201,
+    FIR_REC_PASS_END          = 0x0202,
+    FIR_REC_COPY              = 0x0203,
+
+    FIR_REC_VIEW              = 0x0300,
+    FIR_REC_STATE             = 0x0400,
+    FIR_REC_DEFORM            = 0x0410,
+    FIR_REC_DRAW              = 0x0500,
+
+    FIR_REC_CAMERA            = 0x0600,
+    FIR_REC_OBJECT            = 0x0601,
+    FIR_REC_ENVIRONMENT       = 0x0602,
+    FIR_REC_LIGHT             = 0x0603,
+    FIR_REC_EVENT             = 0x0604,
+    FIR_REC_ANNOTATE          = 0x0605,
+
+    FIR_REC_JOB               = 0x0700,
+    FIR_REC_COMPOSITE_SURFACE = 0x0800,
+
+    /* reverse 0x8000-0xEFFF */
+    FIR_REC_CLAIM_RULES       = 0x8000,
+    FIR_REC_CONTENT_KNOWN     = 0x8001,
+    FIR_REC_CAPTURE_CONTROL   = 0x8002,
+    FIR_REC_PRESENT_FEEDBACK  = 0x8003,
+
+    /* private 0xF000-0xFFFF: platform/game specific, never required */
+    FIR_REC_PRIVATE_FIRST     = 0xF000
+};
+
+/* fir_record_header.flags */
+enum { FIR_REC_FLAG_REQUIRED = 1u << 0 }; /* reader must reject the stream if it does not know this type */
+
+enum fir_resource_kind { FIR_RES_TEXTURE = 1, FIR_RES_GEOMETRY, FIR_RES_TARGET, FIR_RES_STATE,
+                         FIR_RES_VIEW, FIR_RES_DEFORM };
+
+enum fir_texture_dim { FIR_TEX_2D = 0, FIR_TEX_3D, FIR_TEX_CUBE, FIR_TEX_2D_ARRAY };
+
+/* Canonical formats. Frontends decode everything else (palettes, swizzle/tiling,
+ * platform compression that is not BCn) into one of these. */
+enum fir_format {
+    FIR_FMT_UNKNOWN = 0,
+    FIR_FMT_R8_UNORM, FIR_FMT_RG8_UNORM, FIR_FMT_RGBA8_UNORM, FIR_FMT_RGBA8_SRGB,
+    FIR_FMT_BGRA8_UNORM, FIR_FMT_BGRA8_SRGB, FIR_FMT_RGB10A2_UNORM,
+    FIR_FMT_R16F, FIR_FMT_RG16F, FIR_FMT_RGBA16F, FIR_FMT_R32F, FIR_FMT_RGBA32F,
+    FIR_FMT_BC1, FIR_FMT_BC1_SRGB, FIR_FMT_BC2, FIR_FMT_BC2_SRGB, FIR_FMT_BC3, FIR_FMT_BC3_SRGB,
+    FIR_FMT_BC4, FIR_FMT_BC5, FIR_FMT_BC7, FIR_FMT_BC7_SRGB,
+    FIR_FMT_D16, FIR_FMT_D24S8, FIR_FMT_D32F, FIR_FMT_D32F_S8
+};
+
+/* fir_texture_create.flags */
+enum {
+    FIR_TEX_VOLATILE      = 1u << 0, /* changes often (RT, video, procedural): never persisted */
+    FIR_TEX_RENDER_TARGET = 1u << 1,
+    FIR_TEX_PALETTIZED    = 1u << 2  /* base_id differs from content_id */
+};
+
+/* fir_texture_content.flags / fir_geometry.flags */
+enum { FIR_CONTENT_DATA_OMITTED = 1u << 0 }; /* core acknowledged this content_id earlier */
+
+enum fir_topology { FIR_TOPO_POINTS = 0, FIR_TOPO_LINES, FIR_TOPO_LINE_STRIP,
+                    FIR_TOPO_TRIANGLES, FIR_TOPO_TRIANGLE_STRIP }; /* quads/fans/rects: convert */
+
+/* fir_geometry.flags (bit 0 is FIR_CONTENT_DATA_OMITTED) */
+enum {
+    FIR_GEOM_VOLATILE       = 1u << 1, /* CPU-generated per frame; not an asset identity */
+    FIR_GEOM_PRIMITIVE_RESTART = 1u << 2 /* index 0xFFFF / 0xFFFFFFFF restarts strips */
+};
+
+enum fir_semantic { FIR_SEM_POSITION = 0, FIR_SEM_NORMAL, FIR_SEM_TANGENT, FIR_SEM_BINORMAL,
+                    FIR_SEM_COLOR, FIR_SEM_TEXCOORD, FIR_SEM_BLENDINDICES, FIR_SEM_BLENDWEIGHT,
+                    FIR_SEM_POINTSIZE, FIR_SEM_CUSTOM };
+
+enum fir_attr_format {
+    FIR_AF_F32x1 = 0, FIR_AF_F32x2, FIR_AF_F32x3, FIR_AF_F32x4,
+    FIR_AF_F16x2, FIR_AF_F16x4,
+    FIR_AF_UNORM8x4, FIR_AF_SNORM8x4, FIR_AF_UINT8x4,
+    FIR_AF_UNORM16x2, FIR_AF_UNORM16x4, FIR_AF_SNORM16x2, FIR_AF_SNORM16x4,
+    FIR_AF_UINT16x2, FIR_AF_UINT16x4,
+    FIR_AF_UNORM10_10_10_2
+};
+
+enum fir_blend_factor { FIR_BF_ZERO = 0, FIR_BF_ONE, FIR_BF_SRC_COLOR, FIR_BF_INV_SRC_COLOR,
+                        FIR_BF_SRC_ALPHA, FIR_BF_INV_SRC_ALPHA, FIR_BF_DST_COLOR,
+                        FIR_BF_INV_DST_COLOR, FIR_BF_DST_ALPHA, FIR_BF_INV_DST_ALPHA,
+                        FIR_BF_CONSTANT, FIR_BF_INV_CONSTANT, FIR_BF_SRC_ALPHA_SAT };
+enum fir_blend_op { FIR_BO_ADD = 0, FIR_BO_SUBTRACT, FIR_BO_REV_SUBTRACT, FIR_BO_MIN, FIR_BO_MAX };
+enum fir_compare { FIR_CMP_NEVER = 0, FIR_CMP_LESS, FIR_CMP_EQUAL, FIR_CMP_LEQUAL,
+                   FIR_CMP_GREATER, FIR_CMP_NOTEQUAL, FIR_CMP_GEQUAL, FIR_CMP_ALWAYS };
+enum fir_cull { FIR_CULL_NONE = 0, FIR_CULL_FRONT, FIR_CULL_BACK };
+enum fir_filter { FIR_FILTER_POINT = 0, FIR_FILTER_LINEAR, FIR_FILTER_NONE /* mip: no mips */ };
+enum fir_address { FIR_ADDR_WRAP = 0, FIR_ADDR_MIRROR, FIR_ADDR_CLAMP, FIR_ADDR_BORDER,
+                   FIR_ADDR_MIRROR_ONCE };
+enum fir_fog_mode { FIR_FOG_NONE = 0, FIR_FOG_LINEAR, FIR_FOG_EXP, FIR_FOG_EXP2, FIR_FOG_OTHER };
+
+enum fir_space { FIR_SPACE_OBJECT = 0, FIR_SPACE_WORLD, FIR_SPACE_VIEW, FIR_SPACE_CLIP,
+                 FIR_SPACE_SCREEN };
+
+enum fir_category {
+    FIR_CAT_UNKNOWN = 0, FIR_CAT_WORLD_STATIC, FIR_CAT_WORLD_DYNAMIC, FIR_CAT_CHARACTER,
+    FIR_CAT_VEHICLE, FIR_CAT_SKY, FIR_CAT_WATER, FIR_CAT_FOLIAGE, FIR_CAT_PARTICLE,
+    FIR_CAT_DECAL, FIR_CAT_SHADOW, FIR_CAT_REFLECTION, FIR_CAT_POST, FIR_CAT_HUD,
+    FIR_CAT_UI_MENU, FIR_CAT_VIDEO
+};
+
+/* fir_draw.flags */
+enum {
+    FIR_DRAW_HAS_MODEL     = 1u << 0, /* model is valid */
+    FIR_DRAW_COMBINED_ONLY = 1u << 1, /* only `combined` (object->clip) is known */
+    FIR_DRAW_ESTIMATED     = 1u << 2, /* transforms were estimated, not observed */
+    FIR_DRAW_SUPPRESSED    = 1u << 3  /* v0.2: a claim rule stopped the original renderer drawing this */
+};
+
+enum fir_target_usage { FIR_TU_UNKNOWN = 0, FIR_TU_BACKBUFFER, FIR_TU_OFFSCREEN_COLOR,
+                        FIR_TU_DEPTH, FIR_TU_SHADOW, FIR_TU_REFLECTION, FIR_TU_ENV_CUBE,
+                        FIR_TU_POST };
+
+/* fir_pass_begin.clear_flags */
+enum { FIR_CLEAR_COLOR = 1u << 0, FIR_CLEAR_DEPTH = 1u << 1, FIR_CLEAR_STENCIL = 1u << 2 };
+
+enum fir_copy_kind { FIR_COPY_COPY = 0, FIR_COPY_RESOLVE, FIR_COPY_SCALE, FIR_COPY_FORMAT_CONVERT };
+
+/* fir_view.flags */
+enum {
+    FIR_VIEW_HAS_VIEW   = 1u << 0,
+    FIR_VIEW_HAS_PROJ   = 1u << 1,
+    FIR_VIEW_ORTHO      = 1u << 2,
+    FIR_VIEW_REVERSED_Z = 1u << 3,
+    FIR_VIEW_ESTIMATED  = 1u << 4
+};
+enum fir_source { FIR_SRC_OBSERVED = 0, FIR_SRC_FIXED_FUNCTION, FIR_SRC_HOOK,
+                  FIR_SRC_SHADER_CONSTANT, FIR_SRC_ESTIMATED };
+
+enum fir_deform_kind { FIR_DEFORM_SKIN_LINEAR = 0, FIR_DEFORM_SKIN_DUAL_QUAT, FIR_DEFORM_MORPH,
+                       FIR_DEFORM_PARAMS /* opaque, profile-implemented (schema) */ };
+
+enum fir_camera_role { FIR_CAM_MAIN = 0, FIR_CAM_MIRROR, FIR_CAM_REAR, FIR_CAM_CUTSCENE,
+                       FIR_CAM_OTHER };
+enum { FIR_CAMERA_CUT = 1u << 0 };
+
+enum fir_object_kind { FIR_OBJ_UNKNOWN = 0, FIR_OBJ_VEHICLE, FIR_OBJ_CHARACTER, FIR_OBJ_PROP,
+                       FIR_OBJ_WORLD_SECTION, FIR_OBJ_PROJECTILE };
+enum { FIR_OBJECT_VISIBLE = 1u << 0, FIR_OBJECT_TELEPORTED = 1u << 1 };
+
+enum fir_weather { FIR_WEATHER_UNKNOWN = 0, FIR_WEATHER_CLEAR, FIR_WEATHER_CLOUDY,
+                   FIR_WEATHER_RAIN, FIR_WEATHER_SNOW, FIR_WEATHER_FOG };
+
+enum fir_light_type { FIR_LIGHT_DIRECTIONAL = 0, FIR_LIGHT_POINT, FIR_LIGHT_SPOT,
+                      FIR_LIGHT_AMBIENT };
+enum { FIR_LIGHT_SHADOW_HINT = 1u << 0 };
+
+enum fir_annotate_op { FIR_ANN_PUSH = 0, FIR_ANN_POP, FIR_ANN_MARK };
+
+enum fir_job_unit { FIR_UNIT_OTHER = 0, FIR_UNIT_SPU, FIR_UNIT_VU0, FIR_UNIT_VU1,
+                    FIR_UNIT_GTE, FIR_UNIT_SH4, FIR_UNIT_DSP };
+enum fir_job_disposition { FIR_JOB_RAN = 0, FIR_JOB_SKIPPED_REPLACED, FIR_JOB_SKIPPED_IGNORED };
+enum fir_job_class { FIR_JOBCLASS_UNKNOWN = 0, FIR_JOBCLASS_RENDER_ONLY, FIR_JOBCLASS_GAMEPLAY,
+                     FIR_JOBCLASS_MIXED };
+
+enum fir_composite_layer { FIR_LAYER_HUD_OVERLAY = 0, FIR_LAYER_UNCLAIMED_WORLD,
+                           FIR_LAYER_FULL_FRAME };
+
+enum fir_claim_match { FIR_MATCH_CATEGORY = 0, FIR_MATCH_STATE_HASH, FIR_MATCH_GEOMETRY_ID,
+                       FIR_MATCH_TEXTURE_ID, FIR_MATCH_TARGET_USAGE, FIR_MATCH_JOB_TYPE };
+enum fir_claim_action { FIR_ACT_SUPPRESS_ORIGINAL = 0, FIR_ACT_KEEP_ORIGINAL, FIR_ACT_SKIP_JOB };
+enum { FIR_CLAIMS_REPLACE_ALL = 1u << 0 };
+
+/* fir_capture_control.mode */
+enum {
+    FIR_CAPTURE_FULL_DATA       = 1u << 0, /* never omit blobs */
+    FIR_CAPTURE_DISABLE_CULLING = 1u << 1, /* ask profile hooks to draw everything */
+    FIR_CAPTURE_DUMP_TO_FILE    = 1u << 2
+};
+
+/* ------------------------------------------------------------------------- */
+/* Framing                                                                   */
+/* ------------------------------------------------------------------------- */
+
+typedef struct fir_packet_header {
+    uint32_t magic;          /* FIR_MAGIC */
+    uint16_t version_major;
+    uint16_t version_minor;
+    uint64_t sequence;       /* per direction, increments by 1 */
+    uint32_t direction;      /* fir_direction */
+    uint32_t record_count;
+    uint64_t record_bytes;
+    uint64_t blob_bytes;
+} fir_packet_header;
+
+typedef struct fir_record_header {
+    uint16_t type;   /* fir_record_type */
+    uint16_t flags;  /* FIR_REC_FLAG_* */
+    uint32_t size;   /* whole record incl. header, multiple of 8 */
+} fir_record_header;
+
+/* ------------------------------------------------------------------------- */
+/* Session / frame                                                           */
+/* ------------------------------------------------------------------------- */
+
+typedef struct fir_session_begin {
+    fir_record_header h;
+    uint16_t platform;           /* fir_platform */
+    uint16_t host_kind;          /* fir_host_kind */
+    uint32_t frontend_version;
+    char     frontend_name[32];
+    char     title_id[32];       /* platform title id, or exe name for PC */
+    char     profile_id[32];
+    fir_hash128 executable_hash;
+    uint32_t native_width;
+    uint32_t native_height;
+    float    nominal_tick_hz;    /* 0 = unknown */
+    float    world_units_per_meter; /* 0 = unknown */
+    uint8_t  world_handedness;   /* fir_handedness */
+    uint8_t  world_up_axis;      /* fir_axis */
+    uint16_t flags;
+    uint32_t _pad0;
+} fir_session_begin;
+
+typedef struct fir_session_end {
+    fir_record_header h;
+    uint32_t reason; /* 0 = normal exit */
+    uint32_t _pad0;
+} fir_session_end;
+
+enum { FIR_FRAME_LOADING = 1u << 0, FIR_FRAME_PAUSED = 1u << 1, FIR_FRAME_SCENE_CUT = 1u << 2 };
+
+typedef struct fir_frame_begin {
+    fir_record_header h;
+    uint64_t frame_index;
+    uint64_t tick_index;
+    double   sim_time;
+    uint32_t original_present_interval; /* in original vblanks; 0 = unknown */
+    uint32_t flags;                     /* FIR_FRAME_* */
+    uint64_t claim_generation;          /* v0.2: CLAIM_RULES generation applied this frame; 0 = none */
+} fir_frame_begin;
+
+typedef struct fir_frame_end {
+    fir_record_header h;
+    uint64_t frame_index;
+    uint32_t draw_count;
+    uint32_t flags;
+} fir_frame_end;
+
+/* ------------------------------------------------------------------------- */
+/* Resources                                                                 */
+/* ------------------------------------------------------------------------- */
+
+typedef struct fir_texture_create {
+    fir_record_header h;
+    fir_handle handle;
+    uint16_t flags;            /* FIR_TEX_* */
+    uint16_t dimension;        /* fir_texture_dim */
+    uint32_t width, height, depth;
+    uint16_t mip_count;
+    uint16_t array_layers;
+    uint16_t canonical_format; /* fir_format of TEXTURE_DATA blobs */
+    uint16_t _pad0;
+    uint32_t native_format;    /* platform enum value, for tooling and hashing */
+} fir_texture_create;
+
+typedef struct fir_texture_data {
+    fir_record_header h;
+    fir_handle handle;
+    uint16_t mip;
+    uint16_t layer;
+    uint32_t x, y, z;
+    uint32_t width, height, depth;
+    uint32_t row_pitch;        /* bytes per row (or per block row for BCn) in `data` */
+    uint32_t _pad0;
+    fir_blob_ref data;         /* canonical, decoded */
+    fir_hash128 native_hash;   /* of the native bytes of this region */
+} fir_texture_data;
+
+typedef struct fir_texture_content {
+    fir_record_header h;
+    fir_handle handle;
+    uint32_t flags;            /* FIR_CONTENT_* */
+    fir_hash128 content_id;
+    fir_hash128 base_id;       /* == content_id unless palettized */
+} fir_texture_content;
+
+typedef struct fir_vertex_attr {
+    uint8_t  semantic;         /* fir_semantic */
+    uint8_t  semantic_index;
+    uint8_t  format;           /* fir_attr_format */
+    uint8_t  _pad0;
+    uint16_t offset;           /* within vertex_stride */
+    uint16_t _pad1;
+} fir_vertex_attr;
+
+#define FIR_MAX_VERTEX_ATTRS 16
+
+typedef struct fir_geometry {
+    fir_record_header h;
+    fir_handle handle;
+    uint16_t flags;            /* FIR_CONTENT_DATA_OMITTED | FIR_GEOM_* */
+    uint8_t  topology;         /* fir_topology */
+    uint8_t  index_size;       /* 0 (non-indexed), 2 or 4 */
+    uint32_t vertex_count;
+    uint32_t index_count;
+    uint16_t vertex_stride;    /* single interleaved stream */
+    uint16_t attr_count;
+    uint32_t _pad0;
+    fir_blob_ref vertices;
+    fir_blob_ref indices;
+    fir_hash128 geometry_id;   /* positions + indices + topology (native) */
+    fir_hash128 content_id;    /* all attributes + indices + layout + topology (native) */
+    fir_vertex_attr attrs[FIR_MAX_VERTEX_ATTRS];
+} fir_geometry;
+
+enum fir_shader_stage { FIR_STAGE_VERTEX = 0, FIR_STAGE_PIXEL, FIR_STAGE_COMBINER, FIR_STAGE_OTHER };
+
+typedef struct fir_shader {
+    fir_record_header h;
+    fir_hash128 id;
+    uint16_t stage;            /* fir_shader_stage */
+    uint16_t native_kind;      /* platform-specific encoding id */
+    uint32_t _pad0;
+    fir_blob_ref native_code;
+} fir_shader;
+
+typedef struct fir_resource_destroy {
+    fir_record_header h;
+    fir_handle handle;
+    uint16_t kind;             /* fir_resource_kind */
+    uint16_t _pad0;
+} fir_resource_destroy;
+
+/* ------------------------------------------------------------------------- */
+/* Targets and passes                                                        */
+/* ------------------------------------------------------------------------- */
+
+typedef struct fir_target {
+    fir_record_header h;
+    fir_handle handle;
+    uint16_t usage;            /* fir_target_usage (frontend's guess) */
+    uint16_t canonical_format; /* fir_format */
+    uint32_t width, height;
+    uint32_t samples;
+    uint32_t flags;
+} fir_target;
+
+#define FIR_MAX_COLOR_TARGETS 4
+
+typedef struct fir_pass_begin {
+    fir_record_header h;
+    fir_handle color[FIR_MAX_COLOR_TARGETS];
+    fir_handle depth;
+    uint32_t clear_flags;      /* FIR_CLEAR_* */
+    float    clear_color[4];
+    float    clear_depth;
+    uint32_t clear_stencil;
+} fir_pass_begin;
+
+typedef struct fir_pass_end {
+    fir_record_header h;
+    uint32_t draw_count;
+    uint32_t _pad0;
+} fir_pass_end;
+
+typedef struct fir_copy {
+    fir_record_header h;
+    fir_handle src;            /* target or texture */
+    fir_handle dst;
+    uint16_t kind;             /* fir_copy_kind */
+    uint16_t _pad0;
+    int32_t  src_rect[4];      /* x, y, w, h */
+    int32_t  dst_rect[4];
+    uint32_t _pad1;
+} fir_copy;
+
+/* ------------------------------------------------------------------------- */
+/* Drawing                                                                   */
+/* ------------------------------------------------------------------------- */
+
+typedef struct fir_view {
+    fir_record_header h;
+    fir_handle handle;
+    uint16_t flags;            /* FIR_VIEW_* */
+    uint16_t source;           /* fir_source */
+    fir_mat3x4 view;           /* world -> view */
+    fir_mat4   proj;           /* view -> clip (canonical NDC) */
+    float    viewport[4];      /* x, y, w, h in target pixels */
+    float    depth_range[2];
+    int32_t  scissor[4];       /* x, y, w, h; w == 0 means none */
+} fir_view;
+
+typedef struct fir_sampler {
+    uint8_t  min_filter, mag_filter, mip_filter; /* fir_filter */
+    uint8_t  max_anisotropy;
+    uint8_t  address_u, address_v, address_w;    /* fir_address */
+    uint8_t  _pad0;
+    float    lod_bias;
+    uint32_t border_rgba8;
+} fir_sampler;
+
+typedef struct fir_texture_binding {
+    fir_handle texture;
+    uint8_t  slot;
+    uint8_t  _pad0[3];
+    fir_sampler sampler;
+} fir_texture_binding;
+
+#define FIR_MAX_TEXTURE_BINDINGS 8
+
+typedef struct fir_state {
+    fir_record_header h;
+    fir_handle handle;
+    uint16_t texture_count;
+    uint16_t flags;
+    fir_hash128 state_hash;    /* classifier key: native state + program ids */
+    fir_hash128 vertex_program;
+    fir_hash128 pixel_program; /* shader / combiner / TEV / GS blend config */
+    /* normalized fixed state */
+    uint8_t  blend_enable;
+    uint8_t  color_src, color_dst, color_op;  /* fir_blend_factor / fir_blend_op */
+    uint8_t  alpha_src, alpha_dst, alpha_op;
+    uint8_t  color_write_mask;                /* bit0 R .. bit3 A */
+    uint8_t  depth_test, depth_write;
+    uint8_t  depth_func;                      /* fir_compare */
+    uint8_t  cull_mode;                       /* fir_cull */
+    uint8_t  alpha_test_func;                 /* fir_compare; ALWAYS = off */
+    uint8_t  fog_mode;                        /* fir_fog_mode */
+    uint8_t  _pad0[2];
+    float    alpha_ref;
+    float    depth_bias;
+    float    slope_depth_bias;
+    uint32_t fog_rgba8;
+    float    fog_start, fog_end, fog_density;
+    uint32_t _pad1;
+    fir_blob_ref constants;    /* material-level program constants, native layout */
+    fir_blob_ref native_state; /* full native state block, tooling only */
+    fir_texture_binding textures[FIR_MAX_TEXTURE_BINDINGS];
+} fir_state;
+
+typedef struct fir_deform {
+    fir_record_header h;
+    fir_handle handle;
+    uint16_t kind;             /* fir_deform_kind */
+    uint16_t flags;
+    fir_hash128 schema;        /* for FIR_DEFORM_PARAMS: profile schema / job type */
+    uint32_t bone_count;
+    uint32_t morph_count;
+    fir_blob_ref bones;        /* fir_mat3x4[bone_count], object space */
+    fir_blob_ref morph_weights;/* float[morph_count] */
+    fir_blob_ref params;
+} fir_deform;
+
+typedef struct fir_draw {
+    fir_record_header h;
+    uint32_t seq;              /* order within frame */
+    fir_handle geometry;
+    fir_handle state;
+    fir_handle view;
+    fir_handle deform;         /* 0 = none */
+    uint16_t flags;            /* FIR_DRAW_* */
+    uint8_t  space;            /* fir_space */
+    uint8_t  category_hint;    /* fir_category (frontend/profile guess) */
+    uint32_t first_index;
+    uint32_t index_count;      /* 0 = whole geometry */
+    int32_t  base_vertex;
+    uint32_t instance_count;   /* 0 or 1 = not instanced */
+    fir_instance_key instance_key;
+    fir_mat3x4 model;          /* object -> world, if FIR_DRAW_HAS_MODEL */
+    fir_mat4   combined;       /* object -> clip, if FIR_DRAW_COMBINED_ONLY */
+    fir_blob_ref per_draw_constants;
+    fir_blob_ref instance_transforms; /* fir_mat3x4[instance_count] */
+} fir_draw;
+
+/* ------------------------------------------------------------------------- */
+/* Semantics (profile hooks / fixed-function state)                          */
+/* ------------------------------------------------------------------------- */
+
+typedef struct fir_camera {
+    fir_record_header h;
+    uint16_t role;             /* fir_camera_role */
+    uint16_t index;
+    uint32_t flags;            /* FIR_CAMERA_* */
+    double   sample_time;
+    fir_mat3x4 camera_to_world;
+    float    fov_y;            /* radians; 0 = unknown */
+    float    aspect;
+    float    near_z, far_z;
+} fir_camera;
+
+typedef struct fir_object {
+    fir_record_header h;
+    fir_instance_key key;
+    fir_instance_key parent;
+    double   sample_time;
+    uint16_t kind;             /* fir_object_kind */
+    uint16_t flags;            /* FIR_OBJECT_* */
+    uint32_t _pad0;
+    fir_mat3x4 local_to_world;
+    fir_vec4 linear_velocity;  /* world units / s */
+    fir_vec4 angular_velocity; /* rad / s, world axes */
+    fir_hash128 schema;
+    fir_blob_ref params;
+} fir_object;
+
+typedef struct fir_environment {
+    fir_record_header h;
+    fir_hash128 level_id;
+    char     level_name[64];
+    float    time_of_day_hours; /* < 0 = unknown */
+    uint16_t weather;          /* fir_weather */
+    uint16_t flags;
+    float    weather_intensity;
+    uint32_t _pad0;
+    fir_vec4 sun_direction;    /* world, pointing toward the sun */
+    fir_vec4 sun_color;        /* linear rgb, w = intensity */
+    fir_vec4 ambient_color;
+    fir_vec4 fog_color;        /* w = density */
+    float    fog_start, fog_end;
+    fir_hash128 schema;
+    fir_blob_ref params;
+} fir_environment;
+
+typedef struct fir_light {
+    fir_record_header h;
+    uint64_t key;
+    double   sample_time;
+    uint16_t type;             /* fir_light_type */
+    uint16_t source;           /* fir_source */
+    uint16_t space;            /* fir_space: WORLD or VIEW */
+    uint16_t flags;            /* FIR_LIGHT_* */
+    fir_vec4 position;
+    fir_vec4 direction;
+    fir_vec4 color;            /* linear rgb, w = intensity */
+    float    range;
+    float    attenuation[3];   /* constant, linear, quadratic */
+    float    spot_inner, spot_outer; /* radians */
+} fir_light;
+
+typedef struct fir_event {
+    fir_record_header h;
+    uint64_t name_hash;
+    fir_instance_key source;
+    double   sample_time;
+    fir_vec4 position;
+    fir_vec4 direction;
+    fir_hash128 schema;
+    fir_blob_ref params;
+} fir_event;
+
+typedef struct fir_annotate {
+    fir_record_header h;
+    uint16_t op;               /* fir_annotate_op */
+    uint16_t category;         /* fir_category */
+    uint32_t _pad0;
+    char     label[48];
+} fir_annotate;
+
+/* ------------------------------------------------------------------------- */
+/* Jobs                                                                      */
+/* ------------------------------------------------------------------------- */
+
+typedef struct fir_job {
+    fir_record_header h;
+    fir_hash128 job_type;      /* hash of the job's code image */
+    uint64_t entry_address;
+    uint16_t unit;             /* fir_job_unit */
+    uint16_t disposition;      /* fir_job_disposition */
+    uint16_t classification;   /* fir_job_class (profile data) */
+    uint16_t _pad0;
+    uint32_t seq;              /* issued after draw `seq` */
+    uint32_t output_count;
+    fir_blob_ref inputs;       /* raw parameter / descriptor block */
+    fir_blob_ref outputs;      /* fir_handle[output_count] */
+} fir_job;
+
+/* ------------------------------------------------------------------------- */
+/* Compositing                                                               */
+/* ------------------------------------------------------------------------- */
+
+typedef struct fir_composite_surface {
+    fir_record_header h;
+    uint64_t color_os_handle;  /* shared GPU image (Win32 HANDLE / fd) */
+    uint64_t depth_os_handle;  /* 0 = none */
+    uint64_t semaphore_os_handle;
+    uint64_t semaphore_value;  /* timeline value to wait on */
+    uint64_t frame_index;
+    uint32_t width, height;
+    uint16_t color_format, depth_format; /* fir_format */
+    uint16_t layer;            /* fir_composite_layer */
+    uint16_t flags;
+    fir_handle view;           /* the view the depth corresponds to */
+    uint32_t _pad0;
+} fir_composite_surface;
+
+/* ------------------------------------------------------------------------- */
+/* Reverse channel                                                           */
+/* ------------------------------------------------------------------------- */
+
+typedef struct fir_claim_rule {
+    uint16_t match;            /* fir_claim_match */
+    uint16_t action;           /* fir_claim_action */
+    uint32_t value32;          /* category / target usage */
+    fir_hash128 value;         /* hash matches */
+} fir_claim_rule;
+
+typedef struct fir_claim_rules {
+    fir_record_header h;
+    uint64_t generation;
+    uint32_t rule_count;
+    uint32_t flags;            /* FIR_CLAIMS_* */
+    fir_blob_ref rules;        /* fir_claim_rule[rule_count] */
+} fir_claim_rules;
+
+typedef struct fir_content_known {
+    fir_record_header h;
+    uint32_t count;
+    uint32_t flags;
+    fir_blob_ref ids;          /* fir_hash128[count] */
+} fir_content_known;
+
+typedef struct fir_capture_control {
+    fir_record_header h;
+    uint32_t mode;             /* FIR_CAPTURE_*; 0 = stop */
+    uint32_t flags;
+    uint64_t frames;           /* 0 = until stopped */
+} fir_capture_control;
+
+typedef struct fir_present_feedback {
+    fir_record_header h;
+    uint64_t last_presented_frame;
+    double   display_refresh_hz;
+    double   renderer_frame_ms;
+    uint32_t flags;
+    uint32_t _pad0;
+} fir_present_feedback;
+
+/* ------------------------------------------------------------------------- */
+/* Layout checks                                                             */
+/* ------------------------------------------------------------------------- */
+
+#define FIR_CHECK(T, N) \
+    FIR_STATIC_ASSERT(sizeof(T) == (N), #T " size changed: update SPEC/version"); \
+    FIR_STATIC_ASSERT(sizeof(T) % 8 == 0 || sizeof(T) < 8, #T " size not a multiple of 8")
+
+FIR_CHECK(fir_hash128, 16);
+FIR_CHECK(fir_blob_ref, 16);
+FIR_CHECK(fir_vec4, 16);
+FIR_CHECK(fir_mat3x4, 48);
+FIR_CHECK(fir_mat4, 64);
+FIR_CHECK(fir_packet_header, 40);
+FIR_CHECK(fir_record_header, 8);
+FIR_CHECK(fir_session_begin, 152);
+FIR_CHECK(fir_session_end, 16);
+FIR_CHECK(fir_frame_begin, 48);
+FIR_CHECK(fir_frame_end, 24);
+FIR_CHECK(fir_texture_create, 40);
+FIR_CHECK(fir_texture_data, 80);
+FIR_CHECK(fir_texture_content, 48);
+FIR_CHECK(fir_vertex_attr, 8);
+FIR_CHECK(fir_geometry, 224);
+FIR_CHECK(fir_shader, 48);
+FIR_CHECK(fir_resource_destroy, 16);
+FIR_CHECK(fir_target, 32);
+FIR_CHECK(fir_pass_begin, 56);
+FIR_CHECK(fir_pass_end, 16);
+FIR_CHECK(fir_copy, 56);
+FIR_CHECK(fir_view, 168);
+FIR_CHECK(fir_sampler, 16);
+FIR_CHECK(fir_texture_binding, 24);
+FIR_CHECK(fir_state, 336);
+FIR_CHECK(fir_deform, 88);
+FIR_CHECK(fir_draw, 200);
+FIR_CHECK(fir_camera, 88);
+FIR_CHECK(fir_object, 152);
+FIR_CHECK(fir_environment, 208);
+FIR_CHECK(fir_light, 104);
+FIR_CHECK(fir_event, 96);
+FIR_CHECK(fir_annotate, 64);
+FIR_CHECK(fir_job, 80);
+FIR_CHECK(fir_composite_surface, 72);
+FIR_CHECK(fir_claim_rule, 24);
+FIR_CHECK(fir_claim_rules, 40);
+FIR_CHECK(fir_content_known, 32);
+FIR_CHECK(fir_capture_control, 24);
+FIR_CHECK(fir_present_feedback, 40);
+
+/* 64-bit fields must sit at 8-byte offsets (32-bit GCC aligns them to 4 otherwise) */
+FIR_STATIC_ASSERT(offsetof(fir_session_begin, executable_hash) % 8 == 0, "align");
+FIR_STATIC_ASSERT(offsetof(fir_texture_data, data) % 8 == 0, "align");
+FIR_STATIC_ASSERT(offsetof(fir_geometry, vertices) % 8 == 0, "align");
+FIR_STATIC_ASSERT(offsetof(fir_state, state_hash) % 8 == 0, "align");
+FIR_STATIC_ASSERT(offsetof(fir_state, constants) % 8 == 0, "align");
+FIR_STATIC_ASSERT(offsetof(fir_draw, instance_key) % 8 == 0, "align");
+FIR_STATIC_ASSERT(offsetof(fir_draw, per_draw_constants) % 8 == 0, "align");
+FIR_STATIC_ASSERT(offsetof(fir_object, local_to_world) == 40, "align");
+FIR_STATIC_ASSERT(offsetof(fir_object, schema) % 8 == 0, "align");
+FIR_STATIC_ASSERT(offsetof(fir_environment, schema) % 8 == 0, "align");
+FIR_STATIC_ASSERT(offsetof(fir_event, schema) % 8 == 0, "align");
+FIR_STATIC_ASSERT(offsetof(fir_job, inputs) % 8 == 0, "align");
+FIR_STATIC_ASSERT(offsetof(fir_composite_surface, view) == 64, "align");
+
+#undef FIR_CHECK
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
+
+#endif /* FRAME_IR_H */

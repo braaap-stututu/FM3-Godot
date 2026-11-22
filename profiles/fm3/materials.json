@@ -1,0 +1,114 @@
+{
+  "_doc": "FM3 material rules by pixel shader hash, for tools/fir_world.py (a first slice of the FM3 profile's material archetypes, SCENE_API.md). color_const: the PS constant (cN, pixel-shader numbering) holding the albedo colour. texture: the slot of the albedo texture; texture_mode 'over_alpha' composites it over the colour by its alpha (liveries over paint), 'multiply' multiplies. alpha_texture/alpha_channel: the slot and channel giving coverage (decals). color: a fixed albedo. alpha: a constant coverage (glass). drop: leave the draw out (effects that only read render targets made during the frame). unlit: the sky and other emissive surfaces (glTF KHR_materials_unlit). under: with alpha_texture, the colour beneath the paint (the draw is the surface itself, opaque). _lightmap_slot: the slot FM3 world shaders keep their baked lightmap in (exported as the occlusion texture on a second UV set). _sun_const: PS constants holding the direction to the sun. roughness/metallic: PBR values for the material (default 1/0). color_scale: multiplies the colour (from a constant or fixed). glass: transparent glass (strong reflections in the viewer). The sky dome's colour (0.92, 0.97, 1.0) is calibrated against the game's screenshot (its shader scales by texture alpha and c249.y/c222.x, not yet reproduced). The asphalt colour 0.34 is calibrated against the game's screenshot with the viewer's FM3 lighting (fm3_baked.gdshader, linear tone mapping). sheen: added to the composited colour (the game's sky reflection on painted lines, measured against its screenshot). shadow_blob: the draw's quad gets a procedural soft rounded-rectangle alpha (peak = the value) in the PS c0 colour (the game's blob texture is a render target of the car's shadow).",
+  "e41e183a423e6f1b": {
+    "name": "car paint",
+    "color_const": 118,
+    "texture": 0,
+    "texture_mode": "over_alpha",
+    "roughness": 0.55
+  },
+  "9e50ba148b27a974": {
+    "name": "track line paint (the surface: paint over asphalt)",
+    "color_const": 2,
+    "alpha_texture": 1,
+    "alpha_channel": 3,
+    "under": [
+      0.16,
+      0.16,
+      0.16
+    ],
+    "color_scale": 0.75,
+    "sheen": [
+      0.1,
+      0.13,
+      0.17
+    ]
+  },
+  "fd6b3d2ab76c24bb": {
+    "name": "track asphalt",
+    "texture": 1,
+    "color": [
+      0.34,
+      0.34,
+      0.34
+    ],
+    "texture_mode": "multiply"
+  },
+  "b117fbafcc1fa980": {
+    "name": "car glass",
+    "color": [
+      0.006,
+      0.016,
+      0.03
+    ],
+    "alpha": 0.5,
+    "roughness": 0.08,
+    "glass": true
+  },
+  "ac3b9d6ac2e2f356": {
+    "name": "car shadow blob (runtime texture: approximated by a soft rounded rectangle)",
+    "shadow_blob": 0.7,
+    "unlit": true
+  },
+  "a08c4bcf99090273": {
+    "name": "car glass (lower panel)",
+    "color": [
+      0.01,
+      0.01,
+      0.012
+    ],
+    "alpha": 1.0,
+    "roughness": 0.08,
+    "glass": true
+  },
+  "3050cdbb19769757": {
+    "name": "terrain rock/dirt blend",
+    "texture": 0,
+    "color": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "texture_mode": "multiply"
+  },
+  "d6ec9487b6e41a2f": {
+    "name": "sky dome",
+    "texture": 0,
+    "color": [
+      0.92,
+      0.97,
+      1.0
+    ],
+    "texture_mode": "multiply",
+    "unlit": true
+  },
+  "_lightmap_slot": 7,
+  "_sun_const": [
+    250,
+    136
+  ],
+  "f7841c0a8245eabf": {
+    "name": "car light lens (clean texture, not the damage one)",
+    "texture": 14,
+    "color": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "texture_mode": "multiply"
+  },
+  "7f4b46775654ee5b": {
+    "name": "car light lens 2 (clean texture)",
+    "texture": 14,
+    "color": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "texture_mode": "multiply"
+  },
+  "d44a5b5aed142674": {
+    "name": "car shadow blob (alpha-only output, grid capture draw 2018)",
+    "drop": true
+  }
+}

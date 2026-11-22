@@ -1,0 +1,122 @@
+{
+  "adapter": "AMD Radeon RX 7900 XTX",
+  "benchmark": "G1",
+  "cpu": "AMD Ryzen 7 9800X3D 8-Core Processor",
+  "godot": "4.7.2-stable (official)",
+  "layout": {
+    "fits": false,
+    "game_fov_y_deg": 155.372833,
+    "mode": "auto",
+    "screens": [
+      {
+        "aspect": 1.77777791,
+        "far": 4000.0,
+        "near": 0.0500000007,
+        "offset": [
+          0.0,
+          0.0
+        ],
+        "rot_y": 0.965748847,
+        "size": 0.0294901766
+      },
+      {
+        "aspect": 1.77777791,
+        "far": 4000.0,
+        "near": 0.0500000007,
+        "offset": [
+          0.0,
+          0.0
+        ],
+        "rot_y": 0.0,
+        "size": 0.0294901766
+      },
+      {
+        "aspect": 1.77777791,
+        "far": 4000.0,
+        "near": 0.0500000007,
+        "offset": [
+          0.0,
+          0.0
+        ],
+        "rot_y": -0.965748847,
+        "size": 0.0294901766
+      }
+    ]
+  },
+  "msaa": 4,
+  "renderer": "d3d12",
+  "results": [
+    {
+      "draw_calls_mean": 552.440276406713,
+      "fps": 506.407812677768,
+      "frame_ms_mean": 1.9746930733794,
+      "frame_ms_p99": 2.08333333333333,
+      "frames": 4052,
+      "instances": 1000,
+      "objects_drawn_mean": 632.088845014807,
+      "render_cpu_ms_mean": 0.485684846970092,
+      "render_gpu_ms_mean": 1.75128899303588
+    },
+    {
+      "draw_calls_mean": 1021.25433526012,
+      "fps": 454.011043228155,
+      "frame_ms_mean": 2.2025895953757,
+      "frame_ms_p99": 2.38095238095238,
+      "frames": 3633,
+      "instances": 2000,
+      "objects_drawn_mean": 1301.1596476741,
+      "render_cpu_ms_mean": 0.664650426924786,
+      "render_gpu_ms_mean": 1.95104156438227
+    },
+    {
+      "draw_calls_mean": 1698.9880489991,
+      "fps": 418.32170133324,
+      "frame_ms_mean": 2.39050471637709,
+      "frame_ms_p99": 2.77777777777778,
+      "frames": 3347,
+      "instances": 4000,
+      "objects_drawn_mean": 2590.21153271586,
+      "render_cpu_ms_mean": 0.922450851567795,
+      "render_gpu_ms_mean": 2.15922019716373
+    },
+    {
+      "draw_calls_mean": 2446.98756476684,
+      "fps": 361.844132685256,
+      "frame_ms_mean": 2.76362087890985,
+      "frame_ms_p99": 2.77777777777778,
+      "frames": 2895,
+      "instances": 7000,
+      "objects_drawn_mean": 4527.03246977548,
+      "render_cpu_ms_mean": 1.23707219322111,
+      "render_gpu_ms_mean": 2.47177029487794
+    },
+    {
+      "draw_calls_mean": 2909.58784284655,
+      "fps": 337.152449280917,
+      "frame_ms_mean": 2.96601730799469,
+      "frame_ms_p99": 3.03030303030303,
+      "frames": 2698,
+      "instances": 10000,
+      "objects_drawn_mean": 6368.04929577465,
+      "render_cpu_ms_mean": 1.49538250439272,
+      "render_gpu_ms_mean": 2.71512268526718
+    },
+    {
+      "draw_calls_mean": 4405.43804453049,
+      "fps": 258.232514311322,
+      "frame_ms_mean": 3.87247904341903,
+      "frame_ms_p99": 4.16666666666667,
+      "frames": 2066,
+      "instances": 20000,
+      "objects_drawn_mean": 12621.3804453049,
+      "render_cpu_ms_mean": 2.42354840321497,
+      "render_gpu_ms_mean": 3.61573475276166
+    }
+  ],
+  "screen": [
+    2560,
+    1440
+  ],
+  "shadows": true,
+  "unique_meshes": 300
+}
