@@ -214,7 +214,7 @@ def main():
     if '--shot' in sys.argv:
         flip = '--flip-scene' in sys.argv
         # The scene pass is the longest stretch of draws without a resolve; its resolve ends it. Draws up to there go to
-        # targets a later pass copies to the screen upside down; later passes (post, HUD) draw to the screen.
+        # targets a later pass copies to the screen rotated 180 deg; later passes (post, HUD) draw to the screen.
         rs = sorted(e[1]['seq'] for e in frame['events'] if e[0] == 'resolve')
         gaps = [(b - a, b) for a, b in zip([-1] + rs, rs)]
         last_resolve = max(gaps)[1] if gaps else -1
