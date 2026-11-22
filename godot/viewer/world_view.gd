@@ -13,6 +13,7 @@ var _bench := 0  # --bench N: after the picture, render N more frames and report
 var _bench_t0 := 0
 var _screen_size := Vector2i(1280, 720)
 const TripleCameras = preload("res://triple_cameras.gd")
+const BAKED_SHADER = preload("res://viewer/fm3_baked.gdshader")
 
 
 func _init() -> void:
@@ -20,6 +21,7 @@ func _init() -> void:
 	var gltf_path := ""
 	var size := Vector2i(1280, 720)
 	var no_shadows := false
+	var grey_shadow := false  # debug: one grey lit material everywhere, sun shadows on
 	var lit := false  # --lit: materials shaded, a sun with shadows and sky ambient (--sun elevation,azimuth in degrees)
 	var sun_elev := 50.0
 	var sun_azim := 30.0
@@ -37,6 +39,8 @@ func _init() -> void:
 				textured = true
 			"--lit":
 				textured = true; lit = true
+			"--grey-shadow":
+				grey_shadow = true
 			"--no-shadows":
 				no_shadows = true
 			"--msaa":
@@ -65,7 +69,8 @@ func _init() -> void:
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var meshes := 0
 	var baked := 0
-	var baked_gain := 1.5
+	var baked_no_tex := 0
+	var baked_gain := 1.15  # (calibrated against the game: the sun now reaches the baked world)
 	var grey_unshaded := StandardMaterial3D.new()
 	grey_unshaded.albedo_color = Color(0.5, 0.5, 0.5)
 	grey_unshaded.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -73,6 +78,11 @@ func _init() -> void:
 	for n in scene.find_children("*", "MeshInstance3D", true, false):
 		var mi := n as MeshInstance3D
 		meshes += 1
+		# The sky dome (unlit) surrounds everything: as a shadow caster it would shade the whole scene.
+		for s0 in mi.mesh.get_surface_count():
+			var m0 := mi.mesh.surface_get_material(s0) as BaseMaterial3D
+			if m0 != null and m0.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED:
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		if not textured:
 			mi.material_override = mat
 			continue
@@ -85,17 +95,26 @@ func _init() -> void:
 			if m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:  # (the glTF's unlit materials stay unlit)
 				m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL if lit else BaseMaterial3D.SHADING_MODE_UNSHADED
 			m.cull_mode = BaseMaterial3D.CULL_DISABLED
-			if lit and m.ao_enabled and m.ao_texture != null and m.ao_on_uv2:
-				# FM3's static world is lit by its baked colour lightmap (slot 7, UV2): albedo x lerp(ambient c247,
-				# sun c248, lightmap). Reproduced as albedo x lightmap x 1.5, unshaded (the bake holds sun and shadows).
-				m.detail_enabled = true
-				m.detail_albedo = m.ao_texture
-				m.detail_uv_layer = BaseMaterial3D.DETAIL_UV_2
-				m.detail_blend_mode = BaseMaterial3D.BLEND_MODE_MUL
-				m.ao_enabled = false
-				m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-				m.albedo_color = m.albedo_color * Color(baked_gain, baked_gain, baked_gain, 1.0)
+			if lit and m.ao_enabled and m.ao_texture != null and m.ao_on_uv2 and m.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA:
+				# FM3's static world: its baked colour lightmap (slot 7, UV2) carries the light; the sun only adds
+				# the shadows of dynamic objects (fm3_baked.gdshader). Its own shadows are in the lightmap: it casts none.
+				var sm := ShaderMaterial.new()
+				sm.shader = BAKED_SHADER
+				sm.set_shader_parameter("albedo_tex", m.albedo_texture)
+				sm.set_shader_parameter("light_tex", m.ao_texture)
+				sm.set_shader_parameter("albedo_color", m.albedo_color)
+				sm.set_shader_parameter("gain", baked_gain)
+				if m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
+					sm.set_shader_parameter("alpha_cut", m.alpha_scissor_threshold)
+				mi.set_surface_override_material(s, sm)
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				baked += 1
+				if m.albedo_texture == null:
+					baked_no_tex += 1
+				continue
+			if lit and m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA and m.roughness < 0.1 and m.albedo_texture == null:
+				m.metallic_specular = 0.6  # glass: strong Fresnel reflections of the probe and sky
+				m.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
 			if lit and m.roughness >= 0.9:
 				m.metallic_specular = 0.15  # matte surfaces: little sky reflection at grazing angles (FM3's look)
 			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
@@ -119,8 +138,8 @@ func _init() -> void:
 		# A procedural sky for ambient light and reflections (the visible sky is FM3's own dome mesh).
 		var sky := Sky.new()
 		var psky := ProceduralSkyMaterial.new()
-		psky.sky_top_color = Color(0.32, 0.5, 0.78)
-		psky.sky_horizon_color = Color(0.72, 0.8, 0.88)
+		psky.sky_top_color = Color(0.42, 0.58, 0.8)  # (FM3's sky/fog constant c242: 0.51, 0.69, 0.84)
+		psky.sky_horizon_color = Color(0.8, 0.85, 0.9)
 		psky.ground_bottom_color = Color(0.25, 0.24, 0.22)
 		psky.ground_horizon_color = Color(0.6, 0.62, 0.64)
 		sky.sky_material = psky
@@ -136,6 +155,16 @@ func _init() -> void:
 		env.environment.adjustment_contrast = 1.12
 		env.environment.adjustment_saturation = 0.95
 	root.add_child(env)
+	if lit:
+		# Reflections of the real scene (FM3 renders a dynamic environment map for its car paint and glass): one probe
+		# around the grid, rendered once from just above the cars.
+		var probe := ReflectionProbe.new()
+		probe.size = Vector3(260, 80, 260)
+		probe.update_mode = ReflectionProbe.UPDATE_ONCE
+		probe.max_distance = 1500.0
+		probe.ambient_mode = ReflectionProbe.AMBIENT_DISABLED
+		probe.position = cam.global_transform.origin + (-cam.global_transform.basis.z * 8.0) + Vector3(0, 0.6, 0) if cam.is_inside_tree() else cam.transform.origin + (-cam.transform.basis.z * 8.0) + Vector3(0, 0.6, 0)
+		root.add_child(probe)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-sun_elev, sun_azim, 0)
 	var glights := scene.find_children("*", "DirectionalLight3D", true, false)
@@ -145,11 +174,12 @@ func _init() -> void:
 		print("world_view: sun from the glTF")
 	sun.light_energy = 1.45 if lit else 1.0
 	sun.light_color = Color(1.0, 0.97, 0.92)
-	sun.shadow_enabled = lit and not no_shadows
+	sun.shadow_enabled = (lit or grey_shadow) and not no_shadows
+	print("world_view: sun forward ", -sun.global_transform.basis.z if sun.is_inside_tree() else -sun.transform.basis.z, " shadows ", sun.shadow_enabled)
 	sun.directional_shadow_max_distance = 250.0
 	root.add_child(sun)
 	print("world_view: camera ", cam.global_transform if cam.is_inside_tree() else cam.transform, " parent ", cam.get_parent().name)
-	print("world_view: %d surfaces lit by FM3's baked lightmaps" % baked)
+	print("world_view: %d surfaces lit by FM3's baked lightmaps (%d without an albedo texture)" % [baked, baked_no_tex])
 	print("world_view: %d mesh instances, camera fov %.2f near %.3f" % [meshes, cam.fov, cam.near])
 
 

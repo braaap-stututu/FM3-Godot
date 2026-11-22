@@ -1,5 +1,5 @@
 {
-  "_doc": "FM3 material rules by pixel shader hash, for tools/fir_world.py (a first slice of the FM3 profile's material archetypes, SCENE_API.md). color_const: the PS constant (cN, pixel-shader numbering) holding the albedo colour. texture: the slot of the albedo texture; texture_mode 'over_alpha' composites it over the colour by its alpha (liveries over paint), 'multiply' multiplies. alpha_texture/alpha_channel: the slot and channel giving coverage (decals). color: a fixed albedo. alpha: a constant coverage (glass). drop: leave the draw out (effects that only read render targets made during the frame). unlit: the sky and other emissive surfaces (glTF KHR_materials_unlit). under: with alpha_texture, the colour beneath the paint (the draw is the surface itself, opaque). _lightmap_slot: the slot FM3 world shaders keep their baked lightmap in (exported as the occlusion texture on a second UV set). _sun_const: PS constants holding the direction to the sun. roughness/metallic: PBR values for the material (default 1/0). color_scale: multiplies the colour (from a constant or fixed).",
+  "_doc": "FM3 material rules by pixel shader hash, for tools/fir_world.py (a first slice of the FM3 profile's material archetypes, SCENE_API.md). color_const: the PS constant (cN, pixel-shader numbering) holding the albedo colour. texture: the slot of the albedo texture; texture_mode 'over_alpha' composites it over the colour by its alpha (liveries over paint), 'multiply' multiplies. alpha_texture/alpha_channel: the slot and channel giving coverage (decals). color: a fixed albedo. alpha: a constant coverage (glass). drop: leave the draw out (effects that only read render targets made during the frame). unlit: the sky and other emissive surfaces (glTF KHR_materials_unlit). under: with alpha_texture, the colour beneath the paint (the draw is the surface itself, opaque). _lightmap_slot: the slot FM3 world shaders keep their baked lightmap in (exported as the occlusion texture on a second UV set). _sun_const: PS constants holding the direction to the sun. roughness/metallic: PBR values for the material (default 1/0). color_scale: multiplies the colour (from a constant or fixed). glass: transparent glass (strong reflections in the viewer).",
   "e41e183a423e6f1b": {
     "name": "car paint",
     "color_const": 118,
@@ -13,9 +13,9 @@
     "alpha_texture": 1,
     "alpha_channel": 3,
     "under": [
-      0.11,
-      0.11,
-      0.11
+      0.16,
+      0.16,
+      0.16
     ],
     "color_scale": 0.75
   },
@@ -23,21 +23,22 @@
     "name": "track asphalt",
     "texture": 1,
     "color": [
-      0.26,
-      0.26,
-      0.26
+      0.55,
+      0.55,
+      0.55
     ],
     "texture_mode": "multiply"
   },
   "b117fbafcc1fa980": {
     "name": "car glass",
     "color": [
-      0.02,
-      0.025,
-      0.03
+      0.012,
+      0.014,
+      0.016
     ],
-    "alpha": 0.82,
-    "roughness": 0.05
+    "alpha": 0.9,
+    "roughness": 0.08,
+    "glass": true
   },
   "ac3b9d6ac2e2f356": {
     "name": "car shadow blob (runtime texture)",
@@ -46,12 +47,13 @@
   "a08c4bcf99090273": {
     "name": "car glass (lower panel)",
     "color": [
-      0.02,
-      0.025,
-      0.03
+      0.01,
+      0.01,
+      0.012
     ],
-    "alpha": 0.85,
-    "roughness": 0.05
+    "alpha": 1.0,
+    "roughness": 0.08,
+    "glass": true
   },
   "3050cdbb19769757": {
     "name": "terrain rock/dirt blend",

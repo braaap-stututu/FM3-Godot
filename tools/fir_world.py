@@ -234,7 +234,9 @@ def drop_reflections(objs):
 
 
 WORLD_POS = {}  # id(placed record) -> world positions, for draws exported in world space
-STAND_IN = 0.5  # the value a render-target texel reads as in the per-vertex pixel shader run
+STAND_IN = 0.5
+UNKNOWN_FILL = 0.37  # interpolator components the vertex shader run could not compute (non-zero: zero hides dependences)
+DEBUG_SEQS = set(map(int, os.environ.get('FIR_DEBUG_SEQS', '').split(','))) if os.environ.get('FIR_DEBUG_SEQS') else set()  # the value a render-target texel reads as in the per-vertex pixel shader run
 RULES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'profiles', 'fm3', 'materials.json')
 _RAW = json.load(open(RULES_PATH)) if os.path.exists(RULES_PATH) else {}
 RULES = {k: v for k, v in _RAW.items() if not k.startswith('_')}
@@ -317,7 +319,7 @@ def materials(cap, path, objs):
         pin = {}
         for reg, comps in exports.items():
             if reg < 16:
-                pin[reg] = np.stack([np.zeros(nv) if v is None or v.n is None else
+                pin[reg] = np.stack([np.full(nv, UNKNOWN_FILL) if v is None or v.n is None else
                                      np.broadcast_to(np.asarray(v.n, dtype=np.float64), (nv,)) for v in comps], axis=1)
         consts = {i: f32(regs[0x4400 + i]) for i in range(1024) if 0x4400 + i in regs}
         bools = {0x4900 + i: regs.get(0x4900 + i, 0) for i in range(8)}
@@ -426,13 +428,71 @@ def materials(cap, path, objs):
             if dim != 1 or coords is None:
                 continue
             t, tex = decoded(slot)
-            if tex is not None and not looks_like_normal_map(tex):
+            if tex is not None and not looks_like_normal_map(tex) and slot != LIGHTMAP_SLOT:
                 cands.append((slot, coords, t, tex))
         pick = cands[0] if cands else None
         if mode and cands:
-            with_alpha = [c for c in cands if 0.05 < alpha_share(c[3]) < 0.995]
-            if with_alpha:
-                pick = with_alpha[0]
+            if shader_kills(code):
+                # A kill in the shader: the texture with an alpha pattern drives it (trees, trusses).
+                with_alpha = [c for c in cands if 0.05 < alpha_share(c[3]) < 0.995]
+                if with_alpha:
+                    pick = with_alpha[0]
+            else:
+                # Alpha test, alpha to coverage or blending act on the shader's output alpha: find the texture whose
+                # alpha changes it (run the shader again with that texture's alpha at zero). None: the texture alpha is
+                # something else (a specular mask, FM3's hangar) and the surface is opaque.
+                base_a = color[:, 3] if color is not None else None
+                source, failed, rt_alpha = None, False, False
+                cand_slots = {c_[0]: c_ for c_ in cands}
+                test_slots = list(dict.fromkeys([c_[0] for c_ in cands] + [sl for sl, dm, cc in res if dm == 1]))
+                conclusive = base_a is not None and np.isfinite(base_a).mean() >= 0.5
+                for sl in test_slots:
+                    runs = []
+                    for av in (0.0, 1.0):
+                        def sample0(slot, dim, coords, s0=sl, av=av):
+                            v = sample(slot, dim, coords)
+                            if slot == s0:
+                                v = v.copy()
+                                v[:, 3] = av
+                            return v
+                        try:
+                            with np.errstate(all='ignore'):
+                                runs.append(fir_vs.run(code, consts, bools, None, nv, loops, pixel_inputs=pin, sample=sample0).color)
+                        except Fail:
+                            failed = True
+                            break
+                    if len(runs) < 2 or runs[0] is None or runs[1] is None:
+                        continue
+                    a0, a1 = runs[0][:, 3], runs[1][:, 3]
+                    if np.nanmax(np.nan_to_num(np.abs(a1 - a0), nan=0.0)) > 0.02 or not np.array_equal(np.isnan(a0), np.isnan(a1)):
+                        if sl in cand_slots:
+                            source = cand_slots[sl]
+                        else:
+                            rt_alpha = True  # coverage from a render target (runtime shadow / decal): not reproducible
+                        break
+                if DEBUG_SEQS and d['seq'] in DEBUG_SEQS:
+                    print('  dbg', d['seq'], f"ps {d['ps']:016x}", 'mode', mode, 'finite', None if base_a is None else round(float(np.isfinite(base_a).mean()), 2),
+                          'median a', None if base_a is None else np.nanmedian(base_a), 'source', source and source[0], 'rt', rt_alpha, 'failed', failed,
+                          'cands', [c_[0] for c_ in cands], 'slots', test_slots)
+                if rt_alpha:
+                    out[id(p)] = {'drop': True}
+                    why['coverage from a render target (left out)'] += 1
+                    continue
+                ok_opaque = source is None and not failed and conclusive and (
+                    mode != "BLEND" or (np.isfinite(base_a).any() and np.nanmedian(base_a) > 0.9))
+                if source is not None:
+                    pick = source
+                    why['cut-out/blend from the texture alpha (checked)'] += 1
+                elif ok_opaque:
+                    # The texture alpha does not reach the output alpha, which is ~1: a specular or other mask
+                    # (FM3's hangar), so the surface is opaque.
+                    mode = False
+                    why['alpha not from a texture: opaque'] += 1
+                else:
+                    with_alpha = [c for c in cands if 0.05 < alpha_share(c[3]) < 0.995]
+                    if with_alpha:
+                        pick = with_alpha[0]
+                    why['alpha source not settled: texture with an alpha pattern'] += 1
         if pick is None and not res:
             # No texture at all: the colour is the shader's arithmetic. Its output at the vertices (median, clamped) is
             # the best estimate of the surface colour (it includes FM3's lighting, roughly neutral at noon).
