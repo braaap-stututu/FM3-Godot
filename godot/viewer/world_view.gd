@@ -132,7 +132,7 @@ func _init() -> void:
 			m = m.duplicate()
 			if m.resource_name == "fm3_shadow_blob":
 				# a car's soft contact shadow (fir_world.py): lie just above the road it would otherwise z-fight
-				mi.global_position += Vector3(0, 0.03, 0)
+				mi.position += Vector3(0, 0.03, 0)  # (before entering the tree: local = world, glTF nodes sit at the root)
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			if m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:  # (the glTF's unlit materials stay unlit)
 				m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL if lit else BaseMaterial3D.SHADING_MODE_UNSHADED
