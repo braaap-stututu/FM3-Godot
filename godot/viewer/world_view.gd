@@ -156,11 +156,11 @@ func _init() -> void:
 				if m.albedo_texture == null:
 					baked_no_tex += 1
 				continue
-			if lit and m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA and m.roughness < 0.1 and m.albedo_texture == null:
-				m.metallic_specular = 0.6  # glass: strong Fresnel reflections of the probe and sky
+			if lit and _blended(m) and m.roughness < 0.1 and m.albedo_texture == null:
+				m.metallic_specular = 0.12  # glass: Fresnel reflections of the probe and sky (calibrated on the grid's cars)
 				m.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
 			if lit and m.roughness >= 0.9:
-				m.metallic_specular = 0.15  # matte surfaces: little sky reflection at grazing angles (FM3's look)
+				m.metallic_specular = 0.04  # matte surfaces: almost no sky reflection (FM3's dark trim stays dark)
 			if lit and m.roughness_texture != null and m.albedo_texture != null:
 				# car paint (fir_world.py writes a roughness texture only for paint): FM3's paint is a clear coat over the
 				# colour, reflecting the environment with a Fresnel falloff

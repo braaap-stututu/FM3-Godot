@@ -37,9 +37,9 @@
   "b117fbafcc1fa980": {
     "name": "car glass",
     "color": [
-      0.012,
-      0.014,
-      0.016
+      0.006,
+      0.016,
+      0.03
     ],
     "alpha": 0.5,
     "roughness": 0.08,

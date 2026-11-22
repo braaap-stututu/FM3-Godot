@@ -486,6 +486,11 @@ def materials(cap, path, objs):
                     _last_car[0] = car
                     ASSET_NAMES[id(p)] = f'{car}/{asset_mat}'
         crule = CAR_RULES.get(asset_mat) if asset_mat else None
+        if crule and RULES.get(f"{d['ps']:016x}", {}).get('texture_mode') == 'over_alpha':
+            # The paint shader settles it: a draw FM3 renders with car paint is paint, whatever material name the carbin
+            # match gave it (the Mazda's sides matched 'black', the Focus 'plastic2', the C4 'textured_reflector').
+            why['asset material overridden by the paint shader: ' + asset_mat] += 1
+            crule = None
         if crule and not crule.get('keep'):
             c_ = list(crule.get('color', [0.5, 0.5, 0.5]))
             a_ = float(crule.get('alpha', 1.0))
@@ -760,7 +765,8 @@ def materials(cap, path, objs):
         u, v = np.nan_to_num(np.asarray(uv)[0])
         x, y = int(np.floor((u % 1.0) * w)) % w, int(np.floor((v % 1.0) * h)) % h
         px = np.frombuffer(img['bytes'][:w * h * 4], np.uint8).reshape(h, w, 4)[y, x] / 255.0
-        m['factor'] = [float(px[i] * m['factor'][i]) for i in range(3)] + [m['factor'][3]]
+        lin = np.where(px[:3] <= 0.04045, px[:3] / 12.92, ((px[:3] + 0.055) / 1.055) ** 2.4)  # (glTF factors are linear)
+        m['factor'] = [float(lin[i] * m['factor'][i]) for i in range(3)] + [m['factor'][3]]
         m['image'] = m['uv'] = m['key'] = None
         m.pop('mr_image', None)
         flat += 1
