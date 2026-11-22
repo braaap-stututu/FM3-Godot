@@ -225,11 +225,11 @@ class Converter:
                 else:
                     w.append(0)
             p = unpack(w, fmt, signed, norm)
-            r = None if p is None else (p[0] * scale, p[1] * scale, p[2] * scale)
+            r = None if p is None else (p[0] * scale, p[1] * scale, p[2] * scale, p[3] * scale)
             cache[v] = r
             return r
 
-        out_tris, verts, remap, bad = [], [], {}, 0
+        out_tris, verts, remap, bad, vindex = [], [], {}, 0, []
         vcount = ndw // stride if stride else 0
         oob = 0
         for t in tris:
@@ -240,12 +240,13 @@ class Converter:
                 if None in (a, b, c):
                     bad += 1
                     continue
-                dpt = (b[0] + c[0] - a[0], b[1] + c[1] - a[1], b[2] + c[2] - a[2])
+                dpt = tuple(b[i] + c[i] - a[i] for i in range(4))
                 for p in (a, b, c, dpt):
                     remap_key = ('p',) + p
                     if remap_key not in remap:
                         remap[remap_key] = len(verts)
                         verts.append(p)
+                        vindex.append(None)
                     ids.append(remap[remap_key])
                 out_tris += [(ids[0], ids[1], ids[2]), (ids[2], ids[1], ids[3])]
                 continue
@@ -259,6 +260,7 @@ class Converter:
                 if v not in remap:
                     remap[v] = len(verts)
                     verts.append(p)
+                    vindex.append(v)
                 ids.append(remap[v])
             if ok:
                 out_tris.append(tuple(ids))
@@ -268,10 +270,12 @@ class Converter:
             return None, f'format {fmt} not decodable' if pos(tris[0][0]) is None else 'all triangles invalid'
         h = hashlib.blake2b(digest_size=16)
         for p in verts:
-            h.update(struct.pack('<3f', *p))
+            h.update(struct.pack('<4f', *p))
         for t in out_tris:
             h.update(struct.pack('<3I', *t))
         gid = h.hexdigest()
+        self.last_vindex = vindex  # this draw's source vertex index per geometry vertex (None: a rect's 4th corner)
+        self.last_tris = out_tris
         if gid not in self.geometry:
             self.geometry[gid] = {'positions': verts, 'triangles': out_tris, 'draws': 0, 'format': fmt, 'prim': prim, 'oob': oob}
         self.geometry[gid]['draws'] += 1
@@ -356,7 +360,7 @@ def wire_sheet(geoms, path, tile=256, cols=4):
         # three-quarter view: rotate about Y by 35 deg, X by 25 deg, orthographic
         cy, sy, cx, sx = math.cos(0.6), math.sin(0.6), math.cos(0.45), math.sin(0.45)
         pr = []
-        for x, y, z in ps:
+        for x, y, z, _w in ps:
             x1, z1 = x * cy + z * sy, -x * sy + z * cy
             y1 = y * cx - z1 * sx
             pr.append((x1, y1))
@@ -418,7 +422,7 @@ def main():
         for i, g in enumerate(big[:n]):
             with open(os.path.join(out, f'mesh{i:03d}.obj'), 'w') as f:
                 for p in g['positions']:
-                    f.write('v %g %g %g\n' % p)
+                    f.write('v %g %g %g\n' % p[:3])
                 for t in g['triangles']:
                     f.write('f %d %d %d\n' % (t[0] + 1, t[1] + 1, t[2] + 1))
         print(f'{min(n, len(big))} OBJ files written to {out}')
