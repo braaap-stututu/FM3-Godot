@@ -55,6 +55,11 @@ works as long as the two folders stay side by side. The table uses the first PC'
    clang-cl / ninja / cmake), see its README and CLAUDE.md.
 4. Copy `claude-memory\*` into `C:\Users\<you>\.claude\projects\G--claude-code-projects-Godot\memory\` (the folder
    name follows the working directory `G:\claude code projects\Godot`; create it if missing).
+   Second PC (2026-11-23), already set up: Python 3.12.10 + numpy 2.5.5 (user site), VS 2022 Build Tools (MSVC
+   14.44, CMake 3.31.6, Ninja 1.12.1), Windows SDK 10.0.26100, LLVM 23.1.6, .NET 9.0.321, Git, gh, 7-Zip, RenderDoc
+   1.47, Inno Setup 6 (per user), DXC in the FM3 repo's `thirdparty\dxc` (`tools\get-toolchain.ps1 -Parts dxc`), RGA
+   2.15 in `<root>\tools\rga-2.15`. Not installed: AMD's Radeon Developer Tool Suite (RGP; gpuopen.com/rdts-windows,
+   licence page), the Vulkan SDK (not needed with `thirdparty\dxc`).
 5. Check: `powershell -ExecutionPolicy Bypass -File frame-ir\tools\rebuild_ladera.ps1 -Compare` should end with
    `compare: mean |diff| r 20.3 g 19.4 b 18.1`. Then `frame-ir\fly-track.cmd`.
 
