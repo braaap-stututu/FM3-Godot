@@ -57,7 +57,25 @@ web search were not reachable).
 ## Placements (`.pvs`)
 
 - **Verified (FM3):** `Media/Tracks/<track>/Ribbon_NN/<track>_NN.pvs`, magic `FPVS`, version **24** (FM4 27, FH1 50); the
-  next words match the FM4 header (u32, u32, then u16 ribbon = layout number 0/1/2).
+  next words match the FM4 header (u32, u32, then u16 ribbon = layout number). Ladera has 20 ribbons; the model and
+  texture tables are the same in each, the instance lists differ. Read by [`tools/fm3_pvs.py`](tools/fm3_pvs.py):
+  - **texture table** (found by its record-0 pattern): u32 count, 28-byte records: u32 texture id, u32 index
+    (sequential), f32 scale x, scale y, offset x, offset y, u32 flags. Whole textures have (1, 1, 0, 0) and flags 0/1/4;
+    lightmap entries have scale 1/16 and flags 8/9/12, and their offsets step through a 10 x 10 grid (pitch 0.09375).
+  - shader names: u32 count, strings (u32 length + `shaders\track\...`).
+  - **instances**: u32 count, **56-byte** records (not FM4's 68): u16 model, u32 flags, u32 lightmap (texture-table
+    index), u32, u32, u16, u16[3] LOD distances (half), f32[3] position, u16[9] rotation 3x3 (half, row-major).
+  - **models**: u32 count; vec u32 texture-table indices, vec u32 shader indices, f32[16] matrix, f32[4] extent. Model i
+    is `<prefix>out.<i:05d>.rmb.bin`.
+- **Texture link (verified against a captured frame):** the model file's `shaders\track\*` names end in their texture
+  count (`diff_spec_refl_norm_4`); in mesh-material order each shader takes the next block of the model's whole-texture
+  entries, and the first of a block is the base texture (140 of 165 checks right). The model's lightmap is its entry with
+  scale 1/16: **when `_0x<id>.bix` exists it is a whole lightmap texture** (the rectangle is unused; UV1 or UV0 as
+  decoded); **otherwise it is a slot in an `.stx.bin` atlas**: the atlas whose id is the largest atlas id <= the entry's
+  id, UV = (UV1, or UV0) * scale + offset, with the mesh's UV tile and offset applied first. Instanced models take the
+  lightmap from each instance's own entry instead (often the next table entry). 46 + 48 of 50 + 51 captured meshes
+  follow this.
+- Prop placement from the instances: positions do not yet line up with the captured world placements (frame unsolved).
 - **FM4 v27 (fm4_pvs.py `read_fm4`), to adapt:** header (u32, u32), u16 ribbon, u16 a2, then cells, textures, shaders,
   instances, models, always, models_a, models_b, dynamic, prefix, two u8, names, cell lists. `vec` = u32 count + items;
   string = u32 length + bytes. Texture record 28 bytes (u32, u32, f32 x4, u32). **Instance (68 bytes):** u16 model, u32
@@ -77,10 +95,15 @@ web search were not reachable).
 - **FH1/FM4:** `.xds` = 52-byte D3D texture header whose last 24 bytes are the GPU fetch constant (dword 0 bit 31 tiled,
   bits 22-30 pitch / 32; dword 1 bits 0-5 format, 6-7 endian; dword 2 width-1 / height-1 in 13-bit fields), then
   Xenos-tiled, byte-swapped data. DXT1 = 18, DXT5 = 20 (51/53 load as 18/20).
-- `.bix`: streamed track textures; FH1 describes BIX1 with a 28-byte header (width, height, mips, format word, chain
-  size, base size), base level in `_0x<id>_B.bix`, mips in `_0x<id>.bix`. **FM3 has BIX0** (e.g. 0x200 x 0x200, 10
-  mips, word 0x1A200154): field order to verify.
-- `.stx.bin` (CAFF container, `.data` + `.gpu` sections): per FH1, the track's **static texture pack** (entries = header +
-  base level + mips; atlas tiles by rectangle), not geometry. Section table not documented.
-- Untiling: no Xenos untiling code in these repos; ReGPU (`src/gpu/texture.cpp`) has it, and the capture tap already
-  produces RGBA8 decodes of every texture a frame uses, which can be matched to file data by hash.
+- **`.bix` (verified, [`tools/fm3_tex.py`](tools/fm3_tex.py)):** `_0x<id>.bix` = 28-byte header + mip chain,
+  `_0x<id>_B.bix` = base level. Header (big-endian u32): `BIX0`, width, height, mip count, format word (low byte =
+  Xenos format | endian << 6, as the fetch constant's dword 1; e.g. 0x1A200154 = DXT5, endian 1), mip-chain size,
+  base-level size. Data Xenos-tiled with the pitch = width (32-texel aligned), untiled with the formula above. 205
+  textures decode identical to the captured frame's (maximum error 0); DXN normal maps differ only in the blue channel
+  we fill.
+- **`.stx.bin` (verified, `fm3_tex.load_stx`):** a CAFF container ("CAFF21.11.05.0034"): 0x190-byte header (.data size
+  at 0x60, .gpu size at 0x88), .data, .gpu. In .data: one 128-byte record per texture (`texture` + `04.05.05.0032`, u32
+  format word as BIX0 at +0x18, u16 width + u16 height at +0x24, mip count in the byte at +0x30), then the source file
+  names (`...\compiled\_0x<id>_s.bin` = a 32-texel stream copy of `.bix` <id>, `_0x<id>_a.bin` = **lightmap atlas**
+  <id>), then a 28-byte table per texture whose words 5 and 6 give the .gpu offset: (w5 & 0xFFFF) << 16 | w6 >> 16.
+  Ladera: 1,062 stream copies and 24 atlases (512 x 512 DXT1, one DXT5); the captured atlases decode identically.

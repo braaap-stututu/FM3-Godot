@@ -2,6 +2,14 @@
 """fm3_track_export.py: a whole FM3 track from its own files as glTF, for the viewer.
 
     python fm3_track_export.py <extracted bin.zip dir> <out.gltf> [--camera-from world.gltf] [--texmap capmap_dir]
+                               [--pvs <track>_NN.pvs]
+
+--pvs: textures from the game's own files for every mesh. The .pvs model table lists each model's texture-table
+entries (texture file id + atlas rectangle); the model file's shaders (names end in their texture count) take blocks
+of the non-atlas entries in order, and the first of a block is the base texture (85 % right against a captured frame);
+the atlas entry is the lightmap: a whole texture when _0x<id>.bix exists, otherwise the rectangle (applied to UV1, or UV0
+without one) in the <track>.stx.bin atlas whose id is the largest atlas id <= the entry's id. .bix base levels decode with
+tools/fm3_tex.py. Models placed by .pvs instances are left out for now (model space; placement not solved).
 
 Track model files (.rmb.bin, tools/fm3_track.py) hold world-space vertices for the track itself (Ladera: all 1,914
 files have an identity header matrix and their vertices are what the GPU draws). Meshes are merged per material (and
@@ -19,6 +27,10 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fm3_track  # noqa: E402
+import fm3_tex  # noqa: E402
+import fm3_pvs  # noqa: E402
+import fir_read as fr  # noqa: E402
+import re  # noqa: E402
 from fir_world import smooth_normals  # noqa: E402
 
 COLOURS = [  # (substring of the lower-case material name, base colour)
@@ -60,13 +72,85 @@ def main():
         texmap = {k: v for k, v in tm['materials'].items() if v['err'] < 0.02}
         lmmap = {k: v for k, v in tm['lightmaps'].items() if v.get('lm_err', 1) < 0.02}
     tex_out = os.path.splitext(out)[0] + '_tex'
+    pv, instanced = None, set()
+    if '--pvs' in sys.argv:
+        pv = fm3_pvs.parse(open(sys.argv[sys.argv.index('--pvs') + 1], 'rb').read())
+        # Models only placed away from the origin are model-space props (placement not solved yet); models with an
+        # instance at the origin are world-space track pieces and stay.
+        at_origin = set(i['model'] for i in pv['instances'] if max(abs(c) for c in i['pos']) < 1e-3)
+        instanced = set(i['model'] for i in pv['instances']) - at_origin
+    bix_cache = {}
+
+    def bix_png(tid):
+        # Decode _0x<tid>.bix (+ _B) to a PNG in tex_out; the file name, or None.
+        if tid in bix_cache:
+            return bix_cache[tid]
+        name = None
+        hp = os.path.join(src, '_0x%08X.bix' % tid)
+        bp = os.path.join(src, '_0x%08X_B.bix' % tid)
+        if os.path.exists(hp) and os.path.exists(bp):
+            hdr = fm3_tex.bix_header(open(hp, 'rb').read(64))
+            base = open(bp, 'rb').read()
+            if hdr and len(base) >= hdr['base']:
+                img = fm3_tex.decode(base[:hdr['base']], hdr['w'], hdr['h'], hdr['format'], hdr['endian'])
+                if img is not None:
+                    os.makedirs(tex_out, exist_ok=True)
+                    name = 'bix_%05x.png' % tid
+                    fr.write_png(os.path.join(tex_out, name), img.shape[1], img.shape[0], img.tobytes())
+        bix_cache[tid] = name
+        return name
+
+    stx_path = glob.glob(os.path.join(src, '*.stx.bin'))
+    stx = fm3_tex.load_stx(stx_path[0]) if (pv is not None and stx_path) else None
+    stx_data = open(stx_path[0], 'rb').read() if stx else None
+
+    def atlas_png(piece_id):
+        # The stx lightmap atlas holding a .pvs atlas entry, as a PNG in tex_out; the file name, or None.
+        a = fm3_tex.stx_atlas_of(stx, piece_id) if stx else None
+        if a is None:
+            return None
+        key = ('atlas', a)
+        if key not in bix_cache:
+            img = fm3_tex.decode_stx(stx_data, stx, stx['atlases'][a])
+            name = None
+            if img is not None:
+                os.makedirs(tex_out, exist_ok=True)
+                name = 'lmatlas_%05x.png' % a
+                fr.write_png(os.path.join(tex_out, name), img.shape[1], img.shape[0], img.tobytes())
+            bix_cache[key] = name
+        return bix_cache[key]
 
     groups = {}
-    nfiles = textured = lit = 0
+    nfiles = textured = lit = from_files = skipped_instanced = 0
     for path in sorted(glob.glob(os.path.join(src, '*.rmb.bin'))):
         data = open(path, 'rb').read()
         model = fm3_track.parse(data)
         nfiles += 1
+        file_tex, file_lm = {}, None
+        mm = re.search(r'out\.(\d+)\.rmb', path)
+        if pv is not None and mm and int(mm.group(1)) < len(pv['models']):
+            mid = int(mm.group(1))
+            if mid in instanced:
+                skipped_instanced += 1
+                continue
+            entries = [pv['textures'][t] for t in pv['models'][mid]['textures'] if t < len(pv['textures'])]
+            plain = [e['id'] for e in entries if e['rect'] == (1.0, 1.0, 0.0, 0.0)]
+            atlas = [e for e in entries if e['rect'] != (1.0, 1.0, 0.0, 0.0)]
+            shaders = [x.decode() for x in re.findall(rb'shaders\\track\\([a-z0-9_]+)', data)]
+            counts = []
+            for sh in shaders:
+                mt = re.search(r'_(\d)(?:_|$)', sh)
+                counts.append(int(mt.group(1)) if mt else 1)
+            starts = np.cumsum([0] + counts[:-1]).tolist()
+            order = []
+            for me_ in model['meshes']:
+                if me_['material'] not in order:
+                    order.append(me_['material'])
+            for k, mat_name in enumerate(order):
+                if k < len(starts) and starts[k] < len(plain):
+                    file_tex[mat_name] = (plain[starts[k]], shaders[k] if k < len(shaders) else '')
+            if atlas:
+                file_lm = atlas[0]
         for me in model['meshes']:
             if me['indices'] is None:
                 continue
@@ -79,9 +163,28 @@ def main():
             name = me['material'] or 'unnamed'
             rec = texmap.get(name)
             uv = apply_uv(rec['chan'], rec['a'], rec['b'], me) if rec else None
+            base_png = rec['base'] if uv is not None else None
+            if uv is None and name in file_tex and me.get('uv0') is not None:
+                png = bix_png(file_tex[name][0])
+                if png:
+                    sh = file_tex[name][1]
+                    rec = {'factor': [1, 1, 1, 1], 'blend': 'MASK' if ('opac' in sh or 'tree' in sh or 'grass' in sh) else False}
+                    uv, base_png = me['uv0'].astype(np.float32), png
+                    from_files += 1
             lmr = lmmap.get(f"{os.path.basename(path)}@{me['index_offset']}")
             luv = apply_uv(lmr['lm_chan'], lmr['lm_a'], lmr['lm_b'], me) if (lmr and uv is not None) else None
-            key = (name, rec['base'] if uv is not None else None, lmr['lightmap'] if luv is not None else None)
+            lm_png = lmr['lightmap'] if luv is not None else None
+            if luv is None and uv is not None and file_lm is not None and 'nolm' not in file_tex.get(name, ('', ''))[1]:
+                src_uv = me.get('uv1') if me.get('uv1') is not None else me.get('uv0')
+                # An entry with its own .bix is a whole lightmap (rectangle unused); otherwise it is a slot in an stx atlas.
+                own = bix_png(file_lm['id']) if src_uv is not None else None
+                png = own or (atlas_png(file_lm['id']) if src_uv is not None else None)
+                if own:
+                    luv, lm_png = src_uv.astype(np.float32), own
+                elif png:
+                    sx, sy, ox, oy = file_lm['rect']
+                    luv, lm_png = (src_uv * np.array([sx, sy]) + np.array([ox, oy])).astype(np.float32), png
+            key = (name, base_png, lm_png)
             textured += uv is not None
             lit += luv is not None
             groups.setdefault(key, []).append((P, tris, uv, luv, rec if uv is not None else None))
@@ -101,7 +204,8 @@ def main():
     def image(png):
         if png not in img_ids:
             os.makedirs(tex_out, exist_ok=True)
-            shutil.copyfile(os.path.join(capdir, png), os.path.join(tex_out, png))
+            if not os.path.exists(os.path.join(tex_out, png)):
+                shutil.copyfile(os.path.join(capdir, png), os.path.join(tex_out, png))
             images.append({'uri': os.path.basename(tex_out) + '/' + png})
             textures.append({'source': len(images) - 1, 'sampler': 0})
             img_ids[png] = len(textures) - 1
@@ -149,7 +253,8 @@ def main():
         nodes.append({'mesh': len(meshes) - 1, 'name': name})
         nv += len(P)
         nt += len(T)
-    print(f'meshes textured from the capture: {textured}, with lightmaps: {lit}')
+    print(f'meshes textured: {textured} ({from_files} from the game files), with lightmaps: {lit}; '
+          f'instanced model files left out: {skipped_instanced}')
 
     gltf = {'asset': {'version': '2.0', 'generator': 'frame-ir fm3_track_export.py'}, 'scene': 0, 'nodes': nodes,
             'meshes': meshes, 'materials': materials, 'accessors': accessors, 'bufferViews': views}
