@@ -102,7 +102,7 @@ capture verified, 98.6-100 % of draws stable across frames by content, draw orde
 
 **M1 stage 2 transforms done 2026-11-22** (M1.md): vertex shaders run offline give 94.5 % of a frame's draws their
 clip positions (matching a screenshot); one camera (53.00 deg, exact rotation) and per-object world matrices recovered;
-the frame exports as glTF and renders in Godot from the captured camera. Open: skinned/instanced draws mirrored.
+the frame exports as glTF and renders in Godot from the captured camera. Open: some draws (part of the left grandstand, its crowd) land as if seen by a camera turned 180 deg.
 
 M0–M2 do not touch FM4 work and can start immediately. M1's tap is passive, so it
 cannot slow ReGPU when disabled.

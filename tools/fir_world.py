@@ -149,10 +149,11 @@ def main():
                 objs.append((p, atoms, W))  # still placeable, just not a rigid transform
             continue
         verdict['rigid' + (' (mirrored object: FM3 car bodies)' if det < 0 else '')] += 1
-        targets[(det < 0, hex(p[1].get(0x2001, 0)), hex(p[1].get(0x2000, 0)))] += 1
+        targets[(det < 0, hex(p[1].get(0x2001, 0)), hex(p[1].get(0x2205, 0) & 7))] += 1
         objs.append((p, atoms, W))
     for k, v in verdict.most_common():
         print(f'  object-to-world: {k}: {v}')
+    objs = drop_reflections(objs)
     print(f'  draws writing their own depth (z row not the camera one; left out): {depth_own}')
     if '--groups' in sys.argv:  # seq lists per group, for fir_frame.py --seqs
         base = sys.argv[sys.argv.index('--groups') + 1]
@@ -164,7 +165,7 @@ def main():
                 f.write(' '.join(map(str, l)))
     if '--targets' in sys.argv:
         for k, v in sorted(targets.items()):
-            print(f'  mirrored={k[0]} RB_COLOR_INFO={k[1]} RB_SURFACE_INFO={k[2]}: {v}')
+            print(f'  mirrored={k[0]} RB_COLOR_INFO={k[1]} cull/face bits={k[2]}: {v}')
     if '--seqs' in sys.argv:
         want = set(map(int, open(sys.argv[sys.argv.index('--seqs') + 1]).read().split()))
         objs = [o for o in objs if o[0][0]['seq'] in want]
@@ -172,6 +173,39 @@ def main():
         out = sys.argv[sys.argv.index('--gltf') + 1]
         write_gltf(out, objs, cam)
     return 0
+
+
+def drop_reflections(objs):
+    """FM3 draws a planar reflection (the stands mirrored in the track) into the scene target itself: the same meshes
+    again through one world mirror R. World-space geometry (atoms = the captured position) drawn there has W = R
+    exactly, so R is the most common mirrored W among those draws. Then every draw whose R^-1 W is a W some other draw
+    of the same geometry has (or, for world-space geometry, is the identity) is a reflected copy and is left out."""
+    votes, mats = Counter(), {}
+    for p, atoms, W in objs:
+        if all(a[0] == 'in' for a in atoms) and np.linalg.det(W[:3, :3]) < -0.5:
+            k = tuple(np.round(W, 2).ravel())
+            votes[k] += 1
+            mats[k] = W
+    if not votes or votes.most_common(1)[0][1] < 3:
+        print('  reflection pass: none found')
+        return objs
+    k, n = votes.most_common(1)[0]
+    R = mats[k]
+    Ri = np.linalg.inv(R)
+    by_gid = {}
+    for o in objs:
+        by_gid.setdefault(o[0][7], []).append(o)
+    drop = set()
+    for group in by_gid.values():
+        for b in group:
+            Wb = Ri @ b[2]
+            tol = 1e-2 * max(1.0, np.abs(b[2]).max())
+            if any(a is not b and np.abs(a[2] - Wb).max() < tol for a in group) or                     (all(t[0] == 'in' for t in b[1]) and np.abs(Wb - np.eye(4)).max() < tol):
+                drop.add(id(b))
+    nrm = R[:3, :3] @ np.array([0.0, 1.0, 0.0])
+    print(f'  reflection pass: mirror R from {n} world-space draws (maps +y to {np.round(nrm, 3).tolist()}, '
+          f'offset {np.round(R[:3, 3], 2).tolist()}); {len(drop)} reflected draws left out')
+    return [o for o in objs if id(o) not in drop]
 
 
 def write_gltf(out, objs, cam):
