@@ -239,10 +239,12 @@ def main():
                 if c is None or not np.all(np.isfinite(c)) or c[3] <= 1e-6:
                     pts.append(None)
                     continue
+                sx = (c[0] / c[3] * xs + xo) * kx
                 sy = (c[1] / c[3] * ys + yo) * ky
                 if flip and d['seq'] < last_resolve:
-                    sy = sh - sy  # drawn into a target that a later pass copies to the screen upside down (FM3)
-                pts.append(((c[0] / c[3] * xs + xo) * kx, sy))
+                    # drawn into a target that a later pass copies to the screen rotated 180 deg (FM3)
+                    sx, sy = sw - sx, sh - sy
+                pts.append((sx, sy))
             for t in g['triangles'][:30000]:
                 for a, b in ((t[0], t[1]), (t[1], t[2]), (t[2], t[0])):
                     pa, pb = pts[a], pts[b]

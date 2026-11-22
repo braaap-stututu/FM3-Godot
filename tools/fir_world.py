@@ -209,8 +209,8 @@ def drop_reflections(objs):
 
 
 def write_gltf(out, objs, cam):
-    # Handedness: clip y of FM3's scene is screen-down (the scene target is flipped later), so the real up is -up.
-    right, up, fwd = cam['right'], -cam['up'], cam['forward']
+    # FM3's scene target reaches the screen rotated 180 deg: clip x is screen-left and clip y screen-down.
+    right, up, fwd = -cam['right'], -cam['up'], cam['forward']
     S = np.eye(4)
     if np.linalg.det(np.stack([right, up, fwd])) > 0:  # x right, y up, z forward: left-handed -> mirror X
         S[0, 0] = -1.0
@@ -262,7 +262,7 @@ def write_gltf(out, objs, cam):
     C = np.eye(4)
     C[:3, 0], C[:3, 1], C[:3, 2], C[:3, 3] = right, up, -fwd, pos
     nodes.append({'camera': 0, 'matrix': C.T.ravel().tolist(), 'name': 'capture_camera'})
-    # Self-check: each node's first vertex through the glTF camera against the capture's clip position (scene y flipped).
+    # Self-check: each node's first vertex through the glTF camera against the capture's clip position (scene rotated 180 deg).
     V = np.linalg.inv(C)
     fy = 1 / math.tan(math.radians(cam['yfov_deg']) / 2)
     fx = fy / cam['aspect']
@@ -274,7 +274,7 @@ def write_gltf(out, objs, cam):
         v = V @ (Wg_ @ np.append(P_[0], 1.0))
         if v[2] >= 0:
             continue
-        errs.append(max(abs(fx * v[0] / -v[2] - c[0] / c[3]), abs(fy * v[1] / -v[2] + c[1] / c[3])))
+        errs.append(max(abs(fx * v[0] / -v[2] + c[0] / c[3]), abs(fy * v[1] / -v[2] + c[1] / c[3])))
     if errs:
         e = np.array(errs)
         print(f'self-check through the glTF camera: median error {np.median(e):.2e} NDC, {np.mean(e < 1e-3) * 100:.1f}% under 1e-3')
