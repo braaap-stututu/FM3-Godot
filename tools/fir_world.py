@@ -384,6 +384,7 @@ def materials(cap, path, objs):
             colour = np.array(rule.get('color', [1.0, 1.0, 1.0]), dtype=np.float64)
             if 'color_const' in rule:
                 colour = np.array([consts.get(rule['color_const'] * 4 + k, 0.0) for k in range(3)])
+            colour = colour * rule.get('color_scale', 1.0)
             slot = rule.get('texture', rule.get('alpha_texture'))
             t, tex = decoded(slot) if slot is not None else (None, None)
             if slot is not None and (tex is None or slot not in fetch_at):
@@ -563,7 +564,8 @@ def write_gltf(out, objs, cam, mats=None, merge=False, sun=None):
         mat = (mats or {}).get(id(p))
         if mat is not None and mat.get('drop'):
             continue
-        if merge:
+        blended = mat is not None and (mat['blend'] == 'BLEND' or mat['blend'] is True)
+        if merge and not blended:  # (blended draws stay separate nodes: transparency is sorted per node)
             uvm = mat['uv'] if mat is not None and mat['uv'] is not None and mat['image'] is not None and np.all(np.isfinite(mat['uv'])) else None
             lmm = mat.get('lightmap') if mat is not None else None
             if lmm is not None and not np.all(np.isfinite(lmm[0])):

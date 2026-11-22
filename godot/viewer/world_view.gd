@@ -50,6 +50,7 @@ func _init() -> void:
 		i += 1
 	DisplayServer.window_set_size(size)
 	root.size = size
+	root.mesh_lod_threshold = 0.0  # full detail: merged meshes span the whole track, their LOD pick would drop parts
 	var doc := GLTFDocument.new()
 	var state := GLTFState.new()
 	if doc.append_from_file(gltf_path, state) != OK:
@@ -63,6 +64,8 @@ func _init() -> void:
 	mat.albedo_color = Color(0.75, 0.75, 0.72)
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var meshes := 0
+	var baked := 0
+	var baked_gain := 1.5
 	var grey_unshaded := StandardMaterial3D.new()
 	grey_unshaded.albedo_color = Color(0.5, 0.5, 0.5)
 	grey_unshaded.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -82,6 +85,17 @@ func _init() -> void:
 			if m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:  # (the glTF's unlit materials stay unlit)
 				m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL if lit else BaseMaterial3D.SHADING_MODE_UNSHADED
 			m.cull_mode = BaseMaterial3D.CULL_DISABLED
+			if lit and m.ao_enabled and m.ao_texture != null and m.ao_on_uv2:
+				# FM3's static world is lit by its baked colour lightmap (slot 7, UV2): albedo x lerp(ambient c247,
+				# sun c248, lightmap). Reproduced as albedo x lightmap x 1.5, unshaded (the bake holds sun and shadows).
+				m.detail_enabled = true
+				m.detail_albedo = m.ao_texture
+				m.detail_uv_layer = BaseMaterial3D.DETAIL_UV_2
+				m.detail_blend_mode = BaseMaterial3D.BLEND_MODE_MUL
+				m.ao_enabled = false
+				m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+				m.albedo_color = m.albedo_color * Color(baked_gain, baked_gain, baked_gain, 1.0)
+				baked += 1
 			if lit and m.roughness >= 0.9:
 				m.metallic_specular = 0.15  # matte surfaces: little sky reflection at grazing angles (FM3's look)
 			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
@@ -135,6 +149,7 @@ func _init() -> void:
 	sun.directional_shadow_max_distance = 250.0
 	root.add_child(sun)
 	print("world_view: camera ", cam.global_transform if cam.is_inside_tree() else cam.transform, " parent ", cam.get_parent().name)
+	print("world_view: %d surfaces lit by FM3's baked lightmaps" % baked)
 	print("world_view: %d mesh instances, camera fov %.2f near %.3f" % [meshes, cam.fov, cam.near])
 
 
@@ -147,6 +162,7 @@ func _process(_delta: float) -> bool:
 		DisplayServer.window_set_size(root.size)
 		_screens = TripleCameras.make_screens(root, _screen_size)
 		for scr in _screens:
+			scr["viewport"].mesh_lod_threshold = 0.0
 			scr["viewport"].msaa_3d = {2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X, 8: Viewport.MSAA_8X}.get(_msaa, Viewport.MSAA_DISABLED)
 		var game := _cam.global_transform
 		for k in 3:
