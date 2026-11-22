@@ -31,6 +31,13 @@ var _live_last_ms := 0
 # F = diag(1, 1, -1) of fm3_track_export.py, and the director's axes as they are (the 180 deg screen turn that
 # fir_world.py undoes is in the projection, not the view matrix): 0.000 m, 0.00 deg. --live-axes sx,sy,sz,sr,su overrides.
 var _live_axes := PackedFloat32Array([1, 1, -1, 1, 1])
+# Cars ("FM3K" datagrams: each car body's world matrix per drawn frame). Half a second after the first, every small
+# mesh lying wholly inside a car's box is attached to that car, keeping its offset; from then on it moves with the car.
+# So the game must be where the glTF was made (the capture's grid) when the viewer starts following.
+var _cars := {}  # car object address -> latest datagram
+var _car_first_ms := 0
+var _car_attached := false
+var _car_parts := []  # [node, car, offset]
 const TripleCameras = preload("res://triple_cameras.gd")
 const BAKED_SHADER = preload("res://viewer/fm3_baked.gdshader")
 const BAKED_BLEND_SHADER = preload("res://viewer/fm3_baked_blend.gdshader")
@@ -418,6 +425,47 @@ static func live_transform(b: PackedByteArray, axes: PackedFloat32Array) -> Tran
 	return Transform3D(Basis(x, y, z).orthonormalized(), s * c)
 
 
+# A car body's world matrix (one FM3K datagram) in the glTF's world: rows = the car's axes, row 3 = its position, each
+# mirrored like the camera (a mirrored basis: only products A(t) * A(0)^-1 are used, where the mirror cancels).
+static func car_transform(b: PackedByteArray, axes: PackedFloat32Array) -> Transform3D:
+	var s := Vector3(axes[0], axes[1], axes[2])
+	var r := []
+	for row in 4:
+		r.append(Vector3(b.decode_float(16 + 16 * row), b.decode_float(20 + 16 * row), b.decode_float(24 + 16 * row)) * s)
+	return Transform3D(Basis(r[0], r[1], r[2]), r[3])
+
+
+func _attach_cars() -> void:
+	_car_attached = true
+	var inv := {}
+	for car in _cars:
+		inv[car] = car_transform(_cars[car], _live_axes).affine_inverse()
+	var per_car := {}
+	for mi in _scene.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		if m.mesh == null:
+			continue
+		var box: AABB = m.global_transform * m.get_aabb()
+		if box.size.x > 6.0 or box.size.y > 6.0 or box.size.z > 6.0:
+			continue
+		for car in _cars:
+			var inside := true
+			for k in 8:
+				var p: Vector3 = inv[car] * box.get_endpoint(k)
+				if absf(p.x) > 1.5 or absf(p.y) > 2.0 or absf(p.z) > 3.2:
+					inside = false
+					break
+			if inside:
+				_car_parts.append([m, car, inv[car] * m.global_transform])
+				per_car[car] = per_car.get(car, 0) + 1
+				break
+	for car in _cars:
+		var o := car_transform(_cars[car], _live_axes).origin
+		print("world_view: live car %08X at (%.2f, %.2f, %.2f): %d meshes attached" % [car, o.x, o.y, o.z, per_car.get(car, 0)])
+	if per_car.size() < _cars.size():
+		print("world_view: (a car with no meshes: the game was not at the glTF's grid when the viewer started, or its model is missing)")
+
+
 func _set_view(xf: Transform3D) -> void:
 	if _screens.is_empty():
 		_cam.global_transform = xf
@@ -444,7 +492,15 @@ func _live_step() -> void:
 	var latest := PackedByteArray()
 	while _udp.get_available_packet_count() > 0:
 		var b := _udp.get_packet()
-		if b.size() != 96 or b.slice(0, 4).get_string_from_ascii() != "FM3C" or b.decode_u32(4) != 1:
+		if b.size() != 96 or b.decode_u32(4) != 1:
+			continue
+		var magic := b.slice(0, 4).get_string_from_ascii()
+		if magic == "FM3K":
+			_cars[int(b.decode_u32(12))] = b
+			if _car_first_ms == 0:
+				_car_first_ms = Time.get_ticks_msec()
+			continue
+		if magic != "FM3C":
 			continue
 		var director := int(b.decode_u32(12))
 		if not _live_dirs.has(director):
@@ -455,6 +511,13 @@ func _live_step() -> void:
 			_live_director = director
 		if director == _live_director:
 			latest = b
+	if not _car_attached and _car_first_ms > 0 and Time.get_ticks_msec() - _car_first_ms > 500:
+		_attach_cars()
+	if _car_attached:
+		for part in _car_parts:
+			var b: PackedByteArray = _cars.get(part[1], PackedByteArray())
+			if not b.is_empty():
+				(part[0] as Node3D).global_transform = car_transform(b, _live_axes) * (part[2] as Transform3D)
 	if latest.is_empty():
 		return
 	_live_packets += 1
