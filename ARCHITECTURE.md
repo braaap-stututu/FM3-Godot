@@ -105,6 +105,8 @@ clip positions (matching a screenshot); one camera (53.00 deg, exact rotation) a
 the frame exports as glTF and renders in Godot from the captured camera. FM3's scene target reaches the screen rotated 180 deg. Materials from the pixel shaders plus first FM3 material rules
 (profiles/fm3/materials.json); a lit Godot render looks like the game. Triple screen from a triple capture: Godot draws the
 grid frame on three 1440p screens at ~289 fps with 4x MSAA and shadows (merged meshes; ReGPU 146) - see M1.md.
+**Game assets:** captured car draws are identified in FM3's own .carbin files (all 8 grid cars + wheels) and take
+their authored material names (tools/fm3_assets.py); track files (CAFF container) next. Viewer has a free-fly mode.
 
 M0–M2 do not touch FM4 work and can start immediately. M1's tap is passive, so it
 cannot slow ReGPU when disabled.

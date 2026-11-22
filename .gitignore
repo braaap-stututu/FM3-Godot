@@ -5,3 +5,6 @@
 __pycache__/
 godot/.godot/
 
+out/
+tools/fm3unzip/*.exe
+tools/fm3unzip/*.obj

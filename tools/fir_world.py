@@ -233,6 +233,22 @@ def drop_reflections(objs):
     return [o for o in objs if id(o) not in drop]
 
 
+CAR_RULES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'profiles', 'fm3', 'car_materials.json')
+CAR_RULES = {k: v for k, v in json.load(open(CAR_RULES_PATH)).items() if not k.startswith('_')} if os.path.exists(CAR_RULES_PATH) else {}
+ASSET_DIRS = os.environ.get('FM3_ASSETS', '').split(';') if os.environ.get('FM3_ASSETS') else []
+_LIB = None
+
+
+def car_library():
+    global _LIB
+    if _LIB is None and ASSET_DIRS:
+        from fm3_assets import CarLibrary
+        _LIB = CarLibrary(*ASSET_DIRS)
+        print(f'  assets: {len(_LIB.cars)} car and wheel models indexed')
+    return _LIB
+
+
+ASSET_NAMES = {}  # id(placed record) -> 'car/material' from the game's files
 WORLD_POS = {}  # id(placed record) -> world positions, for draws exported in world space
 STAND_IN = 0.5
 UNKNOWN_FILL = 0.37  # interpolator components the vertex shader run could not compute (non-zero: zero hides dependences)
@@ -309,6 +325,7 @@ def materials(cap, path, objs):
     from fir_xenos import Fail
     ps_code = load_vs_code(path, pixel=True)
     out, why = {}, Counter()
+    _last_car = [None]
     rng = os.environ.get('FIR_WHY_RANGE')
     rng = tuple(map(int, rng.split('-'))) if rng else None
     per_draw = []
@@ -383,6 +400,26 @@ def materials(cap, path, objs):
             lt, ltex = decoded(LIGHTMAP_SLOT)
             if ltex is not None:
                 lightmap = (fetch_at[LIGHTMAP_SLOT][:, :2].astype(np.float32), ltex, f'{lt[9]:016x}{lt[8]:016x}')
+        car = asset_mat = None
+        lib = car_library()
+        if lib is not None:
+            ib = next((b for b in d['bufs'] if b[0] == 0), None)
+            vb = next((b for b in d['bufs'] if b[0] == 1), None)
+            if ib is not None:
+                car, asset_mat = lib.identify(cap.data.get((0, ib[6], ib[7]), {}).get('bytes', b''),
+                                              cap.data.get((1, vb[6], vb[7]), {}).get('bytes', b'') if vb else b'', prefer=_last_car[0])
+                if car:
+                    _last_car[0] = car
+                    ASSET_NAMES[id(p)] = f'{car}/{asset_mat}'
+        crule = CAR_RULES.get(asset_mat) if asset_mat else None
+        if crule and not crule.get('keep'):
+            c_ = list(crule.get('color', [0.5, 0.5, 0.5]))
+            a_ = float(crule.get('alpha', 1.0))
+            out[id(p)] = {'uv': None, 'image': None, 'key': None, 'factor': c_ + [a_], 'blend': 'BLEND' if a_ < 1.0 else False,
+                          'color': color, 'lightmap': None, 'roughness': crule.get('roughness', 1.0),
+                          'metallic': crule.get('metallic', 0.0), 'glass': crule.get('glass', False)}
+            why['asset material: ' + asset_mat] += 1
+            continue
         rule = RULES.get(f"{d['ps']:016x}")
         if rule and rule.get('drop'):
             out[id(p)] = {'drop': True}
@@ -421,8 +458,35 @@ def materials(cap, path, objs):
                 else:  # multiply
                     img = np.concatenate([img[:, :, :3] * colour, np.ones(img.shape[:2] + (1,))], axis=2)
                 mat['image'] = {'w': tex['w'], 'h': tex['h'], 'bytes': (np.clip(img, 0, 1) * 255 + 0.5).astype(np.uint8).tobytes()}
+                if rule.get('texture_mode') == 'over_alpha' and 'roughness' in rule:
+                    # Paint is glossy, the livery's near-black parts (rubber strips, trim, badges) matte:
+                    # a glTF metallic-roughness texture (G = roughness).
+                    lum = img[:, :, :3] @ np.array([0.3, 0.59, 0.11])
+                    rough = np.where(lum < 0.09, 0.92, rule['roughness'])
+                    mr = np.zeros(img.shape[:2] + (4,), np.uint8)
+                    mr[:, :, 1] = (rough * 255).astype(np.uint8)
+                    mr[:, :, 3] = 255
+                    mat['mr_image'] = {'w': tex['w'], 'h': tex['h'], 'bytes': mr.tobytes()}
+                    mat['roughness'] = 1.0  # (the factor multiplies the texture)
                 mat['key'] = f"{t[9]:016x}{t[8]:016x}_{rule['name'].replace(' ', '_')}_{''.join(f'{int(v * 255):02x}' for v in colour)}"
             mat['lightmap'] = lightmap
+            if DEBUG_SEQS and d['seq'] in DEBUG_SEQS and tex is not None:
+                cl = np.array([c if c is not None else (np.nan,) * 4 for c in per_vert[:nv]], dtype=float) if False else None
+                uvs = fetch_at[slot][:, :2]
+                raw = np.frombuffer(tex['bytes'][:tex['w'] * tex['h'] * 4], np.uint8).reshape(tex['h'], tex['w'], 4)
+                xs = (np.nan_to_num(uvs[:, 0]) * tex['w']).astype(int) % tex['w']
+                ys = (np.nan_to_num(uvs[:, 1]) * tex['h']).astype(int) % tex['h']
+                tx = raw[ys, xs]
+                from collections import Counter as C_
+                cl = np.array([c if c is not None else (np.nan,) * 4 for c in per_vert], dtype=float)[[i for i, v in enumerate(vindex) if v is not None]]
+                sy = 720 - (cl[:, 1] / cl[:, 3] * -360 + 360)
+                for y0 in range(560, 680, 8):
+                    k = (sy >= y0) & (sy < y0 + 8)
+                    if k.any():
+                        print('    y', y0, 'n', int(k.sum()), 'oC0 rgb', np.round(np.nanmedian(color[k, :3], 0), 3), 'livery texel', np.median(tx[k], 0).astype(int).tolist(),
+                              'uv', np.round(np.nanmedian(uvs[k], 0), 3))
+                print('  dbg-livery', d['seq'], 'c118', np.round(colour, 3), 'texel rgba at vertices (top):',
+                      C_(tuple((t // 32 * 32).tolist()) for t in tx).most_common(8))
             out[id(p)] = mat
             why['rule: ' + rule['name']] += 1
             continue
@@ -542,8 +606,37 @@ def materials(cap, path, objs):
             why['no decoded 2D texture'] += 1
             continue
         slot, coords, t, tex = pick
+        if DEBUG_SEQS and d['seq'] in DEBUG_SEQS:
+            raw = np.frombuffer(tex['bytes'][:tex['w'] * tex['h'] * 4], np.uint8).reshape(tex['h'], tex['w'], 4)
+            tx = raw[(np.nan_to_num(coords[:, 1]) * tex['h']).astype(int) % tex['h'], (np.nan_to_num(coords[:, 0]) * tex['w']).astype(int) % tex['w']]
+            print('  dbg-generic', d['seq'], 'slot', slot, f"{tex['w']}x{tex['h']}", 'texel median', np.median(tx, 0).astype(int).tolist(),
+                  'oC0 median', None if color is None else np.round(np.nanmedian(color, 0), 3).tolist(), 'mode', mode)
+        factor = [1.0, 1.0, 1.0, 1.0]
+        if lightmap is None or slot == LIGHTMAP_SLOT:
+            # Dynamic objects: FM3's shader may darken the texture a lot (black rubber, trim). Tint by the ratio of the
+            # shader output (environment maps dark) to the raw texel at the vertices, never brightening.
+            try:
+                def sample_dark2(slot_, dim, coords_):
+                    v = sample(slot_, dim, coords_)
+                    t_ = texs.get(slot_)
+                    if not (t_ and (3, t_[8], t_[9]) in cap.data):
+                        v = np.full_like(v, 0.08)
+                        v[:, 3] = 1.0
+                    return v
+                with np.errstate(all='ignore'):
+                    dk = fir_vs.run(code, consts, bools, None, nv, loops, pixel_inputs=pin, sample=sample_dark2).color
+                texel = sample(slot, 1, coords)
+                if dk is not None and np.isfinite(dk[:, :3]).all(axis=1).mean() > 0.5:
+                    ratio = np.nanmedian(dk[:, :3], 0) / np.maximum(np.nanmedian(texel[:, :3], 0), 0.02)
+                    if DEBUG_SEQS and d['seq'] in DEBUG_SEQS:
+                        print('  dbg-tint', d['seq'], 'out', np.round(np.nanmedian(dk, 0), 3), 'texel', np.round(np.nanmedian(texel, 0), 3), 'ratio', np.round(ratio, 3))
+                    if np.nanmax(ratio) < 0.6:
+                        factor = np.clip(ratio, 0.0, 1.0).tolist() + [1.0]
+                        why['tinted down to the shader output'] += 1
+            except Fail:
+                pass
         out[id(p)] = {'uv': coords[:, :2].astype(np.float32), 'image': tex, 'key': f'{t[9]:016x}{t[8]:016x}',
-                      'factor': [1.0, 1.0, 1.0, 1.0], 'blend': mode, 'color': color,
+                      'factor': factor, 'blend': mode, 'color': color,
                       'lightmap': lightmap if lightmap is not None and slot != LIGHTMAP_SLOT else None}
         why['textured'] += 1
     if per_draw and per_draw[-1][2] is None:
@@ -617,11 +710,13 @@ def write_gltf(out, objs, cam, mats=None, merge=False, sun=None):
         return img_ids[key]
 
     def material_index(mat, lm=None):
-        key = (mat['key'] or 'none') + str(mat['factor']) + str(mat['blend']) + str(mat.get('unlit')) + (lm[2] if lm else '') + str(mat.get('roughness'))
+        key = (mat['key'] or 'none') + str(mat['factor']) + str(mat['blend']) + str(mat.get('unlit')) + (lm[2] if lm else '') + str(mat.get('roughness')) + str(mat.get('metallic')) + str(mat.get('mr_image') is not None)
         if key not in mat_ids:
             pbr = {'baseColorFactor': mat['factor'], 'metallicFactor': mat.get('metallic', 0.0), 'roughnessFactor': mat.get('roughness', 1.0)}
             if mat['image'] is not None:
                 pbr['baseColorTexture'] = {'index': image_index(mat['image'], mat['key'])}
+            if mat.get('mr_image') is not None:
+                pbr['metallicRoughnessTexture'] = {'index': image_index(mat['mr_image'], 'mr' + mat['key'])}
             occ = {'occlusionTexture': {'index': image_index(lm[1], 'lm' + lm[2]), 'texCoord': 1}} if lm else {}
             mode = mat['blend'] if isinstance(mat['blend'], str) else ('BLEND' if mat['blend'] else None)
             materials_.append({'pbrMetallicRoughness': pbr, 'doubleSided': True, **occ,
@@ -707,7 +802,8 @@ def write_gltf(out, objs, cam, mats=None, merge=False, sun=None):
             meshes.append({'primitives': [prim]})
             mesh_ids[h] = len(meshes) - 1
         checks.append((per_vert, Wg, P))
-        nodes.append({'mesh': mesh_ids[h], 'matrix': Wg.T.ravel().tolist(), 'name': f"draw{d['seq']}"})
+        nodes.append({'mesh': mesh_ids[h], 'matrix': Wg.T.ravel().tolist(),
+                      'name': f"draw{d['seq']}" + (' ' + ASSET_NAMES[id(p)].replace('/', '.') if id(p) in ASSET_NAMES else '')})
     for mi_, parts in groups.items():
         # One mesh per material, vertices in world space (fewer draw calls for a renderer without automatic batching).
         Pm = np.concatenate([q[0] for q in parts])

@@ -67,7 +67,7 @@ def main():
                 hits.append((depth, d))
         hits.sort(key=lambda t: t[0])
         print(f'pixel ({px:g}, {py:g}): {len(hits)} draws')
-        for depth, d in hits[:6]:
+        for depth, d in hits[:int(os.environ.get("FIR_PICK_N", "6"))]:
             texs = ' '.join(f"s{t[0]}:f{t[3] & 0x3F}{'' if (3, t[8], t[9]) in cap.data else '(rt)' if t[1] & 2 else '(-)'}"
                             for t in d['texs'])
             print(f"  depth {depth:7.2f}  draw {d['seq']:5d}  vs {d['vs']:016x}  ps {d['ps']:016x}  {texs}")

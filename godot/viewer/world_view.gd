@@ -1,6 +1,6 @@
 extends SceneTree
 # Loads a fir_world.py glTF at run time, looks through its capture_camera and saves one picture.
-#   Godot_v4.7.2-stable_win64.exe --path frame-ir/godot -s res://viewer/world_view.gd -- --gltf <file> --out <png> [--size 1280x720] [--textured]
+#   Godot_v4.7.2-stable_win64.exe --path frame-ir/godot -s res://viewer/world_view.gd -- --gltf <file> --out <png> [--size 1280x720] [--textured | --lit] [--triple layout.json] [--fly]
 
 var _out := ""
 var _frames := 0
@@ -9,6 +9,10 @@ var _cam: Camera3D
 var _triple_layout := ""  # --triple <layout.json>: three screens (core/triple_view layout), stitched side by side
 var _screens := []
 var _msaa := 0  # --msaa 2|4|8 on the screens
+var _fly := false  # --fly: interactive free camera (WASD, Q/E down/up, hold right mouse to look, Shift fast, Ctrl slow, Esc quits)
+var _fly_xf: Transform3D
+var _yaw := 0.0
+var _pitch := 0.0
 var _bench := 0  # --bench N: after the picture, render N more frames and report the frame rate
 var _bench_t0 := 0
 var _screen_size := Vector2i(1280, 720)
@@ -21,7 +25,8 @@ func _init() -> void:
 	var gltf_path := ""
 	var size := Vector2i(1280, 720)
 	var no_shadows := false
-	var grey_shadow := false  # debug: one grey lit material everywhere, sun shadows on
+	var grey_shadow := false
+	var id_mode := false  # debug: every mesh instance a unique flat colour; writes <out>.ids.txt (index -> node name)  # debug: one grey lit material everywhere, sun shadows on
 	var lit := false  # --lit: materials shaded, a sun with shadows and sky ambient (--sun elevation,azimuth in degrees)
 	var sun_elev := 50.0
 	var sun_azim := 30.0
@@ -39,6 +44,10 @@ func _init() -> void:
 				textured = true
 			"--lit":
 				textured = true; lit = true
+			"--fly":
+				_fly = true
+			"--id":
+				id_mode = true
 			"--grey-shadow":
 				grey_shadow = true
 			"--no-shadows":
@@ -75,9 +84,19 @@ func _init() -> void:
 	grey_unshaded.albedo_color = Color(0.5, 0.5, 0.5)
 	grey_unshaded.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	grey_unshaded.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var id_lines := PackedStringArray()
 	for n in scene.find_children("*", "MeshInstance3D", true, false):
 		var mi := n as MeshInstance3D
 		meshes += 1
+		if id_mode:
+			var k := meshes
+			var im := StandardMaterial3D.new()
+			im.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			im.cull_mode = BaseMaterial3D.CULL_DISABLED
+			im.albedo_color = Color8(k & 255, (k >> 8) & 255, 77)
+			mi.material_override = im
+			id_lines.append("%d %s" % [k, mi.get_parent().name if mi.name.begins_with("Mesh") or mi.name == "" else mi.name])
+			continue
 		# The sky dome (unlit) surrounds everything: as a shadow caster it would shade the whole scene.
 		for s0 in mi.mesh.get_surface_count():
 			var m0 := mi.mesh.surface_get_material(s0) as BaseMaterial3D
@@ -119,6 +138,11 @@ func _init() -> void:
 				m.metallic_specular = 0.15  # matte surfaces: little sky reflection at grazing angles (FM3's look)
 			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 			mi.set_surface_override_material(s, m)
+	if id_mode:
+		var fa := FileAccess.open(_out + ".ids.txt", FileAccess.WRITE)
+		fa.store_string("
+".join(id_lines))
+		fa.close()
 	var cams := scene.find_children("*", "Camera3D", true, false)
 	if cams.is_empty():
 		push_error("no camera in the glTF")
@@ -183,8 +207,47 @@ func _init() -> void:
 	print("world_view: %d mesh instances, camera fov %.2f near %.3f" % [meshes, cam.fov, cam.near])
 
 
+func _fly_step(delta: float) -> void:
+	if Input.is_key_pressed(KEY_ESCAPE):
+		quit(0)
+		return
+	var looking := Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED if looking else Input.MOUSE_MODE_VISIBLE
+	if looking:
+		var mv := Input.get_last_mouse_velocity() * delta
+		_yaw -= mv.x * 0.003
+		_pitch = clamp(_pitch - mv.y * 0.003, -1.5, 1.5)
+	var basis := Basis(Vector3.UP, _yaw) * Basis(Vector3.RIGHT, _pitch)
+	var dir := Vector3.ZERO
+	if Input.is_key_pressed(KEY_W): dir += -basis.z
+	if Input.is_key_pressed(KEY_S): dir += basis.z
+	if Input.is_key_pressed(KEY_A): dir += -basis.x
+	if Input.is_key_pressed(KEY_D): dir += basis.x
+	if Input.is_key_pressed(KEY_E): dir += Vector3.UP
+	if Input.is_key_pressed(KEY_Q): dir += Vector3.DOWN
+	var speed := 12.0
+	if Input.is_key_pressed(KEY_SHIFT): speed = 60.0
+	if Input.is_key_pressed(KEY_CTRL): speed = 2.0
+	_fly_xf = Transform3D(basis, _fly_xf.origin + dir.normalized() * speed * delta if dir != Vector3.ZERO else _fly_xf.origin)
+	if _screens.is_empty():
+		_cam.global_transform = _fly_xf
+	else:
+		for scr in _screens:
+			var c: Camera3D = scr["camera"]
+			c.global_transform = TripleCameras.screen_transform(_fly_xf, float(scr.get("rot_y", 0.0)))
+
+
 func _process(_delta: float) -> bool:
 	_frames += 1
+	if _fly and _frames > 3:
+		if _frames == 4:
+			_fly_xf = _cam.global_transform
+			var fwd := -_fly_xf.basis.z
+			_yaw = atan2(-fwd.x, -fwd.z)
+			_pitch = asin(clamp(fwd.y, -1.0, 1.0))
+			print("world_view: free-fly mode (WASD, Q/E, right mouse to look, Shift/Ctrl speed, Esc quits)")
+		_fly_step(_delta)
+		return false
 	if _frames == 2 and _triple_layout != "":
 		var layout = JSON.parse_string(FileAccess.get_file_as_string(_triple_layout))
 		_screen_size = root.size
@@ -197,6 +260,7 @@ func _process(_delta: float) -> bool:
 		var game := _cam.global_transform
 		for k in 3:
 			var sc: Dictionary = layout["screens"][k]
+			_screens[k]["rot_y"] = float(sc["rot_y"])
 			TripleCameras.apply(_screens[k]["camera"], game, float(sc["rot_y"]), float(sc["size"]),
 				Vector2(float(sc["offset"][0]), float(sc["offset"][1])), float(sc["near"]), float(sc["far"]))
 		print("world_view: triple screens from ", _triple_layout)
