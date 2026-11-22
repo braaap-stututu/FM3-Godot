@@ -302,6 +302,11 @@ def main():
             if shader_.startswith('tree_') and me['stride'] == 24:
                 # tree card shaders read UV0 at byte 12 (where other layouts keep the normal): 12 of 13 captured draws
                 me = dict(me, uv0=fm3_track.uv_pair(me, 12))
+            if shader_.startswith('grass_') and me['stride'] == 20:
+                # grass tuft cards: UV0 at byte 12 (0..1 across each card), the lightmap at 16
+                u12 = fm3_track.uv_pair(me, 12)
+                if np.ptp(u12[:, 0]) > 0.9 and np.ptp(u12[:, 1]) > 0.9:
+                    me = dict(me, uv0=u12, uv1=fm3_track.uv_pair(me, 16))
             # Captured texture for this very mesh, else the game files' own, else a capture of the same material name.
             rec = texmesh.get(f"{os.path.basename(path)}@{me['index_offset']}")
             uv = apply_uv(rec['chan'], rec['a'], rec['b'], me) if rec else None
@@ -320,8 +325,8 @@ def main():
                 rec = texmap[name]
                 uv = apply_uv(rec['chan'], rec['a'], rec['b'], me)
                 base_png = rec['base'] if uv is not None else None
-            # FM3 shader families (fm3_families.py): multi-texture terrain, road and paint, from the files. Terrain blends
-            # replace a capture's single texture; road and paint only fill in where the capture did not see the mesh.
+            # FM3 shader families (fm3_families.py): multi-texture terrain, road, paint, curbs, from the files; they replace
+            # the capture's single (composited) texture too, so the area the frame saw looks like the rest of the track.
             fam, fam_ex = None, None
             if shader_.startswith('lake_'):
                 # Animated reflective water (lake_anim_norm_opac_refl_5): a dark glossy surface reflecting the sky.
@@ -331,7 +336,7 @@ def main():
             if mm_ is not None:
                 r_ = fm3_families.recipe(mm_[0], mm_[1]['params'], me['stride'], mm_[1]['slots'])
                 captured = texmesh.get(f"{os.path.basename(path)}@{me['index_offset']}") is not None
-                if r_ is not None and (r_['mode'] == 'blend' or not captured):
+                if r_ is not None:  # (everywhere, captured or not: no seam where the captured frame's view ends)
                     texl_ = mm_[2]
                     pngs = [bix_png(pv['textures'][texl_[sl]]['id']) if 0 <= sl < len(texl_) else None for sl in r_['slots']]
                     if all(pngs):

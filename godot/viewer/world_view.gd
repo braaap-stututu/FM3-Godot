@@ -132,18 +132,18 @@ func _init() -> void:
 			if m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:  # (the glTF's unlit materials stay unlit)
 				m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL if lit else BaseMaterial3D.SHADING_MODE_UNSHADED
 			m.cull_mode = BaseMaterial3D.CULL_DISABLED
-			if lit and m.ao_enabled and m.ao_texture != null and m.ao_on_uv2 and (m.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA or m.albedo_texture != null):
+			if lit and m.ao_enabled and m.ao_texture != null and m.ao_on_uv2 and (not _blended(m) or m.albedo_texture != null):
 				# FM3's static world: its baked colour lightmap (slot 7, UV2) carries the light; the sun only adds
 				# the shadows of dynamic objects (fm3_baked.gdshader). Its own shadows are in the lightmap: it casts none.
 				var sm := ShaderMaterial.new()
-				sm.shader = BAKED_BLEND_SHADER if m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA else BAKED_SHADER
+				sm.shader = BAKED_BLEND_SHADER if _blended(m) else BAKED_SHADER
 				sm.set_shader_parameter("albedo_tex", m.albedo_texture)
 				sm.set_shader_parameter("light_tex", m.ao_texture)
 				sm.set_shader_parameter("albedo_color", m.albedo_color)
 				sm.set_shader_parameter("gain", baked_gain)
 				if m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
 					sm.set_shader_parameter("alpha_cut", m.alpha_scissor_threshold)
-				if m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA:
+				if _blended(m):
 					mi.sorting_offset = -1.0  # (decals over the ground they lie on)
 				mi.set_surface_override_material(s, sm)
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -240,6 +240,11 @@ func _init() -> void:
 	print("world_view: camera ", cam.global_transform if cam.is_inside_tree() else cam.transform, " parent ", cam.get_parent().name)
 	print("world_view: %d surfaces lit by FM3's baked lightmaps (%d without an albedo texture)" % [baked, baked_no_tex])
 	print("world_view: %d mesh instances, camera fov %.2f near %.3f" % [meshes, cam.fov, cam.near])
+
+
+func _blended(m: BaseMaterial3D) -> bool:
+	# (Godot's glTF import gives alphaMode BLEND as alpha with a depth pre-pass)
+	return m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA or m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
 
 
 var _tex_cache := {}

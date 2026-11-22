@@ -54,7 +54,7 @@ void fragment() {
 	} else if (mode == 5) {
 		a = mix(texture(albedo_tex, UV * scale0).rgb, texture(tex1, uv23.xy * scale1).rgb, texture(tex2, uv23.zw).r);
 	} else {
-		vec3 grain = texture(albedo_tex, UV * scale0).rgb / max(grain_mean, 0.05);
+		vec3 grain = vec3(dot(texture(albedo_tex, UV * scale0).rgb, vec3(0.299, 0.587, 0.114))) / max(grain_mean, 0.05);  // (luminance: the game's asphalt is neutral grey)
 		vec4 s = texture(tex1, uv23.xy * scale1);
 		if (mode == 2) {
 			a = s.rgb * 0.34 * grain;
