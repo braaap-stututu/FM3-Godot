@@ -1,5 +1,5 @@
 # Frozen-grid Frame IR capture: boots the grid with the tap available, arms it, waits for the "capture ... done" line.
-param([string]$Out, [int]$Frames = 3, [string]$Mode = 'triple', [string]$Shot = '')
+param([string]$Out, [int]$Frames = 3, [string]$Mode = 'triple', [string]$Shot = '', [string]$ShotAfter = '')
 . "$PSScriptRoot\m0.ps1"
 $e = @{ REGPU_PERF_LITE = '1'; FM3_UPSCALER = 'off'; FM3_MSAA = '4'; REGPU_FIR_CAPTURE = $Out; REGPU_FIR_FRAMES = "$Frames" }
 if ($Mode -eq 'triple') { foreach ($k in $M0Triple.Keys) { $e[$k] = $M0Triple[$k] } } else { $e['FM3_TRIPLE'] = '0'; $e['FM3_RESOLUTION'] = '2560x1440' }
@@ -19,6 +19,12 @@ while (((Get-Date) - $t0).TotalSeconds -lt 120) {
     if ($done) { break }
 }
 Select-String -Path $Suite.Log -Pattern 'fir tap:' | ForEach-Object { $_.Line }
+if ($ShotAfter) {
+    Remove-Item $ShotAfter -ErrorAction SilentlyContinue
+    Fm3 "shot $ShotAfter" | Out-Null
+    for ($i = 0; $i -lt 50 -and -not (Test-Path $ShotAfter); $i++) { Start-Sleep -Milliseconds 100 }
+    Start-Sleep -Milliseconds 300
+}
 $f = Get-Fps 4
 "fps after capture: $($f.Fps)"
 Copy-Item $Suite.Log ([IO.Path]::ChangeExtension($Out, '.log')) -Force
