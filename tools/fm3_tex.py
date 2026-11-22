@@ -203,3 +203,24 @@ def stx_atlas_of(stx, piece_id):
         if a <= piece_id:
             best = a
     return best
+
+
+def load_xpr_cube(path):
+    """A track's staticcarcubemap.xpr (XPR2: 'XPR2', u32 header size, u32 data size, u32 count, entries 'TXCM' + offsets
+    + name, then a D3D texture header whose last 6 dwords are the fetch constant; data from header size + 12): the
+    static environment cube the game reflects in car paint and window glass. Faces (D3D order +X, -X, +Y, -Y, +Z, -Z)
+    as six RGBA8 images, or None. Ladera: 256 x 256 DXT5, endian 1, tiled, faces every 64 KiB."""
+    b = open(path, 'rb').read()
+    if b[:4] != b'XPR2' or b[16:20] != b'TXCM':
+        return None
+    hdr = struct.unpack_from('>I', b, 4)[0]
+    data = b[hdr + 12:]
+    d0, d1, d2 = struct.unpack_from('>3I', b, 0x58)
+    fmt, endian = d1 & 63, (d1 >> 6) & 3
+    w, h = (d2 & 0x1FFF) + 1, ((d2 >> 13) & 0x1FFF) + 1
+    if fmt not in FORMATS:
+        return None
+    bs, bpb, _ = FORMATS[fmt]
+    face = max(32, (w + bs - 1) // bs) * max(32, (h + bs - 1) // bs) * bpb
+    face = (face + 4095) // 4096 * 4096
+    return [decode(data[k * face:(k + 1) * face], w, h, fmt, endian) for k in range(6)]

@@ -5,6 +5,7 @@
 //   mode 2 road: tex1 (the surface, at CUSTOM0.xy = UV0) * 0.34 * grain / grain_mean; grain t0 at UV (world x, z) * scale0
 //   mode 3 paint: lerp(0.16 * grain, tint1, tex1.a)
 //   mode 4 edge: lerp(dirt (tex2 at CUSTOM0.xy * scale2), road, tex3.r at CUSTOM0.zw); mode 5 mix: lerp(base, layer, mask.r); mode 6 curb: t0 * lerp(tint0, 1, t1.g)
+//   mode 7 refl (windows): lerp(t0 lit, environment, t0.a * tint0.x * fresnel)
 shader_type spatial;
 render_mode cull_disabled, ambient_light_disabled, specular_disabled, diffuse_lambert;
 
@@ -26,6 +27,9 @@ uniform vec3 ambient = vec3(0.14, 0.14, 0.18);  // FM3 PS c247
 uniform vec3 sun = vec3(1.58, 1.57, 1.5);  // FM3 PS c248
 uniform float unlit_level = 0.6;  // without a lightmap
 uniform float shadow_strength = 0.62;
+uniform vec3 env_zenith = vec3(0.40, 0.58, 0.74);  // mode 7: the reflected environment (gamma space), a sky gradient
+uniform vec3 env_horizon = vec3(0.45, 0.52, 0.56);  // (the track's surroundings: hills, trees, haze)
+uniform vec3 env_ground = vec3(0.16, 0.16, 0.14);
 
 varying vec4 uv23;  // glTF TEXCOORD_2 (xy) and TEXCOORD_3 (zw), Godot's CUSTOM0 (vertex stage only)
 
@@ -49,6 +53,8 @@ void fragment() {
 			t1 *= mix(vec3(1.0), tint1, COLOR.a);
 		}
 		a = mix(t0, t1, m);
+	} else if (mode == 7) {
+		a = texture(albedo_tex, UV * scale0).rgb;
 	} else if (mode == 6) {
 		a = texture(albedo_tex, UV * scale0).rgb * mix(tint0, vec3(1.0), texture(tex1, uv23.xy * scale1).g);
 	} else if (mode == 5) {
@@ -67,7 +73,15 @@ void fragment() {
 		}
 	}
 	vec3 light = has_lightmap ? mix(ambient, sun, texture(light_tex, UV2).rgb) : vec3(unlit_level);
-	ALBEDO = to_linear(a * light);
+	vec3 c = a * light;
+	if (mode == 7) {
+		vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
+		vec3 env = r.y > 0.0 ? mix(env_horizon, env_zenith, sqrt(r.y)) : mix(env_horizon, env_ground, sqrt(-r.y));
+		float k = clamp(texture(albedo_tex, UV * scale0).a * tint0.x, 0.0, 1.0);
+		float fres = 0.35 + 0.65 * pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
+		c = mix(c, env, k * fres);  // reflective glazing replaces the base where the mask says so
+	}
+	ALBEDO = to_linear(c);
 }
 
 void light() {

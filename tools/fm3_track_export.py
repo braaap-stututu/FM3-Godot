@@ -471,6 +471,17 @@ def main():
         nodes.append({'mesh': len(meshes) - 1, 'name': f'{name}__{len(meshes) - 1}'})  # unique (Godot renames duplicates)
         nv += len(P)
         nt += len(T)
+    if pv is not None:
+        # the layout's static environment cube (window glass, car paint): envcube_0..5.png next to the textures
+        cube_path = os.path.join(os.path.dirname(os.path.abspath(sys.argv[sys.argv.index('--pvs') + 1])),
+                                 'staticcarcubemap.xpr')
+        faces = fm3_tex.load_xpr_cube(cube_path) if os.path.exists(cube_path) else None
+        if faces:
+            os.makedirs(tex_out, exist_ok=True)
+            for k, img in enumerate(faces):
+                img = img.copy()
+                img[..., 3] = 255
+                fr.write_png(os.path.join(tex_out, 'envcube_%d.png' % k), img.shape[1], img.shape[0], img.tobytes())
     if '--dynamic-from' in sys.argv:
         ndyn = import_dynamic(sys.argv[sys.argv.index('--dynamic-from') + 1], capdir, src, add_view, accessors, materials,
                               images, textures, meshes, nodes, tex_out)

@@ -19,6 +19,7 @@ var _screen_size := Vector2i(1280, 720)
 const TripleCameras = preload("res://triple_cameras.gd")
 const BAKED_SHADER = preload("res://viewer/fm3_baked.gdshader")
 const BAKED_BLEND_SHADER = preload("res://viewer/fm3_baked_blend.gdshader")
+const GLASS_SHADER = preload("res://viewer/fm3_glass.gdshader")
 const BLEND_SHADER = preload("res://viewer/fm3_blend.gdshader")
 
 
@@ -247,6 +248,28 @@ func _blended(m: BaseMaterial3D) -> bool:
 	return m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA or m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
 
 
+var _env := {}
+
+
+func _env_cube(gltf_path: String, tex_dir: String) -> Cubemap:
+	# envcube_0..5.png (fm3_track_export.py: the layout's staticcarcubemap.xpr, D3D face order = Godot's)
+	var key := gltf_path.get_base_dir().path_join(tex_dir)
+	if not _env.has(key):
+		var imgs: Array[Image] = []
+		for k in 6:
+			var img := Image.load_from_file(key.path_join("envcube_%d.png" % k))
+			if img == null:
+				_env[key] = null
+				return null
+			img.convert(Image.FORMAT_RGBA8)
+			img.generate_mipmaps()
+			imgs.append(img)
+		var c := Cubemap.new()
+		c.create_from_images(imgs)
+		_env[key] = c
+	return _env[key]
+
+
 var _tex_cache := {}
 
 
@@ -264,8 +287,17 @@ func _load_tex(gltf_path: String, rel: String) -> Texture2D:
 
 func _blend_material(m: BaseMaterial3D, f: Dictionary, gltf_path: String) -> ShaderMaterial:
 	var sm := ShaderMaterial.new()
-	sm.shader = BLEND_SHADER
+	sm.shader = GLASS_SHADER if String(f["mode"]) == "refl" else BLEND_SHADER
 	var tex: Array = f["tex"]
+	if String(f["mode"]) == "refl":
+		var cube := _env_cube(gltf_path, String(tex[0]).get_base_dir())
+		sm.set_shader_parameter("has_env", cube != null)
+		if cube != null:
+			sm.set_shader_parameter("env_cube", cube)
+		if OS.get_environment("FM3_ENV_FLIP") != "":
+			var fl := OS.get_environment("FM3_ENV_FLIP").split_floats(",")
+			sm.set_shader_parameter("env_flip", Vector3(fl[0], fl[1], fl[2]))
+		sm.set_shader_parameter("debug_env_only", OS.get_environment("FM3_ENV_ONLY") != "")
 	sm.set_shader_parameter("albedo_tex", _load_tex(gltf_path, tex[0]))
 	sm.set_shader_parameter("tex1", _load_tex(gltf_path, tex[1]))
 	if tex.size() > 2:
@@ -273,7 +305,7 @@ func _blend_material(m: BaseMaterial3D, f: Dictionary, gltf_path: String) -> Sha
 	if tex.size() > 3:
 		sm.set_shader_parameter("tex3", _load_tex(gltf_path, tex[3]))
 	var mode_name := String(f["mode"])
-	sm.set_shader_parameter("mode", {"blend": 1, "road": 2, "paint": 3, "edge": 4, "mix": 5, "curb": 6}.get(mode_name, 1))
+	sm.set_shader_parameter("mode", {"blend": 1, "road": 2, "paint": 3, "edge": 4, "mix": 5, "curb": 6, "refl": 7}.get(mode_name, 1))
 	if f.has("scale2"):
 		sm.set_shader_parameter("scale2", Vector2(f["scale2"][0], f["scale2"][1]))
 	sm.set_shader_parameter("vclr", bool(f.get("vclr", false)))

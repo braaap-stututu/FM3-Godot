@@ -12,6 +12,9 @@ lightmap. All UV pairs are u16 pairs decoded with the mesh's UV tile and offset 
       UV_a, UV_b, UV_c: the u16 pairs from byte 16 (stride 24: a = b = 16, c = 20; stride 28: 16, 20, 24; stride 32
       with vertex colour (ARGB at byte 20): 16, 24, 28).
   curb (shldr_road_blnd_spec_3): t0 at UV0 * lerp(P[0].rgb, 1, t1.g at UV1) (disassembly of ps aa004de7).
+  refl (diff_spec_refl_norm_4, diff_spec_refl_3: windows): t0 at UV0 * P[0].yz lit by the lightmap, plus the
+      environment reflection * t0.a * P[0].x (disassembly of ps f4e339d2; the viewer stands in a sky gradient for the
+      game's cube map).
   road (road_blnd_2, road_4clr_blnd_2): t0 = a grain texture in world space (x, z) * P[1].x,
       t1 = the surface (marks, patches) at UV0; albedo = t1 * 0.34 * grain / mean(grain) (0.34 calibrated against the
       game's screenshot, as profiles/fm3/materials.json's asphalt).
@@ -35,6 +38,7 @@ ROAD_DIFF = re.compile(r'^road_blnd_diff_spec')
 EDGE = re.compile(r'^rdedg_blnd_diff_spec_bump')
 MIX = re.compile(r'^(shldr|terr)_blnd_spec_vclr_mix')
 PAINT = re.compile(r'^shldr_4clr_blnd_mask')
+REFL = re.compile(r'^diff_spec_refl_(norm_4|3)$')
 SHEEN = (0.1, 0.13, 0.17)
 
 
@@ -57,6 +61,13 @@ def recipe(shader, params, stride, slots):
                 'tint1': list(params[k + 2][:3]) if (vclr and k + 2 < len(params)) else [1.0, 1.0, 1.0],
                 'slots': slots[:3]}
     pairs = list(range(16, stride - 3, 4))
+    if REFL.match(shader) and slots and slots[0] >= 0 and params and pairs:
+        # windows and glazing (diff_spec_refl_norm_4 / diff_spec_refl_3; captured ps f4e339d2): base t0 at UV0 * P[0].yz,
+        # lightmap as usual, plus an environment cube reflection scaled by t0.a * P[0].x
+        return {'mode': 'refl', 'src0': pairs[0], 'src1': pairs[0], 'mask': None, 'lm': None, 'vclr': False,
+                'scale0': list(params[0][1:3]), 'scale1': [1.0, 1.0], 'tint0': [params[0][0]] * 3,
+                'tint1': list(params[2][:3]) if len(params) > 2 else [1.0, 1.0, 1.0],  # reflection tint (teal glass)
+                'slots': [slots[0], slots[0]]}
     if CURB.match(shader) and len(slots) >= 2 and min(slots[:2]) >= 0 and len(pairs) >= 2 and params:
         # shldr_road_blnd_spec_3 (curbs, painted run-off; captured, ps aa004de7): t0 at UV0 * lerp(P[0].rgb, 1, t1.g at
         # UV1); the lightmap on UV1

@@ -67,6 +67,10 @@ web search were not reachable).
 - **Textures without a `.bix`** (77 on Ladera, some full size, e.g. the grass tufts) are in the stx as `_0x<id>_s`
   entries. **Lightmap atlases** are only the DXT1 `_a` entries; the one DXT5 `_a` (0x28f) is something else, and atlas
   entries in its id range belong to the DXT1 atlas before it (the distant matte terrain).
+- **`staticcarcubemap.xpr`** (per ribbon): XPR2 (`XPR2`, u32 header size 0x800, u32 data size, u32 count; entry
+  `TXCM` "CarTrackCubemap"; D3D texture header with the fetch constant at 0x58; data from header size + 12): the static
+  environment cube reflected by car paint and window glass, 256 x 256 DXT5 (endian 1, tiled), faces +X, -X, +Y, -Y, +Z,
+  -Z every 64 KiB.
 - Not geometry to draw as is: `flare_*` (the sun flare) and `LGHT_*` meshes (light volumes, no material).
 - **ForzaStudio-EVO (matches our files: u32 version 4 = FM3, 6 = FM4; section count u32 at 0x74):** per section: u32 1;
   three float3 blocks each followed by f32 0; u32 1; name (i32 length + ASCII; text before the first `_` = type);
