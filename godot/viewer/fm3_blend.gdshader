@@ -4,7 +4,7 @@
 //        t0 at UV * scale0, t1 at CUSTOM0.xy * scale1 (glTF TEXCOORD_2), mask at CUSTOM0.zw (TEXCOORD_3)
 //   mode 2 road: tex1 (the surface, at CUSTOM0.xy = UV0) * 0.34 * grain / grain_mean; grain t0 at UV (world x, z) * scale0
 //   mode 3 paint: lerp(0.16 * grain, tint1, tex1.a)
-//   mode 4 edge: lerp(dirt (tex2 at CUSTOM0.xy * scale2), road, tex3.r at CUSTOM0.zw); mode 5 mix: two scales averaged
+//   mode 4 edge: lerp(dirt (tex2 at CUSTOM0.xy * scale2), road, tex3.r at CUSTOM0.zw); mode 5 mix: lerp(base, layer, mask.r); mode 6 curb: t0 * lerp(tint0, 1, t1.g)
 shader_type spatial;
 render_mode cull_disabled, ambient_light_disabled, specular_disabled, diffuse_lambert;
 
@@ -49,8 +49,10 @@ void fragment() {
 			t1 *= mix(vec3(1.0), tint1, COLOR.a);
 		}
 		a = mix(t0, t1, m);
+	} else if (mode == 6) {
+		a = texture(albedo_tex, UV * scale0).rgb * mix(tint0, vec3(1.0), texture(tex1, uv23.xy * scale1).g);
 	} else if (mode == 5) {
-		a = 0.5 * (texture(albedo_tex, UV * scale0).rgb + texture(tex1, uv23.xy * scale1).rgb);
+		a = mix(texture(albedo_tex, UV * scale0).rgb, texture(tex1, uv23.xy * scale1).rgb, texture(tex2, uv23.zw).r);
 	} else {
 		vec3 grain = texture(albedo_tex, UV * scale0).rgb / max(grain_mean, 0.05);
 		vec4 s = texture(tex1, uv23.xy * scale1);

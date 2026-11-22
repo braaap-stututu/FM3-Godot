@@ -18,6 +18,7 @@ var _bench_t0 := 0
 var _screen_size := Vector2i(1280, 720)
 const TripleCameras = preload("res://triple_cameras.gd")
 const BAKED_SHADER = preload("res://viewer/fm3_baked.gdshader")
+const BAKED_BLEND_SHADER = preload("res://viewer/fm3_baked_blend.gdshader")
 const BLEND_SHADER = preload("res://viewer/fm3_blend.gdshader")
 
 
@@ -131,17 +132,19 @@ func _init() -> void:
 			if m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:  # (the glTF's unlit materials stay unlit)
 				m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL if lit else BaseMaterial3D.SHADING_MODE_UNSHADED
 			m.cull_mode = BaseMaterial3D.CULL_DISABLED
-			if lit and m.ao_enabled and m.ao_texture != null and m.ao_on_uv2 and m.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA:
+			if lit and m.ao_enabled and m.ao_texture != null and m.ao_on_uv2 and (m.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA or m.albedo_texture != null):
 				# FM3's static world: its baked colour lightmap (slot 7, UV2) carries the light; the sun only adds
 				# the shadows of dynamic objects (fm3_baked.gdshader). Its own shadows are in the lightmap: it casts none.
 				var sm := ShaderMaterial.new()
-				sm.shader = BAKED_SHADER
+				sm.shader = BAKED_BLEND_SHADER if m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA else BAKED_SHADER
 				sm.set_shader_parameter("albedo_tex", m.albedo_texture)
 				sm.set_shader_parameter("light_tex", m.ao_texture)
 				sm.set_shader_parameter("albedo_color", m.albedo_color)
 				sm.set_shader_parameter("gain", baked_gain)
 				if m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
 					sm.set_shader_parameter("alpha_cut", m.alpha_scissor_threshold)
+				if m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA:
+					mi.sorting_offset = -1.0  # (decals over the ground they lie on)
 				mi.set_surface_override_material(s, sm)
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				baked += 1
@@ -265,7 +268,7 @@ func _blend_material(m: BaseMaterial3D, f: Dictionary, gltf_path: String) -> Sha
 	if tex.size() > 3:
 		sm.set_shader_parameter("tex3", _load_tex(gltf_path, tex[3]))
 	var mode_name := String(f["mode"])
-	sm.set_shader_parameter("mode", {"blend": 1, "road": 2, "paint": 3, "edge": 4, "mix": 5}.get(mode_name, 1))
+	sm.set_shader_parameter("mode", {"blend": 1, "road": 2, "paint": 3, "edge": 4, "mix": 5, "curb": 6}.get(mode_name, 1))
 	if f.has("scale2"):
 		sm.set_shader_parameter("scale2", Vector2(f["scale2"][0], f["scale2"][1]))
 	sm.set_shader_parameter("vclr", bool(f.get("vclr", false)))

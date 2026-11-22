@@ -311,7 +311,9 @@ def main():
                 png = bix_png(ft[0])
                 if png:
                     sh = ft[1]
-                    rec = {'factor': [1, 1, 1, 1], 'blend': 'MASK' if ('opac' in sh or 'tree' in sh or 'grass' in sh) else False}
+                    # grass_* cards are soft decals (flat tuft shadows, upright tufts): alpha-blended; other opac: cut out
+                    rec = {'factor': [1, 1, 1, 1], 'blend': 'BLEND' if sh.startswith('grass') else
+                           ('MASK' if ('opac' in sh or 'tree' in sh) else False)}
                     uv, base_png = me['uv0'].astype(np.float32), png
                     from_files += 1
             if uv is None and texmap.get(name):

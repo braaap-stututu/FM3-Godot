@@ -105,5 +105,9 @@
       1.0
     ],
     "texture_mode": "multiply"
+  },
+  "d44a5b5aed142674": {
+    "name": "car shadow blob (alpha-only output, grid capture draw 2018)",
+    "drop": true
   }
 }
