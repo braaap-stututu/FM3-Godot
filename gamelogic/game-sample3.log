@@ -1,0 +1,1471 @@
+[   0.0049] fm3: game folder G:\claude code projects\FM3-ReGPU recomp\reference\rexglue recomp reference\hl360-forza3\game\disc1
+[   0.2090] loader: unknown kernel variable ordinal 156, giving it zeroed storage
+[   0.2090] loader: unknown kernel variable ordinal 1BF, giving it zeroed storage
+[   0.2112] indirect calls: game:\default.xex, 45629 functions
+[   0.2112] indirect calls: 45629 functions in 1 images
+[   0.2113] loader: G:\claude code projects\FM3-ReGPU recomp\reference\rexglue recomp reference\hl360-forza3\game\disc1\default.xex title 4D53084D entry 82529DD8 stack 0x10000 tls 64 slots + 0x1820 bytes @82CE7C00
+[   0.2628] runtime: TSC 4294.967 MHz, user data in G:\claude code projects\FM3-ReGPU recomp\out\user
+[   0.2633] runtime: profile Baseline, saves in G:\claude code projects\FM3-ReGPU recomp\out\user\profiles\Baseline\content
+[   0.2633] gpu: anti-aliasing filter off, supersampling 1.00x, EQAA off
+[   0.2634] hyper: preset off; scene scale as set; upscale as set
+[   0.2634] switch: REGPU_NO_FENCE_ORDER on (not reached yet: kept for when it is)
+[   0.2634] switch: REGPU_TEXTURE_CHECK_STAGGER on
+[   0.2634] switch: REGPU_DIRECT_DYNAMIC_INDICES on (not reached yet: kept for when it is)
+[   0.2635] gpu: one guest tile on
+[   0.2635] gpu: command processor spins while idle
+[   0.2635] gpu: asynchronous present on
+[   0.2635] long stacks: frames sampled once they have run 7.5 ms
+[   0.2636] gpu: upload ring in VRAM on (if resizable BAR)
+[   0.2636] gpu: draw workers on by default (occlusion queries counted on the command processor)
+[   0.2636] frame time: 360 fps, guest vblank 720 Hz, mainthread30fps on (a main frame every second vblank); frame time from the vblank clock (FM3_GAME_FRAME_TIME=1: the game's)
+[   0.2636] gpu: ReGPU at 2560x1440, msaa 4, vblank 720 Hz
+[   0.2637] xma: engine sound crossfade off
+[   0.2639] thread 1 created: main 82529DD8 param 00000000
+[   0.2651] debug: listening on 127.0.0.1:7341 (tools/regpuctl.py)
+[   0.2671] thread 2 created: entry 826F4310 param 40162000 (suspended)
+[   0.2681] ExGetXConfigSetting: unknown setting 0003/0001, returning 0
+[   0.2682] loader: no recompiled module named xam.xex
+[   0.2682] XexLoadImage("xam.xex"): not available
+[   0.2684] XexGetProcedureAddress(xam.xex, 1BA): XamInputGetUserVibrationLevel, at 82FFF000
+[   0.2684] XexGetProcedureAddress(xam.xex, 208): XamUserGetDeviceContext, at 82FFF004
+[   0.2685] XexGetProcedureAddress(xboxkrnl.exe, 282): XInputdFFGetDeviceInfo, at 82FFF008
+[   0.2685] XexGetProcedureAddress(xboxkrnl.exe, 283): XInputdFFSetEffect, at 82FFF00C
+[   0.2685] XexGetProcedureAddress(xboxkrnl.exe, 284): XInputdFFUpdateEffect, at 82FFF010
+[   0.2685] XexGetProcedureAddress(xboxkrnl.exe, 285): XInputdFFEffectOperation, at 82FFF014
+[   0.2685] XexGetProcedureAddress(xboxkrnl.exe, 286): XInputdFFDeviceControl, at 82FFF018
+[   0.2685] XexGetProcedureAddress(xboxkrnl.exe, 287): XInputdFFSetDeviceGain, at 82FFF01C
+[   0.2685] XexGetProcedureAddress(xboxkrnl.exe, 288): XInputdFFCancelIo, at 82FFF020
+[   0.2685] XexGetProcedureAddress(xboxkrnl.exe, 289): XInputdFFSetRumble, at 82FFF024
+[   0.2686] thread 3 created: entry 822992C8 param 00000000 (suspended)
+[   0.2739] presenter: picture in the game window
+[   0.3748] presenter: Vulkan device 0: AMD Radeon RX 7900 XTX (API 1.4.359)
+[   0.3748] presenter: Vulkan device 1: AMD Radeon(TM) Graphics (API 1.4.315)
+[   0.4228] thread 4 created: entry 828E46D8 param 00000000 (suspended)
+[   0.4229] thread 5 created: entry 828E4778 param 00000000 (suspended)
+[   0.4229] thread 6 created: entry 828E4820 param 00000000 (suspended)
+[   0.4230] thread 7 created: entry 822BDE68 param 4010D7F0 (suspended)
+[   0.4233] gpu: interrupt callback 824B4B50 data 40100080
+[   0.4234] thread 8 created: gpu vblank irq 00000000 param 00000000
+[   0.4235] thread 9 created: gpu command processor 00000000 param 00000000
+[   0.4235] gpu: ring buffer at B09662C0, 8192 dwords
+[   0.4235] gpu: rptr writeback at B8C2603C (from 18C2603C), block log2 6
+[   0.4236] thread 10 created: entry 824C8FB0 param 40102D10
+[   0.4236] thread 10  (entry 824C8FB0) base priority 0 -> 17
+[   0.4237] gpu: draw worker thread started
+[   0.4238] front end: frame limit 120 fps (front end, menus animate per frame; cap 360)
+[   0.4238] one tile: scenario 0 (3 tiles) drawn as one 1280x720 tile
+[   0.4240] gpu: 1 distinct shaders seen
+[   0.4247] gpu: swap #1
+[   0.4249] gpu: frame cap 120 fps (max 120, vsync off)
+[   0.4249] tick wait: 20 us
+[   0.4249] gpu: swap #2
+[   0.4250] perf lite: light performance log on (REGPU_PERF_LITE): one line a second, no per-draw timing
+[   0.4250] perf lite: long-frame log on (REGPU_LONG_FRAMES): frames over 2x the recent average, with what they did
+[   0.4390] thread 11 created: entry 82A615D0 param 42622410 (suspended)
+[   0.4390] thread 11  (entry 82A615D0) base priority 0 -> 16
+[   0.4416] gpu: swap #4
+[   0.4602] audio: output 5.1 float at 48000 Hz
+[   0.4603] thread 12 created: audio driver 00000000 param 00000000
+[   0.4603] xma: write 00000002 to APU register 601
+[   0.4604] thread 13 created: entry 829A09F8 param 426DFE70 (suspended)
+[   0.4604] thread 13  (entry 829A09F8) base priority 0 -> 0
+[   0.4619] thread 14 created: entry 829A09F8 param 426DFCF4 (suspended)
+[   0.4619] thread 14  (entry 829A09F8) base priority 0 -> 16
+[   0.4634] thread 15 created: entry 829A09F8 param 426DF438 (suspended)
+[   0.4634] thread 15  (entry 829A09F8) base priority 0 -> 2
+[   0.4650] intro: sequencer setter 822BD7B8 wrapped
+[   0.4650] intro: skipped (legal text, logos, intro video): 6 s 4 s 10 s 10 s 5 s 70 s
+[   0.4688] io: large read turn10_logo.bik offset 1292 length 15760808 -> 42E40060: __imp__NtReadFile+260 (imports_io.cpp:439) < __imp__sub_8252A748+1C7 (ppc_recomp.53.cpp:19398) < __imp__sub_82B78150+88E (ppc_recomp.176.cpp:39455) < __imp__sub_82B6E3F0+1AAA (ppc_recomp.176.cpp:17335) < __imp__sub_82709C38+4EC (ppc_recomp.81.cpp:12062) < __imp__sub_8270ADB0+B9 (ppc_recomp.81.cpp:14504) < __imp__sub_828E2E60+599 (ppc_recomp.117.cpp:7024) < __imp__sub_828E46D8+17F (ppc_recomp.117.cpp:10553) < __imp__sub_8252FF20+A8 (ppc_recomp.54.cpp:5721) < `anonymous namespace'::HostThreadMain+335 (thread.cpp:112)
+[   0.4715] thread 16 created: entry 82B72790 param 82B80208 (suspended)
+[   0.4742] io: large read msgs_logo.bik offset 1152 length 9006440 -> 43DA0060: __imp__NtReadFile+260 (imports_io.cpp:439) < __imp__sub_8252A748+1C7 (ppc_recomp.53.cpp:19398) < __imp__sub_82B78150+88E (ppc_recomp.176.cpp:39455) < __imp__sub_82B6E3F0+1AAA (ppc_recomp.176.cpp:17335) < __imp__sub_82709C38+4EC (ppc_recomp.81.cpp:12062) < __imp__sub_8270ADB0+B9 (ppc_recomp.81.cpp:14504) < __imp__sub_828E2E60+599 (ppc_recomp.117.cpp:7024) < __imp__sub_828E46D8+17F (ppc_recomp.117.cpp:10553) < __imp__sub_8252FF20+A8 (ppc_recomp.54.cpp:5721) < `anonymous namespace'::HostThreadMain+335 (thread.cpp:112)
+[   0.4749] gpu: swap #8
+[   0.4795] thread 17 created: entry 82B72790 param 82B8022C (suspended)
+[   0.4856] xma: A1001900 stepped 8 times waiting for a 2-channel codec: opened in place
+[   0.4868] xma: A1001900 is music (the first stream recognised)
+[   0.4874] thread 18 created: entry 829A09F8 param 402406F0 (suspended)
+[   0.4874] thread 18  (entry 829A09F8) base priority 0 -> 1
+[   0.4890] thread 19 created: entry 82581500 param 44C2FAE0
+[   0.4892] thread 20 created: entry 827EE120 param 402BD000 (suspended)
+[   0.4901] thread 21 created: entry 8289A7F0 param 00000000 (suspended)
+[   0.4902] XLiveBase message 00058004 answered with success
+[   0.4934] io: large read gamedb.slt offset 0 length 7638016 -> 454F0030: __imp__NtReadFile+260 (imports_io.cpp:439) < __imp__sub_8252A748+1C7 (ppc_recomp.53.cpp:19398) < __imp__sub_826F4290+C1 (ppc_recomp.78.cpp:28195) < __imp__sub_828A69A8+173 (ppc_recomp.112.cpp:12821) < __imp__sub_8289DC78+2AE (ppc_recomp.111.cpp:22833) < __imp__sub_827828B8+2E3 (ppc_recomp.91.cpp:21231) < __imp__sub_82783108+A8E (ppc_recomp.91.cpp:22810) < __imp__sub_827837E0+A5 (ppc_recomp.91.cpp:23427) < __imp__sub_8277C7B8+175 (ppc_recomp.91.cpp:5969) < __imp__sub_82777F20+122 (ppc_recomp.90.cpp:30179)
+[   0.5459] gpu: swap #16
+[   0.6752] gpu: swap #32
+[   0.7166] thread 4  (entry 828E46D8) base priority 0 -> 16
+[   0.7166] thread 4  (entry 828E46D8) base priority 16 -> 0
+[   0.7668] thread 17  (entry 82B72790) base priority 0 -> 16
+[   0.7873] presenter: Vulkan pipeline cache 290189 KB
+[   0.7954] presenter: Vulkan on AMD Radeon RX 7900 XTX (AMD proprietary driver 26.11.2 (LLPC)), 24560 MB video memory, discrete, host-visible VRAM (resizable BAR); conditional rendering yes, host memory import yes, push descriptors yes, dynamic blend yes, pipeline libraries no
+[   0.8164] long stacks: sampling the draw thread 436 every millisecond
+[   0.8558] thread 22 created: entry 826EDB20 param 40245DD0 (suspended)
+[   0.8900] presenter: swap chain 2560x1440, 3 images, format 37, immediate (tearing)
+[   0.8901] presenter: window and Vulkan swap chain ready
+[   0.9078] gpu: window minimized (FM3_MINIMIZED)
+[   1.0622] grid test: on: pressing A until the race starts, then freezing at 9.00 s of its countdown clock
+[   1.0694] content: enumerating 4 packages of type 00000001
+[   1.0760] thread 23 created: entry 827D8070 param 82C78B44 (suspended)
+[   1.1913] thread 16  (entry 82B72790) base priority 0 -> 16
+[   1.1915] audio cadence: game audio updates at most about 120 a second
+[   1.1931] thread 24 created: entry 8284C9D8 param 4476C2C0 (suspended)
+[   1.1956] thread 25 created: entry 8284C9D8 param 463CA800 (suspended)
+[   1.1985] xma: A1000000 stepped 8 times waiting for a 2-channel codec: opened in place
+[   1.3277] gpu: swap #60
+[   1.3611] gpu: swap #64
+[   1.4299] perf lite: 69.9 fps, 14.30 ms/frame (p99 425.95 ms, max 425.95 ms) | 113 draws/frame | GPU 0.00 ms/frame | draw thread -1% busy | 0 long
+[   1.8271] gpu: swap #120
+[   1.8938] gpu: swap #128
+[   2.2781] content: enumerating 8 packages of type 00000002
+[   2.2781] content: DLCRoot0: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0013
+[   2.2782] content: DLCRoot1: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0014
+[   2.2783] content: DLCRoot2: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0015
+[   2.2783] content: DLCRoot3: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0030
+[   2.2784] content: DLCRoot4: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0035
+[   2.2784] content: DLCRoot5: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0040
+[   2.2785] content: DLCRoot6: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0045
+[   2.2785] content: DLCRoot7: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0060
+[   2.3261] gpu: swap #180
+[   2.4342] perf lite: 120.0 fps, 8.33 ms/frame (p99 8.55 ms, max 9.18 ms) | 128 draws/frame | GPU 0.00 ms/frame | draw thread 0% busy | 0 long
+[   2.8105] content: E0000BA5E11E0001: -> G:\claude code projects\FM3-ReGPU recomp\out\user\profiles\Baseline\content\00000001\ForzaProfile
+[   2.8259] gpu: swap #240
+[   2.8650] frame time: main frame 391 took 594 ms (a load)
+[   2.9602] gpu: swap #256
+[   2.9684] ring wait: mode 2 (sleep 100 us)
+[   3.1794] car shadows: shadow passes run every 1 frame (as the game does)
+[   3.1834] gpu: 51 distinct shaders seen
+[   3.1878] gpu: 101 distinct shaders seen
+[   3.1961] gpu: 151 distinct shaders seen
+[   3.3311] gpu: swap #300
+[   3.4378] perf lite: 119.6 fps, 8.36 ms/frame (p99 8.61 ms, max 11.95 ms) | 243 draws/frame | GPU 0.00 ms/frame | draw thread 0% busy | 0 long
+[   3.8313] gpu: swap #360
+[   4.0684] xma: A1000000 stepped 8 times waiting for a 2-channel codec: opened in place
+[   4.0690] xma: id A1000000: rate/channel bits 0/1 -> 3/1
+[   4.3312] gpu: swap #420
+[   4.4423] perf lite: 120.0 fps, 8.33 ms/frame (p99 8.56 ms, max 8.58 ms) | 443 draws/frame | GPU 0.00 ms/frame | draw thread 5% busy | 0 long
+[   4.8306] gpu: swap #480
+[   5.0972] gpu: swap #512
+[   5.2653] profile: thread 3, 3120 samples
+[   5.2653] profile:  73.6% ZwWaitForAlertByThreadId < RtlSleepConditionVariableSRW < SleepConditionVariableSRW
+[   5.2653] profile:   2.5% __imp__sub_829D0720 < __imp__sub_829CBF98 < __imp__sub_8277EF98
+[   5.2653] profile:   1.0% __imp__sub_829CEBB0 < __imp__sub_829D0720 < __imp__sub_829CBF98
+[   5.2653] profile:   0.8% memset < GuestAllocPhysical < __imp__MmAllocatePhysicalMemoryEx
+[   5.2653] profile:   0.6% __imp__sub_829DBAA8 < __imp__sub_829DF2F8 < __imp__sub_829E0380
+[   5.2653] profile:   0.5% __imp__sub_82530850 < __imp__sub_829DF048 < __imp__sub_829DF2F8
+[   5.2653] profile:   0.5% __imp__sub_829D5700 < __imp__sub_829DDCA8 < __imp__sub_829E2670
+[   5.2653] profile:   0.5% __imp__sub_829DBAA8 < __imp__sub_829DD808 < __imp__sub_829DDCA8
+[   5.2653] profile:   0.4% LzxDecompress < ForEachZipMember < ZipOverlay
+[   5.2653] profile:   0.4% __imp__sub_829DF2F8 < __imp__sub_829E0380 < __imp__sub_829E2670
+[   5.2653] profile:   0.4% __imp__sub_829D5508 < __imp__sub_829D5700 < __imp__sub_829DDCA8
+[   5.2653] profile:   0.4% __imp__sub_829CF490 < __imp__sub_829D0720 < __imp__sub_829CBF98
+[   5.2653] profile:   0.4% `anonymous namespace'::Bits::Decode < LzxDecompress < ForEachZipMember
+[   5.2653] profile:   0.4% __imp__sub_829CE938 < __imp__sub_829D0720 < __imp__sub_829CBF98
+[   5.2653] profile:   0.4% __imp__sub_829D5440 < __imp__sub_829D0720 < __imp__sub_829CBF98
+[   5.2653] profile:   0.4% __imp__sub_82530850 < __imp__sub_829DD590 < __imp__sub_829DD790
+[   5.2653] profile:   0.4% __imp__sub_821F2490 < __imp__sub_821F2898 < __imp__sub_821F2738
+[   5.2653] profile:   0.3% __imp__sub_829DDCA8 < __imp__sub_829E2670 < __imp__sub_829D0720
+[   5.2653] profile:   0.3% __imp__sub_829DDCA8 < __imp__sub_829D0720 < __imp__sub_829CBF98
+[   5.2653] profile:   0.3% __imp__sub_829D5260 < __imp__sub_829D0720 < __imp__sub_829CBF98
+[   5.2653] profile:   0.3% __imp__sub_829DBA38 < __imp__sub_829DF2F8 < __imp__sub_829E0380
+[   5.2653] profile:   0.3% __imp__sub_829D0120 < __imp__sub_829D5700 < __imp__sub_829DDCA8
+[   5.2653] profile:   0.3% ZwQueryFullAttributesFile < GetFileAttributesExW < __imp__NtQueryInformationFile
+[   5.2653] profile:   0.3% __imp__sub_829D5700 < __imp__sub_829DDCA8 < __imp__sub_829D0720
+[   5.2653] profile:   0.3% __imp__sub_821F2AD0 < __imp__sub_821F2898 < __imp__sub_821F2738
+[   5.2653] profile:   0.2% __imp__sub_826EEE28 < __imp__sub_826EEEE0 < __imp__sub_826EF098
+[   5.2653] profile:   0.2% __imp__sub_821F26D8 < __imp__sub_821F2738 < __imp__sub_821F2838
+[   5.2653] profile:   0.2% __imp__sub_821EFAA8 < __imp__sub_826F08B0 < __imp__sub_821EECD0
+[   5.2653] profile:   0.2% ZwAlpcSendWaitReceivePort < RpcExceptionFilter < RpcExceptionFilter
+[   5.2653] profile:   0.2% __imp__sub_829D0720 < __imp__sub_829CBF98 < __imp__sub_829E5AC8
+[   5.2653] profile:   0.2% __imp__sub_821F2B90 < __imp__sub_821F29C0 < __imp__sub_821F2608
+[   5.2653] profile:   0.2% __imp__sub_821F2A90 < __imp__sub_821F29C0 < __imp__sub_821F2608
+[   5.2653] profile:   0.2% __imp__sub_821F2A90 < __imp__sub_821F2898 < __imp__sub_821F2738
+[   5.2653] profile:   0.2% __imp__sub_829F6270 < __imp__sub_829DC458 < __imp__sub_829DC4C0
+[   5.2653] profile:   0.2% __imp__sub_829D5508 < __imp__sub_829D0720 < __imp__sub_829CBF98
+[   5.2653] profile:   0.2% __imp__sub_821F2B30 < __imp__sub_821F29C0 < __imp__sub_821F2608
+[   5.2653] profile:   0.2% __imp__sub_821F2B30 < __imp__sub_821F2928 < __imp__sub_821F2608
+[   5.2653] profile:   0.2% __imp__sub_821F2AD0 < __imp__sub_821F29C0 < __imp__sub_821F2608
+[   5.2653] profile:   0.2% __imp__sub_821EECD0 < __imp__sub_828E4658 < __imp__sub_828E4928
+[   5.2653] profile:   0.1% __imp__sub_829DD808 < __imp__sub_829DDCA8 < __imp__sub_829E2670
+[   5.2653] profile:   0.1% __imp__sub_829D5318 < __imp__sub_829D5440 < __imp__sub_829D0720
+[   5.2653] profile:   0.1% __imp__sub_829D5318 < __imp__sub_829D0720 < __imp__sub_829CBF98
+[   5.2653] profile:   0.1% __imp__sub_829CF880 < __imp__sub_829CF9E0 < __imp__sub_829D0720
+[   5.2653] profile:   0.1% __imp__sub_829CF738 < __imp__sub_829CF9E0 < __imp__sub_829D0720
+[   5.2653] profile:   0.1% __imp__sub_8252CFC8 < __imp__sub_821F2608 < __imp__sub_829F6010
+[   5.2653] profile:   0.1% __imp__sub_821F2A90 < __imp__sub_821F2928 < __imp__sub_821F2608
+[   5.2653] profile:   0.1% RtlWakeAddressSingle < __imp__RtlLeaveCriticalSection < __imp__sub_821F2928
+[   5.2653] profile:   0.1% NtReadFile < ReadFile < _read_nolock
+[   5.2653] profile:   0.1% NtCreateFile < GetDriveTypeW < CreateFileW
+[   5.2653] profile:   0.1% __imp__sub_82AB30E0 < __imp__sub_82AB42B8 < __imp__sub_82AB4B10
+[   5.2653] profile:   0.1% __imp__sub_82A884F8 < __imp__sub_82A88920 < __imp__sub_82A85988
+[   5.2653] profile:   0.1% __imp__sub_829F9920 < __imp__sub_829FAC68 < __imp__sub_829E8138
+[   5.2653] profile:   0.1% __imp__sub_829F61A8 < __imp__sub_829DC530 < __imp__sub_829F61A8
+[   5.2653] profile:   0.1% __imp__sub_829E0380 < __imp__sub_829E2670 < __imp__sub_829D0720
+[   5.2653] profile:   0.1% __imp__sub_829DF048 < __imp__sub_829DF2F8 < __imp__sub_829E0380
+[   5.2653] profile:   0.1% __imp__sub_829DC458 < __imp__sub_829DC4C0 < __imp__sub_829DD970
+[   5.2653] profile:   0.1% __imp__sub_829D5418 < __imp__sub_829D0720 < __imp__sub_829CBF98
+[   5.2653] profile:   0.1% __imp__sub_829D0518 < __imp__sub_829D0720 < __imp__sub_829CBF98
+[   5.2653] profile:   0.1% __imp__sub_8288FA68 < __imp__sub_82890078 < __imp__sub_82890CE0
+[   5.2653] profile:   0.1% __imp__sub_82530850 < __imp__sub_829DF2F8 < __imp__sub_829E0380
+[   5.3303] gpu: swap #540
+[   5.4465] perf lite: 120.0 fps, 8.33 ms/frame (p99 8.59 ms, max 8.87 ms) | 249 draws/frame | GPU 0.00 ms/frame | draw thread 6% busy | 0 long
+[   5.4697] xma: 5 s: 0 decode errors, 0 discontinuity flushes, 4 codec reopens, 21 pool waits, 75 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 1 rate/channel changes, 0 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[   5.8310] gpu: swap #600
+[   6.1802] long stacks: 33.5 ms frame, 19 samples; top functions:
+[   6.1803] long stacks:   ZwWaitForAlertByThreadId x19
+[   6.1803] long stacks:   x19 ZwWaitForAlertByThreadId < RtlWaitOnAddress < WaitOnAddress < __std_atomic_wait_direct < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[   6.2481] long frame 638: 33.46 ms (avg 8.33) | 124 draws | idle 33.44 ms | gpu wait 0.00 ms | builds 0 waits 0.00 ms, 0 pipelines, 0 created | textures 0 new 0 changed 0 KB 0.00 ms | swap 0.00 ms | fences 0.00 ms | replay 0.00 ms | cpu 0.14 ms (avg 0.17)
+[   6.3214] thread 26 created: entry 822974B0 param 4023A600 (suspended)
+[   6.3545] gpu: swap #660
+[   6.4495] perf lite: 117.0 fps, 8.55 ms/frame (p99 8.59 ms, max 33.46 ms) | 253 draws/frame | GPU 0.00 ms/frame | draw thread 5% busy | 1 long
+[   6.4630] thread 27 created: entry 822974B0 param 4023A600 (suspended)
+[   6.8546] gpu: swap #720
+[   6.9136] frame time: main frame 1615 took 417 ms (a load)
+[   7.1947] thread 28 created: entry 829070B8 param 447D50F0 (suspended)
+[   7.1951] thread 29 created: entry 829070B8 param 466E4CC0 (suspended)
+[   7.1955] thread 30 created: entry 829070B8 param 4270DEA0 (suspended)
+[   7.1959] thread 31 created: entry 829070B8 param 42955A20 (suspended)
+[   7.1963] thread 32 created: entry 829070B8 param 46D3C230 (suspended)
+[   7.1967] thread 33 created: entry 829070B8 param 464D0B00 (suspended)
+[   7.1972] thread 34 created: entry 829070B8 param 427DF700 (suspended)
+[   7.1978] thread 35 created: entry 829070B8 param 46B1C320 (suspended)
+[   7.2058] thread 36 created: entry 82835298 param 4644E140 (suspended)
+[   7.3536] vfs: no mapping for "Update:\media\cars\driver\SteerLock2LockSmall.gr2"
+[   7.3546] gpu: swap #780
+[   7.3550] vfs: no mapping for "Update:\media\cars\driver\SteerLock2LockLarge.gr2"
+[   7.3565] vfs: no mapping for "Update:\media\cars\driver\ShiftStickConsoleLeft.gr2"
+[   7.4537] perf lite: 120.0 fps, 8.33 ms/frame (p99 8.54 ms, max 8.56 ms) | 124 draws/frame | GPU 0.00 ms/frame | draw thread 0% busy | 0 long
+[   7.8545] gpu: swap #840
+[   8.3544] gpu: swap #900
+[   8.4572] perf lite: 120.0 fps, 8.33 ms/frame (p99 8.54 ms, max 8.83 ms) | 124 draws/frame | GPU 0.00 ms/frame | draw thread 0% busy | 0 long
+[   8.8546] gpu: swap #960
+[   8.9067] frame time: main frame 1710 took 1078 ms (a load)
+[   8.9416] thread 37 created: entry 8284C9D8 param 4697E140 (suspended)
+[   8.9654] thread 38 created: entry 82889A20 param 475E3BE0 (suspended)
+[   8.9714] thread 39 created: entry 82B01890 param 4697FC90 (suspended)
+[   9.2463] grid test: race start 40550D10 phase 3 flags 0 0 0, clock 0.000 s (main frame 1756)
+[   9.2504] xma: A1000000 stepped 8 times waiting for a 1-channel codec: opened in place
+[   9.2510] xma: id A1000000: rate/channel bits 3/1 -> 0/0
+[   9.2510] xma: A1000040 stepped 8 times waiting for a 1-channel codec: opened in place
+[   9.2516] xma: id A1000040: rate/channel bits 0/1 -> 0/0
+[   9.2517] xma: A1000080 stepped 8 times waiting for a 1-channel codec: opened in place
+[   9.2523] xma: id A1000080: rate/channel bits 0/1 -> 0/0
+[   9.2523] xma: id A10000C0: rate/channel bits 0/1 -> 0/0
+[   9.2524] xma: A1000100 stepped 8 times waiting for a 1-channel codec: opened in place
+[   9.2531] xma: A1000180 stepped 8 times waiting for a 1-channel codec: opened in place
+[   9.2538] xma: A1000200 stepped 8 times waiting for a 1-channel codec: opened in place
+[   9.2546] xma: keeping 7 spare codecs for 1 ch 24000 Hz (7 taken between refills)
+[   9.2620] xma: A10002C0 stepped 8 times waiting for a 1-channel codec: opened in place
+[   9.2627] xma: A1000300 stepped 8 times waiting for a 1-channel codec: opened in place
+[   9.2633] xma: A1000300 stepped 8 times waiting for a 1-channel codec: opened in place
+[   9.2640] xma: keeping 3 spare codecs for 1 ch 48000 Hz (3 taken between refills)
+[   9.2640] xma: A1000340 stepped 8 times waiting for a 1-channel codec: opened in place
+[   9.2646] xma: A1000380 stepped 8 times waiting for a 1-channel codec: opened in place
+[   9.2653] xma: A1000400 stepped 8 times waiting for a 1-channel codec: opened in place
+[   9.2675] xma: keeping 6 spare codecs for 1 ch 48000 Hz (6 taken between refills)
+[   9.3344] mirror: rendered every 1 frame (as the game does)
+[   9.4064] car reflections: faces rendered every 1 time (as the game does)
+[   9.4710] gpu: 201 distinct shaders seen
+[   9.4918] renderer: memory architecture discrete (own video memory)
+[   9.4973] renderer: guest memory heap over a view of its own: mapped
+[   9.5982] renderer: guest memory mapped for the GPU (zero-copy vertex fetch)
+[   9.5998] renderer: anti-aliasing 4x (setting 4)
+[   9.6052] renderer: upload ring 128 MB per frame
+[   9.6052] renderer: GPU upload heaps supported (resizable BAR on)
+[   9.6356] renderer: Vulkan objects ready (3 frame slots, 128 MB upload ring each)
+[   9.6406] renderer: manifest lists 6366 pipelines to rebuild
+[   9.6406] renderer: Vulkan renderer ready
+[   9.6579] renderer: upload ring in VRAM (GPU upload heap)
+[   9.6731] vertex arena: 512 MB on the GPU for large vertex buffers
+[   9.6787] renderer: EDRAM colour surface at base 000
+[   9.6815] renderer: EDRAM depth surface at base 2D0
+[   9.6827] precompile: 513 shaders and 6366 pipelines stored
+[   9.6839] spirv direct: 1 shaders translated directly (0.37 ms average)
+[   9.7874] spirv direct: 100 shaders translated directly (0.83 ms average)
+[   9.8706] spirv direct: 200 shaders translated directly (0.73 ms average)
+[   9.9646] spirv direct: 300 shaders translated directly (0.72 ms average)
+[  10.0547] spirv direct: 400 shaders translated directly (0.71 ms average)
+[  10.2166] spirv direct: 500 shaders translated directly (0.71 ms average)
+[  10.2656] profile: thread 3, 3179 samples
+[  10.2656] profile:  35.8% ZwDelayExecution < RtlDelayExecution < SwitchToThread
+[  10.2656] profile:  25.8% __imp__sub_82AB30E0 < __imp__sub_82AB42B8 < __imp__sub_82AB4B10
+[  10.2656] profile:  20.1% ZwWaitForAlertByThreadId < RtlSleepConditionVariableSRW < SleepConditionVariableSRW
+[  10.2656] profile:   1.9% RtlDelayExecution < SwitchToThread < __imp__NtYieldExecution
+[  10.2656] profile:   1.3% NtWaitForSingleObject < WaitForSingleObjectEx < PreciseSleepUntil
+[  10.2656] profile:   1.2% __imp__sub_822593A8 < __imp__sub_821FB200 < __imp__sub_822A99F8
+[  10.2656] profile:   0.9% __imp__sub_82AB2D48 < __imp__sub_82AB3368 < __imp__sub_82AB3F40
+[  10.2656] profile:   0.8% TraceImportReturn < __imp__NtYieldExecution < __imp__sub_825281A8
+[  10.2656] profile:   0.7% __imp__sub_82AB42B8 < __imp__sub_82AB4B10 < `anonymous namespace'::FiberMain
+[  10.2656] profile:   0.5% __imp__sub_829D0720 < __imp__sub_829CBF98 < __imp__sub_8277EF98
+[  10.2656] profile:   0.5% __imp__sub_82AB3368 < __imp__sub_82AB3F40 < __imp__sub_82AB42B8
+[  10.2656] profile:   0.3% __imp__sub_82AB2FE0 < __imp__sub_82AB4B10 < `anonymous namespace'::FiberMain
+[  10.2656] profile:   0.3% __imp__sub_82AB2F78 < __imp__sub_82AB4B10 < `anonymous namespace'::FiberMain
+[  10.2656] profile:   0.3% __imp__NtYieldExecution < __imp__sub_825281A8 < __imp__sub_821FB200
+[  10.2656] profile:   0.3% __imp__sub_821FB200 < __imp__sub_822A99F8 < __imp__sub_8271BC68
+[  10.2656] profile:   0.3% __imp__sub_829CEBB0 < __imp__sub_829D0720 < __imp__sub_829CBF98
+[  10.2656] profile:   0.3% SwitchToThread < __imp__NtYieldExecution < __imp__sub_825281A8
+[  10.2656] profile:   0.3% __imp__sub_82AB2718 < __imp__sub_82AB27D0 < __imp__sub_82AB3B68
+[  10.2656] profile:   0.3% TraceImport < __imp__NtYieldExecution < __imp__sub_825281A8
+[  10.2656] profile:   0.2% __imp__sub_825281A8 < __imp__sub_821FB200 < __imp__sub_822A99F8
+[  10.2656] profile:   0.2% `anonymous namespace'::NotePolling < __imp__NtYieldExecution < __imp__sub_825281A8
+[  10.2656] profile:   0.2% __imp__sub_829DDCA8 < __imp__sub_829D5260 < __imp__sub_829D0720
+[  10.2656] profile:   0.1% __imp__sub_82AB3B68 < __imp__sub_82AB3F40 < __imp__sub_82AB42B8
+[  10.2656] profile:   0.1% __imp__sub_82AB3368 < __imp__sub_82AB3F40 < __imp__sub_82AB4B10
+[  10.2656] profile:   0.1% __imp__sub_829F6270 < __imp__sub_829DC458 < __imp__sub_829DC4C0
+[  10.2656] profile:   0.1% __imp__sub_822593A8 < __imp__sub_821FB200 < __imp__sub_822AA480
+[  10.2656] profile:   0.1% __imp__sub_822593A8 < __imp__sub_821FB200 < __imp__sub_822A60A0
+[  10.2656] profile:   0.1% __imp__sub_822593A8 < __imp__sub_821FB200 < __imp__sub_821F8FA0
+[  10.2656] profile:   0.1% __imp__sub_821ED248 < __imp__sub_82489CD0 < __imp__sub_822593A8
+[  10.2656] profile:   0.1% __imp__sub_82AB27D0 < __imp__sub_82AB3B68 < __imp__sub_82AB3F40
+[  10.2656] profile:   0.1% __imp__sub_829D59D0 < __imp__sub_829D0720 < __imp__sub_829CBF98
+[  10.2656] profile:   0.1% __imp__sub_829D5260 < __imp__sub_829D0720 < __imp__sub_829CBF98
+[  10.2656] profile:   0.1% __imp__sub_829D0568 < __imp__sub_829D0618 < __imp__sub_829D0720
+[  10.2656] profile:   0.1% __imp__sub_822CE8A8 < __imp__sub_821ED248 < __imp__sub_82489CD0
+[  10.2656] profile:   0.1% __imp__sub_822593A8 < __imp__sub_821FB200 < __imp__sub_822AAB98
+[  10.2656] profile:   0.1% __imp__sub_822593A8 < __imp__sub_821FB200 < __imp__sub_822AA6B8
+[  10.2656] profile:   0.1% __imp__sub_822593A8 < __imp__sub_821FB200 < __imp__sub_822A6010
+[  10.2656] profile:   0.1% __imp__sub_822593A8 < __imp__sub_821FB200 < __imp__sub_821F91C8
+[  10.2656] profile:   0.1% __imp__sub_82200268 < __imp__sub_821FF498 < __imp__sub_82202F38
+[  10.2656] profile:   0.1% NtDeviceIoControlFile < DeviceIoControl < DeviceIoControl
+[  10.2656] profile:   0.1% __imp__sub_82AB2BB8 < __imp__sub_82AB3B68 < __imp__sub_82AB3F40
+[  10.2656] profile:   0.1% __imp__sub_829F9920 < __imp__sub_829FAC68 < __imp__sub_829E8138
+[  10.2656] profile:   0.1% __imp__sub_829E18F8 < __imp__sub_829D59D0 < __imp__sub_829D0720
+[  10.2656] profile:   0.1% __imp__sub_829DD808 < __imp__sub_829D0720 < __imp__sub_829CBF98
+[  10.2656] profile:   0.1% __imp__sub_829DBAA8 < __imp__sub_829E1998 < __imp__sub_829D0720
+[  10.2656] profile:   0.1% __imp__sub_829D5968 < __imp__sub_829D5AB8 < __imp__sub_829D0720
+[  10.2656] profile:   0.1% __imp__sub_829D0120 < __imp__sub_829D0720 < __imp__sub_829CBF98
+[  10.2656] profile:   0.1% __imp__sub_829CF738 < __imp__sub_829CFCF0 < __imp__sub_829D4C30
+[  10.2656] profile:   0.1% __imp__sub_825398B8 < __imp__sub_82533848 < __imp__sub_82533908
+[  10.2656] profile:   0.1% __imp__sub_825281A8 < __imp__sub_821FB200 < __imp__sub_822AA200
+[  10.2656] profile:   0.1% __imp__sub_822593A8 < __imp__sub_821FB200 < __imp__sub_822AA200
+[  10.2656] profile:   0.1% __imp__sub_822593A8 < __imp__sub_821FB200 < __imp__sub_822096C0
+[  10.2656] profile:   0.1% __imp__sub_82251B78 < __imp__sub_826F1C00 < __imp__sub_82781098
+[  10.2656] profile:   0.1% __imp__sub_821FE330 < __imp__sub_821FF498 < __imp__sub_82202F38
+[  10.2656] profile:   0.1% __imp__sub_821F2B30 < __imp__sub_821F2928 < __imp__sub_821F2608
+[  10.2656] profile:   0.1% __imp__sub_821F2A90 < __imp__sub_821F29C0 < __imp__sub_821F2608
+[  10.2656] profile:   0.1% __imp__sub_821F26D8 < __imp__sub_821F2738 < __imp__sub_821F2838
+[  10.2656] profile:   0.1% ZwQueryFullAttributesFile < GetFileAttributesExW < __imp__NtQueryFullAttributesFile
+[  10.2656] profile:   0.1% RtlAcquireSRWLockExclusive < mtx_do_lock < PPCMsrChanged
+[  10.2656] profile:   0.1% NtReadFile < ReadFile < __imp__NtReadFile
+[  10.4713] xma: 5 s: 0 decode errors, 2 discontinuity flushes, 2 codec reopens, 84 pool waits, 103 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 4 rate/channel changes, 0 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  10.4713] xma: 5 s: 128 decoded samples dropped unplayed at stream restarts
+[  11.1475] precompile: done in 1.5 s (112 shaders loaded, 3654 pipelines started)
+[  11.2556] static shaders: 823 loaded from static_shaders.bin
+[  11.3005] spirv direct: 600 shaders translated directly (0.66 ms average)
+[  11.3570] spirv direct: 700 shaders translated directly (0.65 ms average)
+[  11.4335] spirv direct: 800 shaders translated directly (0.66 ms average)
+[  11.4703] xma: id A1000180: rate/channel bits 0/0 -> 0/1
+[  11.4826] grid test: race start 40550D10 phase 3 flags 1 1 0, clock 0.114 s (main frame 1827)
+[  11.4826] grid test: race start under way: presses stopped
+[  11.5139] spirv direct: 900 shaders translated directly (0.67 ms average)
+[  11.5394] static shaders: vertex shader variants in the seed: 92, 92 rebuilt from the shipped shaders, 0 new to compile
+[  11.5394] static shaders: 456 new, 0 to compile (prepared in 0.4 s)
+[  11.5418] seed pipelines: 3647 listed, 3647 already built, 0 to build (0 of them stored ones the warm-up skipped), 0 need 0 shaders the game makes at run time
+[  11.5671] long frame 1009: 2283.34 ms (avg 8.33) | 1249 draws | idle 228.46 ms | gpu wait 0.00 ms | builds 0 waits 0.00 ms, 2716 pipelines, 2 created | textures 0 new 0 changed 0 KB 0.00 ms | swap 1863.75 ms | fences 0.00 ms | replay 0.00 ms | cpu 1159.84 ms (avg 0.07)
+[  11.5671] perf lite: 31.7 fps, 31.55 ms/frame (p99 2283.34 ms, max 2283.34 ms) | 138 draws/frame | GPU 0.00 ms/frame | draw thread 36% busy | 1 long
+[  11.5740] long stacks: 2283.3 ms frame, 1095 samples; top functions:
+[  11.5740] long stacks:   ZwDelayExecution x392 | RtlSizeHeap x158 | RtlFreeHeap x75 | NtCreateFile x49 | PrecompileAll x43 | `anonymous namespace'::__std_mismatch_impl<`anonymous namespace'::_Fin~ x29 | __crt_stdio_output::output_processor<char,__crt_stdio_output::string_o~ x21 | NtAlertThreadByThreadId x20 | memcpy_repmovs x18 | RtlAllocateHeap x18
+[  11.5741] long stacks:   x392 ZwDelayExecution < RtlDelayExecution < SleepEx < PrecompileAll < RendererOnSwapImpl < RendererOnSwap < FrameOnSwap < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  11.5741] long stacks:   x43 PrecompileAll < RendererOnSwapImpl < RendererOnSwap < FrameOnSwap < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  11.5741] long stacks:   x38 NtCreateFile < GetDriveTypeW < CreateFileW < __std_fs_open_handle < std::filesystem::_Canonical < std::filesystem::weakly_canonical < std::filesystem::relative < `anonymous namespace'::SearchFiles::<lambda_3>::operator() < `anonymous namespace'::ListOnce < StaticShadersSaved < PrecompileAll < RendererOnSwapImpl < RendererOnSwap < FrameOnSwap < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  11.5741] long stacks:   x33 RtlSizeHeap < RtlSizeHeap < RtlAllocateHeap < _malloc_base < operator new < `anonymous namespace'::EnsurePipeline < PrecompileAll < RendererOnSwapImpl < RendererOnSwap < FrameOnSwap < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  11.5741] long stacks:   x19 NtAlertThreadByThreadId < RtlWakeConditionVariable < _Cnd_signal < `anonymous namespace'::PipelinePool::Push < `anonymous namespace'::EnsurePipeline < PrecompileAll < RendererOnSwapImpl < RendererOnSwap < FrameOnSwap < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  11.5741] long stacks:   x15 std::_Hash<std::_Uset_traits<`anonymous namespace'::PipelineKey,std::_~ < `anonymous namespace'::EnsurePipeline < PrecompileAll < RendererOnSwapImpl < RendererOnSwap < FrameOnSwap < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  11.6458] gpu: swap #1020
+[  11.6673] long frame 1011: 25.95 ms (avg 8.71) | 1113 draws | idle 3.24 ms | gpu wait 0.00 ms | builds 0 waits 0.00 ms, 0 pipelines, 0 created | textures 0 new 0 changed 0 KB 0.00 ms | swap 4.08 ms | fences 0.00 ms | replay 0.00 ms | cpu 14.01 ms (avg 0.08)
+[  11.6673] long frame 1014: 20.42 ms (avg 9.15) | 1099 draws | idle 0.66 ms | gpu wait 0.00 ms | builds 0 waits 0.00 ms, 0 pipelines, 0 created | textures 0 new 0 changed 0 KB 0.00 ms | swap 4.08 ms | fences 0.00 ms | replay 0.00 ms | cpu 17.26 ms (avg 0.09)
+[  11.6792] gpu: swap #1024
+[  12.1462] gpu: swap #1080
+[  12.3564] xma: id A1000180: rate/channel bits 0/1 -> 0/0
+[  12.3565] xma: id A10002C0: rate/channel bits 3/0 -> 0/0
+[  12.3566] xma: id A1000300: rate/channel bits 3/0 -> 0/0
+[  12.3566] xma: id A1000340: rate/channel bits 3/0 -> 0/0
+[  12.3659] renderer: EDRAM colour surface at base 500000
+[  12.3706] front end: frame limit 360 fps (race; cap 360)
+[  12.3706] one tile: scenario 1 (2 tiles) drawn as one 1280x720 tile
+[  12.3737] gpu: frame cap 360 fps (max 360, vsync off)
+[  12.4673] gpu: swap #1140
+[  12.5705] perf lite: 158.8 fps, 6.30 ms/frame (p99 20.42 ms, max 25.95 ms) | 647 draws/frame | GPU 0.01 ms/frame | draw thread 31% busy | 2 long
+[  12.6458] gpu: 251 distinct shaders seen
+[  12.6654] long stacks: 108.6 ms frame, 65 samples; top functions:
+[  12.6655] long stacks:   ZwWaitForAlertByThreadId x64 | `anonymous namespace'::WorkerLoop x1
+[  12.6655] long stacks:   x64 ZwWaitForAlertByThreadId < RtlWaitOnAddress < WaitOnAddress < __std_atomic_wait_direct < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  12.6655] long stacks:   x1 `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  12.6656] grid test: race start 40550D10 phase 3 flags 0 1 0, clock 0.010 s (main frame 2203)
+[  12.6706] long frame 1172: 108.56 ms (avg 3.50) | 2859 draws | idle 107.25 ms | gpu wait 0.00 ms | builds 0 waits 0.00 ms, 0 pipelines, 0 created | textures 0 new 0 changed 0 KB 0.00 ms | swap 0.01 ms | fences 0.00 ms | replay 0.00 ms | cpu 3.01 ms (avg 0.28)
+[  12.6751] xma: id A1000380: rate/channel bits 3/0 -> 0/0
+[  12.6752] xma: id A10003C0: rate/channel bits 3/0 -> 0/0
+[  12.6753] xma: id A1000400: rate/channel bits 3/0 -> 0/0
+[  12.6754] xma: A1000440 stepped 8 times waiting for a 1-channel codec: opened in place
+[  12.6757] xma: keeping 8 spare codecs for 1 ch 24000 Hz (8 taken between refills)
+[  12.6759] xma: id A1000440: rate/channel bits 3/0 -> 0/0
+[  12.6760] xma: A1000480 stepped 8 times waiting for a 1-channel codec: opened in place
+[  12.6768] xma: A10004C0 stepped 8 times waiting for a 1-channel codec: opened in place
+[  12.6776] xma: A1000540 stepped 8 times waiting for a 1-channel codec: opened in place
+[  12.6783] xma: A1000680 stepped 8 times waiting for a 1-channel codec: opened in place
+[  12.6817] xma: keeping 9 spare codecs for 1 ch 24000 Hz (9 taken between refills)
+[  12.6987] xma: keeping 7 spare codecs for 1 ch 48000 Hz (7 taken between refills)
+[  12.7081] xma: id A1000840: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  12.7172] xma: id A1000840: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  12.7283] xma: id A1000980: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  12.7392] xma: id A1000980: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  12.7710] long frame 1173: 11.81 ms (avg 3.72) | 899 draws | idle 11.43 ms | gpu wait 0.00 ms | builds 0 waits 0.00 ms, 0 pipelines, 0 created | textures 0 new 0 changed 0 KB 0.00 ms | swap 0.01 ms | fences 0.00 ms | replay 0.00 ms | cpu 0.70 ms (avg 0.30)
+[  12.7839] shader scan: 6 candidates changed before they were confirmed (6 so far)
+[  12.8205] gpu: swap #1200
+[  12.8209] renderer: frame 1200: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  12.8779] xma: id A1000840: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  12.9005] xma: id A1000840: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  12.9199] xma: id A1000B00: read offset written by the title: 834 (expected 32), buffer 0 packet 0
+[  12.9904] xma: id A1000300: rate/channel bits 0/0 -> 3/0
+[  13.0687] xma: id A1000840: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  13.0910] xma: id A1000840: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  13.1537] gpu: swap #1260
+[  13.2832] xma: id A1000840: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  13.3087] xma: id A1000840: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  13.4220] xma: id A1000B00: read offset written by the title: 834 (expected 32), buffer 0 packet 0
+[  13.4864] gpu: swap #1320
+[  13.5227] xma: id A1000740: rate/channel bits 3/0 -> 1/0
+[  13.5501] xma: id A10007C0: read offset written by the title: 41 (expected 32), buffer 0 packet 0
+[  13.5737] perf lite: 162.9 fps, 6.14 ms/frame (p99 11.81 ms, max 108.56 ms) | 1007 draws/frame | GPU 0.02 ms/frame | draw thread 12% busy | 2 long
+[  13.5737] perf lite: VRAM 1363 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  13.8199] gpu: swap #1380
+[  14.0731] xma: id A1000B00: read offset written by the title: 834 (expected 32), buffer 0 packet 0
+[  14.0733] xma: id A10007C0: read offset written by the title: 41 (expected 32), buffer 0 packet 0
+[  14.1531] gpu: swap #1440
+[  14.3432] shader scan: 1 candidates changed before they were confirmed (7 so far)
+[  14.4664] xma: id A1000940: read offset written by the title: 1428 (expected 32), buffer 0 packet 0
+[  14.4862] gpu: swap #1500
+[  14.5779] perf lite: 180.1 fps, 5.55 ms/frame (p99 6.71 ms, max 6.92 ms) | 1190 draws/frame | GPU 0.02 ms/frame | draw thread 17% busy | 0 long
+[  14.7015] xma: id A10007C0: read offset written by the title: 41 (expected 32), buffer 0 packet 0
+[  14.8193] gpu: swap #1560
+[  14.8774] xma: id A1000B00: read offset written by the title: 834 (expected 32), buffer 0 packet 0
+[  15.1524] gpu: swap #1620
+[  15.2667] profile: thread 3, 3252 samples
+[  15.2667] profile:  61.1% ZwWaitForAlertByThreadId < RtlSleepConditionVariableSRW < SleepConditionVariableSRW
+[  15.2667] profile:  23.1% ZwDelayExecution < RtlDelayExecution < SwitchToThread
+[  15.2667] profile:   1.9% RtlDelayExecution < SwitchToThread < __imp__NtYieldExecution
+[  15.2667] profile:   0.4% TraceImportReturn < __imp__NtYieldExecution < __imp__sub_825281A8
+[  15.2667] profile:   0.4% __imp__sub_8272DED8 < __imp__sub_8273C128 < __imp__sub_8273A618
+[  15.2667] profile:   0.3% __imp__sub_82723688 < __imp__sub_82724D08 < __imp__sub_82725470
+[  15.2667] profile:   0.3% __imp__sub_827235A0 < __imp__sub_82723688 < __imp__sub_8271CCD8
+[  15.2667] profile:   0.3% __imp__sub_82210730 < __imp__sub_8272D998 < __imp__sub_8273C128
+[  15.2667] profile:   0.3% __imp__NtYieldExecution < __imp__sub_825281A8 < __imp__sub_821FB200
+[  15.2667] profile:   0.3% __imp__sub_8273C128 < __imp__sub_8273A618 < __imp__sub_8273A570
+[  15.2667] profile:   0.3% __imp__sub_82210730 < __imp__sub_8272D998 < __imp__sub_8273BDD8
+[  15.2667] profile:   0.3% SwitchToThread < __imp__NtYieldExecution < __imp__sub_825281A8
+[  15.2667] profile:   0.2% __imp__sub_82726798 < __imp__sub_82725470 < __imp__sub_82723468
+[  15.2667] profile:   0.2% __imp__sub_82210730 < __imp__sub_8272D998 < __imp__sub_8273A6D0
+[  15.2667] profile:   0.2% __imp__sub_82210730 < __imp__sub_8272DED8 < __imp__sub_8273C128
+[  15.2667] profile:   0.2% TraceImport < __imp__NtYieldExecution < __imp__sub_825281A8
+[  15.2667] profile:   0.2% __imp__sub_8273A338 < __imp__sub_8273AB60 < __imp__sub_8273A178
+[  15.2667] profile:   0.2% __imp__sub_8272A690 < __imp__sub_8272A900 < __imp__sub_8272A9E0
+[  15.2667] profile:   0.2% __imp__sub_82724D08 < __imp__sub_82725470 < __imp__sub_82723468
+[  15.2667] profile:   0.2% `anonymous namespace'::NotePolling < __imp__NtYieldExecution < __imp__sub_825281A8
+[  15.2667] profile:   0.2% __imp__sub_82AB5810 < __imp__sub_82AB6210 < __imp__sub_82AB6308
+[  15.2667] profile:   0.2% __imp__sub_8273BB30 < __imp__sub_8273A618 < __imp__sub_8273A570
+[  15.2667] profile:   0.2% __imp__sub_8273ACD8 < __imp__sub_8273A570 < __imp__sub_8273A570
+[  15.2667] profile:   0.2% __imp__sub_8273A570 < __imp__sub_8273A570 < __imp__sub_8273A570
+[  15.2667] profile:   0.2% __imp__sub_8272C6F8 < __imp__sub_82723468 < __imp__sub_82AFA330
+[  15.2667] profile:   0.2% __imp__sub_827235A0 < __imp__sub_82723688 < __imp__sub_82724D08
+[  15.2667] profile:   0.2% __imp__sub_821FB200 < __imp__sub_821F91C8 < __imp__sub_821F9EA8
+[  15.2667] profile:   0.1% __imp__sub_8272A900 < __imp__sub_8272A9E0 < __imp__sub_82723468
+[  15.2667] profile:   0.1% __imp__sub_82725470 < __imp__sub_82723468 < __imp__sub_82AFA330
+[  15.2667] profile:   0.1% __imp__sub_827252C0 < __imp__sub_82725470 < __imp__sub_82723468
+[  15.2667] profile:   0.1% __imp__sub_8271CCD8 < __imp__sub_8273AB60 < __imp__sub_8273A178
+[  15.2667] profile:   0.1% __imp__sub_822593A8 < __imp__sub_821FB200 < __imp__sub_821F8FA0
+[  15.2667] profile:   0.1% __imp__sub_821FB200 < __imp__sub_822AA6B8 < __imp__sub_8271BC68
+[  15.2667] profile:   0.1% __imp__sub_821F2490 < __imp__sub_821F2898 < __imp__sub_821F2738
+[  15.2667] profile:   0.1% NtDeviceIoControlFile < DeviceIoControl < DeviceIoControl
+[  15.2667] profile:   0.1% __imp__sub_8273A6D0 < __imp__sub_8273ACD8 < __imp__sub_8273A570
+[  15.2667] profile:   0.1% __imp__sub_8272D998 < __imp__sub_8273C128 < __imp__sub_8273A618
+[  15.2667] profile:   0.1% __imp__sub_8272D998 < __imp__sub_8273A6D0 < __imp__sub_8273ACD8
+[  15.2667] profile:   0.1% __imp__sub_827252C0 < __imp__sub_82729C80 < __imp__sub_82729E20
+[  15.2667] profile:   0.1% __imp__sub_82725200 < __imp__sub_8272A900 < __imp__sub_8272A9E0
+[  15.2667] profile:   0.1% __imp__sub_8252EE40 < __imp__sub_82210730 < __imp__sub_8272D998
+[  15.2667] profile:   0.1% __imp__sub_822BFC58 < __imp__sub_822BFD30 < __imp__sub_828B7A40
+[  15.2667] profile:   0.1% __imp__sub_822593A8 < __imp__sub_821FB200 < __imp__sub_821F8F08
+[  15.2667] profile:   0.1% __imp__sub_8220B510 < __imp__sub_8220B098 < __imp__sub_8220A3C0
+[  15.2667] profile:   0.1% __imp__sub_821FB200 < __imp__sub_822A99F8 < __imp__sub_8271BC68
+[  15.2667] profile:   0.1% __imp__sub_821FB200 < __imp__sub_821F8FA0 < __imp__sub_821F9EA8
+[  15.2667] profile:   0.1% __imp__sub_821F2AD0 < __imp__sub_821F2898 < __imp__sub_821F2738
+[  15.2667] profile:   0.1% __imp__sub_821ED248 < __imp__sub_82489CD0 < __imp__sub_822593A8
+[  15.2667] profile:   0.1% __imp__sub_82AB51B8 < __imp__sub_82AB5810 < __imp__sub_82AB6210
+[  15.2667] profile:   0.1% __imp__sub_827FB580 < __imp__sub_821F51C8 < __imp__sub_821F0D98
+[  15.2667] profile:   0.1% __imp__sub_8273AD80 < __imp__sub_8272DA30 < __imp__sub_8272E2D0
+[  15.2667] profile:   0.1% __imp__sub_8273A618 < __imp__sub_8273A570 < __imp__sub_8273A570
+[  15.2667] profile:   0.1% __imp__sub_8272C300 < __imp__sub_8272C6F8 < __imp__sub_82723468
+[  15.2667] profile:   0.1% __imp__sub_82729310 < __imp__sub_82725470 < __imp__sub_82723468
+[  15.2667] profile:   0.1% __imp__sub_82728C38 < __imp__sub_8273B998 < __imp__sub_8273A178
+[  15.2667] profile:   0.1% __imp__sub_82723F00 < __imp__sub_82729310 < __imp__sub_82725470
+[  15.2667] profile:   0.1% __imp__sub_82716678 < __imp__sub_82703C18 < __imp__sub_821F5DE8
+[  15.2667] profile:   0.1% __imp__sub_825281A8 < __imp__sub_821FB200 < __imp__sub_821F91C8
+[  15.2667] profile:   0.1% __imp__sub_822CE8A8 < __imp__sub_821ED248 < __imp__sub_82489CD0
+[  15.2667] profile:   0.1% __imp__sub_822CE420 < __imp__sub_822CE710 < __imp__sub_821E1690
+[  15.4000] xma: id A10007C0: read offset written by the title: 41 (expected 32), buffer 0 packet 0
+[  15.4733] xma: 5 s: 0 decode errors, 118 discontinuity flushes, 189 codec reopens, 56 pool waits, 918 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 11 rate/channel changes, 19 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  15.4733] xma: 5 s: 7552 decoded samples dropped unplayed at stream restarts
+[  15.4848] gpu: swap #1680
+[  15.5816] perf lite: 180.2 fps, 5.55 ms/frame (p99 6.63 ms, max 6.81 ms) | 1202 draws/frame | GPU 0.02 ms/frame | draw thread 22% busy | 0 long
+[  15.6940] xma: id A1000940: read offset written by the title: 1428 (expected 32), buffer 0 packet 0
+[  15.8186] gpu: swap #1740
+[  16.1514] gpu: swap #1800
+[  16.1519] renderer: frame 1800: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  16.1584] xma: id A10007C0: read offset written by the title: 41 (expected 32), buffer 0 packet 0
+[  16.4846] gpu: swap #1860
+[  16.5856] perf lite: 179.9 fps, 5.56 ms/frame (p99 6.57 ms, max 6.61 ms) | 1202 draws/frame | GPU 0.02 ms/frame | draw thread 16% busy | 0 long
+[  16.8179] gpu: swap #1920
+[  16.9475] xma: id A10007C0: read offset written by the title: 41 (expected 32), buffer 0 packet 0
+[  17.0597] xma: id A1000940: read offset written by the title: 1428 (expected 32), buffer 0 packet 0
+[  17.1507] gpu: swap #1980
+[  17.4842] gpu: swap #2040
+[  17.5287] gpu: swap #2048
+[  17.5892] perf lite: 180.2 fps, 5.55 ms/frame (p99 6.60 ms, max 6.72 ms) | 1072 draws/frame | GPU 0.02 ms/frame | draw thread 19% busy | 0 long
+[  17.6579] xma: id A1000200: rate/channel bits 0/0 -> 3/0
+[  17.7362] xma: id A1000300: rate/channel bits 3/0 -> 0/0
+[  17.7418] xma: id A1000740: rate/channel bits 1/0 -> 3/0
+[  17.7575] xma: id A10007C0: read offset written by the title: 41 (expected 32), buffer 0 packet 0
+[  17.8171] gpu: swap #2100
+[  17.9286] xma: id A1000B80: rate/channel bits 0/0 -> 3/0
+[  18.1417] xma: id A1000980: read offset written by the title: 1029 (expected 32), buffer 0 packet 0
+[  18.1502] gpu: swap #2160
+[  18.1788] xma: id A1000C40: read offset written by the title: 834 (expected 32), buffer 0 packet 0
+[  18.1988] xma: id A1000B40: read offset written by the title: 1292 (expected 32), buffer 0 packet 0
+[  18.3236] xma: id A1000840: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  18.3340] xma: id A1000840: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  18.3705] xma: id A1000300: rate/channel bits 0/0 -> 3/0
+[  18.3807] xma: id A1000300: read offset written by the title: 485 (expected 32), buffer 1 packet 0
+[  18.4716] xma: id A1000CC0: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  18.4828] xma: id A1000CC0: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  18.4833] gpu: swap #2220
+[  18.5149] xma: id A1000840: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  18.5362] xma: id A1000780: rate/channel bits 3/0 -> 0/0
+[  18.5365] xma: id A1000840: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  18.5949] perf lite: 180.2 fps, 5.55 ms/frame (p99 6.53 ms, max 6.57 ms) | 1020 draws/frame | GPU 0.02 ms/frame | draw thread 17% busy | 0 long
+[  18.5950] perf lite: VRAM 1363 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  18.6848] xma: id A1000840: rate/channel bits 3/0 -> 0/0
+[  18.6850] xma: id A10008C0: rate/channel bits 3/0 -> 0/0
+[  18.6851] xma: id A1000980: rate/channel bits 3/0 -> 0/0
+[  18.7701] xma: id A1000300: read offset written by the title: 485 (expected 32), buffer 1 packet 0
+[  18.8164] gpu: swap #2280
+[  18.8978] xma: id A1000040: rate/channel bits 0/0 -> 2/1
+[  18.9618] xma: id A1000780: rate/channel bits 0/0 -> 3/0
+[  18.9619] xma: id A1000780: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  18.9681] xma: id A1000780: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  19.1496] gpu: swap #2340
+[  19.1914] xma: id A1000080: rate/channel bits 0/0 -> 3/0
+[  19.2289] xma: id A10000C0: rate/channel bits 0/0 -> 3/0
+[  19.3791] xma: id A10007C0: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  19.3862] xma: id A10007C0: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  19.4828] gpu: swap #2400
+[  19.4833] renderer: frame 2400: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  19.5277] xma: id A10007C0: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  19.5491] xma: id A10007C0: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  19.5982] perf lite: 180.1 fps, 5.55 ms/frame (p99 6.58 ms, max 6.70 ms) | 991 draws/frame | GPU 0.02 ms/frame | draw thread 11% busy | 0 long
+[  19.6995] xma: id A10007C0: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  19.7210] xma: id A10007C0: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  19.7520] xma: id A1000780: read offset written by the title: 834 (expected 32), buffer 0 packet 0
+[  19.8160] gpu: swap #2460
+[  19.8852] xma: id A10007C0: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  19.8901] xma: id A1000B80: rate/channel bits 3/0 -> 2/1
+[  19.8915] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.8915] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.8915] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.8915] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.8915] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.8915] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.8915] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.8915] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.9014] xma: id A1000040: rate/channel bits 2/1 -> 3/0
+[  19.9015] xma: id A1000040: read offset written by the title: 1292 (expected 32), buffer 0 packet 0
+[  19.9137] xma: id A10007C0: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  19.9138] xma: id A1000300: read offset written by the title: 485 (expected 32), buffer 1 packet 0
+[  19.9282] xma: id A1000A00: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  19.9394] xma: id A1000A00: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  20.1493] gpu: swap #2520
+[  20.2108] xma: id A1000180: rate/channel bits 0/0 -> 3/0
+[  20.2668] profile: thread 3, 3267 samples
+[  20.2668] profile:  88.8% ZwWaitForAlertByThreadId < RtlSleepConditionVariableSRW < SleepConditionVariableSRW
+[  20.2668] profile:   0.7% __imp__sub_8272DED8 < __imp__sub_8273C128 < __imp__sub_8273A618
+[  20.2668] profile:   0.7% __imp__sub_82210730 < __imp__sub_8272D998 < __imp__sub_8273A6D0
+[  20.2668] profile:   0.6% __imp__sub_8273C128 < __imp__sub_8273A618 < __imp__sub_8273A570
+[  20.2668] profile:   0.5% __imp__sub_82210730 < __imp__sub_8272D998 < __imp__sub_8273C128
+[  20.2668] profile:   0.5% __imp__sub_82210730 < __imp__sub_8272D998 < __imp__sub_8273BDD8
+[  20.2668] profile:   0.3% __imp__sub_8273A338 < __imp__sub_8273AB60 < __imp__sub_8273A178
+[  20.2668] profile:   0.3% __imp__sub_827235A0 < __imp__sub_82723688 < __imp__sub_8271CCD8
+[  20.2668] profile:   0.3% __imp__sub_8273BB30 < __imp__sub_8273A618 < __imp__sub_8273A570
+[  20.2668] profile:   0.3% __imp__sub_8273A570 < __imp__sub_8273A570 < __imp__sub_8273A570
+[  20.2668] profile:   0.2% __imp__sub_8273A618 < __imp__sub_8273A570 < __imp__sub_8273A570
+[  20.2668] profile:   0.2% __imp__sub_8273A6D0 < __imp__sub_8273C128 < __imp__sub_8273A618
+[  20.2668] profile:   0.2% __imp__sub_8252EE40 < __imp__sub_82210730 < __imp__sub_8272D998
+[  20.2668] profile:   0.1% __imp__sub_8273AB60 < __imp__sub_8273A178 < __imp__sub_8272D590
+[  20.2668] profile:   0.1% __imp__sub_8272C258 < __imp__sub_8272C6F8 < __imp__sub_82723468
+[  20.2668] profile:   0.1% __imp__sub_8272A690 < __imp__sub_8272A900 < __imp__sub_8272A9E0
+[  20.2668] profile:   0.1% __imp__sub_82726798 < __imp__sub_82725470 < __imp__sub_82723468
+[  20.2668] profile:   0.1% __imp__sub_82724D08 < __imp__sub_82725470 < __imp__sub_82723468
+[  20.2668] profile:   0.1% __imp__sub_8271CCD8 < __imp__sub_8273AB60 < __imp__sub_8273A178
+[  20.2668] profile:   0.1% __imp__sub_82210730 < __imp__sub_8272E2D0 < __imp__sub_8273A618
+[  20.2668] profile:   0.1% __imp__sub_821F8468 < __imp__sub_8273AD80 < __imp__sub_8272DA30
+[  20.2668] profile:   0.1% __imp__sub_8272DD38 < __imp__sub_8272E2D0 < __imp__sub_8273A618
+[  20.2668] profile:   0.1% __imp__sub_8272D998 < __imp__sub_8273A6D0 < __imp__sub_8273ACD8
+[  20.2668] profile:   0.1% __imp__sub_82729C80 < __imp__sub_82729E20 < __imp__sub_827297A8
+[  20.2668] profile:   0.1% __imp__sub_827252C0 < __imp__sub_82725470 < __imp__sub_82723468
+[  20.2668] profile:   0.1% __imp__sub_82210730 < __imp__sub_8272DED8 < __imp__sub_8273C128
+[  20.2668] profile:   0.1% __imp__sub_821F8548 < __imp__sub_8273AD80 < __imp__sub_8272DA30
+[  20.2668] profile:   0.1% __imp__sub_821F2AD0 < __imp__sub_821F2898 < __imp__sub_821F2738
+[  20.2668] profile:   0.1% __imp__sub_8273C000 < __imp__sub_8273C128 < __imp__sub_8273A618
+[  20.2668] profile:   0.1% __imp__sub_8273ACD8 < __imp__sub_8273A570 < __imp__sub_8273A570
+[  20.2668] profile:   0.1% __imp__sub_8273A6D0 < __imp__sub_8273ACD8 < __imp__sub_8273A570
+[  20.2668] profile:   0.1% __imp__sub_8272D998 < __imp__sub_8273A6D0 < __imp__sub_8273C128
+[  20.2668] profile:   0.1% __imp__sub_8272A448 < __imp__sub_82729C80 < __imp__sub_82729E20
+[  20.2668] profile:   0.1% __imp__sub_827252C0 < __imp__sub_82729C80 < __imp__sub_82729E20
+[  20.2668] profile:   0.1% __imp__sub_82724CE8 < __imp__sub_8272C6F8 < __imp__sub_82723468
+[  20.2668] profile:   0.1% __imp__sub_82723688 < __imp__sub_8271CCD8 < __imp__sub_8273AB60
+[  20.2668] profile:   0.1% __imp__sub_826EEEE0 < __imp__sub_826EF098 < __imp__sub_826EF570
+[  20.2668] profile:   0.1% __imp__sub_826EEE28 < __imp__sub_826EEEE0 < __imp__sub_826EF098
+[  20.2668] profile:   0.1% __imp__sub_82530850 < __imp__sub_82530040 < __imp__sub_822230C0
+[  20.2668] profile:   0.1% __imp__sub_82530850 < __imp__sub_82530040 < __imp__sub_821F1420
+[  20.2669] profile:   0.1% __imp__sub_82235058 < __imp__sub_822BFC58 < __imp__sub_822BFD30
+[  20.2669] profile:   0.1% __imp__sub_82211290 < __imp__sub_82210F48 < __imp__sub_8220E058
+[  20.2669] profile:   0.1% __imp__sub_8220B510 < __imp__sub_8220B098 < __imp__sub_8220A3C0
+[  20.2669] profile:   0.1% __imp__sub_821FCD78 < __imp__sub_821FB618 < __imp__sub_821ED3F8
+[  20.2669] profile:   0.1% __imp__sub_821F26D8 < __imp__sub_821F2608 < __imp__sub_82823018
+[  20.2669] profile:   0.1% __imp__sub_821EB770 < __imp__sub_821F5DE8 < __imp__sub_822992C8
+[  20.2669] profile:   0.1% __imp__RtlEnterCriticalSection < __imp__sub_821F29C0 < __imp__sub_821F2608
+[  20.2669] profile:   0.1% RtlSleepConditionVariableSRW < SleepConditionVariableSRW < _Cnd_wait
+[  20.2669] profile:   0.0% mtx_do_lock < PPCMsrChanged < __imp__sub_828259C0
+[  20.2669] profile:   0.0% __imp__sub_82B28530 < __imp__sub_822FDCF8 < __imp__sub_823007F0
+[  20.2669] profile:   0.0% __imp__sub_82AF9FE8 < __imp__sub_8272CEB8 < __imp__sub_82703C18
+[  20.2669] profile:   0.0% __imp__sub_82AA2E78 < __imp__sub_82AA1930 < __imp__sub_82AA3C50
+[  20.2669] profile:   0.0% __imp__sub_82AA1268 < __imp__sub_827A7AE0 < __imp__sub_827AEB18
+[  20.2669] profile:   0.0% __imp__sub_828B9CE0 < __imp__sub_828AF030 < __imp__sub_828AF588
+[  20.2669] profile:   0.0% __imp__sub_828B7A40 < __imp__sub_828B95F8 < __imp__sub_828AFBE0
+[  20.2669] profile:   0.0% __imp__sub_828B37A8 < __imp__sub_82367150 < __imp__sub_82367390
+[  20.2669] profile:   0.0% __imp__sub_828B2A68 < __imp__sub_82302BD0 < __imp__sub_824332D0
+[  20.2669] profile:   0.0% __imp__sub_828AF030 < __imp__sub_828AF608 < __imp__sub_828B25D8
+[  20.2669] profile:   0.0% __imp__sub_828A0C78 < __imp__sub_821E82A0 < __imp__sub_821E82E0
+[  20.2669] profile:   0.0% __imp__sub_8289CA68 < __imp__sub_8271C650 < __imp__sub_8271D200
+[  20.4737] xma: 5 s: 0 decode errors, 244 discontinuity flushes, 440 codec reopens, 15 pool waits, 1557 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 16 rate/channel changes, 39 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  20.4737] xma: 5 s: 15232 decoded samples dropped unplayed at stream restarts
+[  20.4826] gpu: swap #2580
+[  20.6026] perf lite: 179.9 fps, 5.56 ms/frame (p99 6.64 ms, max 7.47 ms) | 1565 draws/frame | GPU 0.02 ms/frame | draw thread 25% busy | 0 long
+[  20.8154] gpu: swap #2640
+[  20.8977] xma: id A1000300: rate/channel bits 3/0 -> 2/1
+[  21.1485] gpu: swap #2700
+[  21.1494] xma: id A1000B80: rate/channel bits 2/1 -> 3/0
+[  21.2053] long frame 2702: 14.75 ms (avg 5.55) | 2905 draws | idle 13.48 ms | gpu wait 0.00 ms | builds 0 waits 0.00 ms, 0 pipelines, 0 created | textures 0 new 0 changed 0 KB 0.00 ms | swap 0.01 ms | fences 0.00 ms | replay 0.00 ms | cpu 2.54 ms (avg 1.44)
+[  21.3290] gpu: swap #2760
+[  21.3782] xma: id A1000BC0: rate/channel bits 0/0 -> 3/0
+[  21.4957] gpu: swap #2820
+[  21.6070] perf lite: 252.0 fps, 3.97 ms/frame (p99 6.35 ms, max 14.75 ms) | 2455 draws/frame | GPU 0.02 ms/frame | draw thread 50% busy | 1 long
+[  21.6578] grid test: frozen on the grid at 9.003 s of the countdown clock (main frame 5443)
+[  21.6601] frame time: world frozen (dt 0) at main frame 5444
+[  21.6623] gpu: swap #2880
+[  21.7946] switch: FM3_FREEZE_TIME on (environment)
+[  21.8288] gpu: swap #2940
+[  21.9955] gpu: swap #3000
+[  21.9973] renderer: frame 3000: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  22.1623] gpu: swap #3060
+[  22.3288] gpu: swap #3120
+[  22.4954] gpu: swap #3180
+[  22.6115] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.06 ms, max 3.59 ms) | 2708 draws/frame | GPU 0.02 ms/frame | draw thread 86% busy | 0 long
+[  22.6620] gpu: swap #3240
+[  22.8289] gpu: swap #3300
+[  22.9952] gpu: swap #3360
+[  23.0364] xma: id A1000300: rate/channel bits 2/1 -> 0/0
+[  23.1618] gpu: swap #3420
+[  23.3285] gpu: swap #3480
+[  23.4956] gpu: swap #3540
+[  23.6159] perf lite: 360.0 fps, 2.78 ms/frame (p99 3.05 ms, max 4.62 ms) | 2708 draws/frame | GPU 0.02 ms/frame | draw thread 80% busy | 0 long
+[  23.6159] perf lite: VRAM 1363 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  23.6620] gpu: swap #3600
+[  23.6639] renderer: frame 3600: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  23.8286] gpu: swap #3660
+[  23.9952] gpu: swap #3720
+[  24.0776] xma: id A1000640: rate/channel bits 3/0 -> 0/0
+[  24.1618] gpu: swap #3780
+[  24.3286] gpu: swap #3840
+[  24.4951] gpu: swap #3900
+[  24.6202] perf lite: 360.1 fps, 2.78 ms/frame (p99 2.99 ms, max 3.06 ms) | 2706 draws/frame | GPU 0.02 ms/frame | draw thread 79% busy | 0 long
+[  24.6618] gpu: swap #3960
+[  24.8284] gpu: swap #4020
+[  24.9951] gpu: swap #4080
+[  25.0394] gpu: swap #4096
+[  25.1617] gpu: swap #4140
+[  25.2679] profile: thread 3, 3114 samples
+[  25.2679] profile:  86.9% ZwWaitForAlertByThreadId < RtlSleepConditionVariableSRW < SleepConditionVariableSRW
+[  25.2680] profile:   0.3% __imp__sub_82210730 < __imp__sub_8272D998 < __imp__sub_8273BDD8
+[  25.2680] profile:   0.3% __imp__sub_82AA2E78 < __imp__sub_82AA1930 < __imp__sub_82AA3C50
+[  25.2680] profile:   0.3% __imp__sub_8273C128 < __imp__sub_8273A618 < __imp__sub_8273A570
+[  25.2680] profile:   0.3% __imp__sub_8272DED8 < __imp__sub_8273C128 < __imp__sub_8273A618
+[  25.2680] profile:   0.3% __imp__sub_82210730 < __imp__sub_8272D998 < __imp__sub_8273C128
+[  25.2680] profile:   0.3% __imp__sub_8271BC68 < __imp__sub_8272E780 < __imp__sub_8272E968
+[  25.2680] profile:   0.2% __imp__sub_8273A338 < __imp__sub_8273AB60 < __imp__sub_8273A178
+[  25.2680] profile:   0.2% __imp__sub_8273BB30 < __imp__sub_8273A618 < __imp__sub_8273A570
+[  25.2680] profile:   0.2% __imp__sub_82726798 < __imp__sub_82725470 < __imp__sub_82723468
+[  25.2680] profile:   0.2% __imp__sub_8271B5E0 < __imp__sub_8272ED90 < __imp__sub_8272E968
+[  25.2680] profile:   0.2% __imp__sub_82210730 < __imp__sub_8272D998 < __imp__sub_8273A6D0
+[  25.2680] profile:   0.2% __imp__sub_827AFF68 < __imp__sub_827B0030 < __imp__sub_827B0088
+[  25.2680] profile:   0.2% __imp__sub_82724D08 < __imp__sub_82725470 < __imp__sub_82723468
+[  25.2680] profile:   0.2% __imp__sub_827235A0 < __imp__sub_82723688 < __imp__sub_8271CCD8
+[  25.2680] profile:   0.2% __imp__sub_826EEE28 < __imp__sub_826EEEE0 < __imp__sub_826EF098
+[  25.2680] profile:   0.2% __imp__sub_821FB200 < __imp__sub_822A99F8 < __imp__sub_8271BC68
+[  25.2680] profile:   0.1% __imp__sub_82AA23C0 < __imp__sub_82AA2E78 < __imp__sub_82AA1930
+[  25.2680] profile:   0.1% __imp__sub_828B03E8 < __imp__sub_828B2B48 < __imp__sub_8271C650
+[  25.2680] profile:   0.1% __imp__sub_8273A570 < __imp__sub_8273A570 < __imp__sub_8273A570
+[  25.2680] profile:   0.1% __imp__sub_8272A690 < __imp__sub_8272A900 < __imp__sub_8272A9E0
+[  25.2680] profile:   0.1% __imp__sub_827252C0 < __imp__sub_82725470 < __imp__sub_82723468
+[  25.2680] profile:   0.1% __imp__sub_82725200 < __imp__sub_8272A900 < __imp__sub_8272A9E0
+[  25.2680] profile:   0.1% __imp__sub_82723688 < __imp__sub_82724D08 < __imp__sub_82725470
+[  25.2680] profile:   0.1% __imp__sub_8271C650 < __imp__sub_8271CA40 < __imp__sub_8272E780
+[  25.2680] profile:   0.1% __imp__sub_8271A368 < __imp__sub_8271B4C0 < __imp__sub_8271CA40
+[  25.2680] profile:   0.1% __imp__sub_82533FC0 < __imp__sub_8271B5E0 < __imp__sub_8272ED90
+[  25.2680] profile:   0.1% __imp__sub_821F8548 < __imp__sub_8273AD80 < __imp__sub_8272DA30
+[  25.2680] profile:   0.1% __imp__sub_82AA12E8 < __imp__sub_82AA2E78 < __imp__sub_82AA1930
+[  25.2680] profile:   0.1% __imp__sub_8273AD80 < __imp__sub_8272DA30 < __imp__sub_8272E2D0
+[  25.2680] profile:   0.1% __imp__sub_8273ACD8 < __imp__sub_8273A570 < __imp__sub_8273A570
+[  25.2680] profile:   0.1% __imp__sub_8273A6D0 < __imp__sub_8273C128 < __imp__sub_8273A618
+[  25.2680] profile:   0.1% __imp__sub_8273A618 < __imp__sub_8273A570 < __imp__sub_8273A570
+[  25.2680] profile:   0.1% __imp__sub_8272E780 < __imp__sub_8272E968 < __imp__sub_8273A200
+[  25.2680] profile:   0.1% __imp__sub_8272D998 < __imp__sub_8273BDD8 < __imp__sub_8273C000
+[  25.2680] profile:   0.1% __imp__sub_8272A900 < __imp__sub_8272A9E0 < __imp__sub_82723468
+[  25.2680] profile:   0.1% __imp__sub_82729C80 < __imp__sub_82729E20 < __imp__sub_827297A8
+[  25.2680] profile:   0.1% __imp__sub_827235A0 < __imp__sub_82723688 < __imp__sub_82724D08
+[  25.2680] profile:   0.1% __imp__sub_827193E8 < __imp__sub_8271A368 < __imp__sub_8271B4C0
+[  25.2680] profile:   0.1% __imp__sub_826F0EB0 < __imp__sub_826F1DB8 < __imp__sub_8271C650
+[  25.2680] profile:   0.1% __imp__sub_825303A0 < __imp__sub_82AA38B0 < __imp__sub_82AA3C50
+[  25.2680] profile:   0.1% __imp__sub_82530040 < __imp__sub_822232C8 < __imp__sub_82223430
+[  25.2680] profile:   0.1% __imp__sub_82459198 < __imp__sub_828B2BC8 < __imp__sub_8271C650
+[  25.2680] profile:   0.1% __imp__sub_82306F58 < __imp__sub_8271BC68 < __imp__sub_8272E780
+[  25.2680] profile:   0.1% __imp__sub_822E82B8 < __imp__sub_82459198 < __imp__sub_828B2BC8
+[  25.2680] profile:   0.1% __imp__sub_822E82B8 < __imp__sub_82459198 < __imp__sub_828B2B48
+[  25.2680] profile:   0.1% __imp__sub_821FB4A8 < __imp__sub_821FB200 < __imp__sub_822A99F8
+[  25.2680] profile:   0.1% __imp__sub_821F2A90 < __imp__sub_821F2928 < __imp__sub_821F2608
+[  25.2680] profile:   0.1% __imp__sub_82AA3C50 < __imp__sub_82AA48C0 < __imp__sub_82A9F278
+[  25.2680] profile:   0.1% __imp__sub_82AA1458 < __imp__sub_82AA23C0 < __imp__sub_82AA2E78
+[  25.2680] profile:   0.1% __imp__sub_828B2B48 < __imp__sub_8271C650 < __imp__sub_8271CA40
+[  25.2680] profile:   0.1% __imp__sub_828B04D0 < __imp__sub_8271C650 < __imp__sub_8271CA40
+[  25.2680] profile:   0.1% __imp__sub_827A7AE0 < __imp__sub_827AEB18 < __imp__sub_8271C650
+[  25.2680] profile:   0.1% __imp__sub_8273BDD8 < __imp__sub_8273C000 < __imp__sub_8273C128
+[  25.2680] profile:   0.1% __imp__sub_8273A6D0 < __imp__sub_8273ACD8 < __imp__sub_8273A570
+[  25.2680] profile:   0.1% __imp__sub_8272DD38 < __imp__sub_8272E2D0 < __imp__sub_8273A618
+[  25.2680] profile:   0.1% __imp__sub_8272D998 < __imp__sub_8273C128 < __imp__sub_8273A618
+[  25.2680] profile:   0.1% __imp__sub_82726798 < __imp__sub_8273BB30 < __imp__sub_8273A618
+[  25.2680] profile:   0.1% __imp__sub_827252C0 < __imp__sub_82729C80 < __imp__sub_82729E20
+[  25.2680] profile:   0.1% __imp__sub_82723570 < __imp__sub_8273A338 < __imp__sub_8273AB60
+[  25.3281] gpu: swap #4200
+[  25.3302] renderer: frame 4200: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  25.4743] xma: 5 s: 0 decode errors, 275 discontinuity flushes, 478 codec reopens, 0 pool waits, 1502 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 5 rate/channel changes, 0 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  25.4743] xma: 5 s: 17600 decoded samples dropped unplayed at stream restarts
+[  25.4948] gpu: swap #4260
+[  25.6247] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.03 ms, max 3.07 ms) | 2706 draws/frame | GPU 0.02 ms/frame | draw thread 83% busy | 0 long
+[  25.6614] gpu: swap #4320
+[  25.7520] xma: id A10007C0: rate/channel bits 3/0 -> 0/0
+[  25.8280] gpu: swap #4380
+[  25.9948] gpu: swap #4440
+[  26.1612] gpu: swap #4500
+[  26.3283] gpu: swap #4560
+[  26.4625] vertex arena: 0.0 MB hashed, 0.00 MB copied, 0 hits a frame; 0 MB of 512 used, 0 buffers
+[  26.4945] gpu: swap #4620
+[  26.6288] perf lite: 360.0 fps, 2.78 ms/frame (p99 3.04 ms, max 3.27 ms) | 2706 draws/frame | GPU 0.02 ms/frame | draw thread 83% busy | 0 long
+[  26.6631] gpu: swap #4680
+[  26.8288] gpu: swap #4740
+[  26.9658] renderer: EDRAM colour surface at base 500000 released (unused for 3618 frames)
+[  26.9955] gpu: swap #4800
+[  26.9970] renderer: frame 4800: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  27.1618] gpu: swap #4860
+[  27.3282] gpu: swap #4920
+[  27.4955] gpu: swap #4980
+[  27.6329] perf lite: 360.0 fps, 2.78 ms/frame (p99 3.30 ms, max 4.40 ms) | 2706 draws/frame | GPU 0.02 ms/frame | draw thread 89% busy | 0 long
+[  27.6615] gpu: swap #5040
+[  27.8281] gpu: swap #5100
+[  27.9948] gpu: swap #5160
+[  28.1246] xma: id A1000C40: rate/channel bits 3/0 -> 0/0
+[  28.1247] xma: id A1000C80: rate/channel bits 3/0 -> 0/0
+[  28.1619] gpu: swap #5220
+[  28.3280] gpu: swap #5280
+[  28.3922] shader scan: 1 candidates changed before they were confirmed (8 so far)
+[  28.4946] gpu: swap #5340
+[  28.6378] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.11 ms, max 3.60 ms) | 2706 draws/frame | GPU 0.02 ms/frame | draw thread 81% busy | 0 long
+[  28.6378] perf lite: VRAM 1247 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  28.6612] gpu: swap #5400
+[  28.6631] renderer: frame 5400: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  28.8284] gpu: swap #5460
+[  28.9947] gpu: swap #5520
+[  29.1612] gpu: swap #5580
+[  29.3277] gpu: swap #5640
+[  29.4945] gpu: swap #5700
+[  29.6424] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.04 ms, max 3.74 ms) | 2706 draws/frame | GPU 0.02 ms/frame | draw thread 84% busy | 0 long
+[  29.6617] gpu: swap #5760
+[  29.8277] gpu: swap #5820
+[  29.9943] gpu: swap #5880
+[  30.1299] xma: id A1000000: rate/channel bits 0/0 -> 3/0
+[  30.1608] gpu: swap #5940
+[  30.2646] gpu: rendering on AMD Radeon RX 7900 XTX (1002:744C)
+[  30.2646] gpu memory: local 1247 / budget 23748 MB (peak 1247), shared 288 / 15147 MB (peak 288), RAM working set 3214 MB, private 5899 MB (peak 5899)
+[  30.2693] profile: thread 3, 3080 samples
+[  30.2693] profile:  83.8% ZwWaitForAlertByThreadId < RtlSleepConditionVariableSRW < SleepConditionVariableSRW
+[  30.2693] profile:   0.4% __imp__sub_827193E8 < __imp__sub_8271A368 < __imp__sub_8271B4C0
+[  30.2693] profile:   0.4% __imp__sub_8272DED8 < __imp__sub_8273C128 < __imp__sub_8273A618
+[  30.2693] profile:   0.4% __imp__sub_82725470 < __imp__sub_82723468 < __imp__sub_82AFA330
+[  30.2693] profile:   0.4% __imp__sub_8271BC68 < __imp__sub_8272E780 < __imp__sub_8272E968
+[  30.2693] profile:   0.3% __imp__sub_821FB200 < __imp__sub_822A99F8 < __imp__sub_8271BC68
+[  30.2693] profile:   0.3% __imp__sub_82210730 < __imp__sub_8272D998 < __imp__sub_8273BDD8
+[  30.2693] profile:   0.3% __imp__sub_82210730 < __imp__sub_8272D998 < __imp__sub_8273A6D0
+[  30.2693] profile:   0.3% __imp__sub_8272E780 < __imp__sub_8272E968 < __imp__sub_8273A200
+[  30.2693] profile:   0.3% __imp__sub_8272A900 < __imp__sub_8272A9E0 < __imp__sub_82723468
+[  30.2693] profile:   0.3% __imp__sub_826EEE28 < __imp__sub_826EEEE0 < __imp__sub_826EF098
+[  30.2693] profile:   0.3% __imp__sub_821FB4A8 < __imp__sub_822A99F8 < __imp__sub_8271BC68
+[  30.2693] profile:   0.2% __imp__sub_8273A338 < __imp__sub_8273AB60 < __imp__sub_8273A178
+[  30.2693] profile:   0.2% __imp__sub_82718D50 < __imp__sub_8272E780 < __imp__sub_8272E968
+[  30.2693] profile:   0.2% __imp__sub_8271CA40 < __imp__sub_8272E780 < __imp__sub_8272E968
+[  30.2693] profile:   0.2% __imp__sub_8271C650 < __imp__sub_8271CA40 < __imp__sub_8272E780
+[  30.2693] profile:   0.2% __imp__sub_82533FC0 < __imp__sub_8271B5E0 < __imp__sub_8272ED90
+[  30.2693] profile:   0.2% __imp__sub_82AA3C50 < __imp__sub_82AA48C0 < __imp__sub_82A9F278
+[  30.2693] profile:   0.2% __imp__sub_827A7AE0 < __imp__sub_827AEB18 < __imp__sub_8271C650
+[  30.2693] profile:   0.2% __imp__sub_827252C0 < __imp__sub_82725470 < __imp__sub_82723468
+[  30.2693] profile:   0.2% __imp__sub_8271B5E0 < __imp__sub_8272ED90 < __imp__sub_8272E968
+[  30.2693] profile:   0.2% __imp__sub_8271A368 < __imp__sub_8271B4C0 < __imp__sub_8271CA40
+[  30.2693] profile:   0.2% __imp__sub_826F0DD8 < __imp__sub_826F0EB0 < __imp__sub_826F1DB8
+[  30.2693] profile:   0.2% __imp__sub_822E82B8 < __imp__sub_82459198 < __imp__sub_828B2BC8
+[  30.2693] profile:   0.2% __imp__sub_82210730 < __imp__sub_8272D998 < __imp__sub_8273C128
+[  30.2693] profile:   0.2% __imp__sub_82210730 < __imp__sub_82718D50 < __imp__sub_8272E780
+[  30.2693] profile:   0.1% __imp__sub_82AA2E78 < __imp__sub_82AA1930 < __imp__sub_82AA3C50
+[  30.2693] profile:   0.1% __imp__sub_8273C128 < __imp__sub_8273A618 < __imp__sub_8273A570
+[  30.2693] profile:   0.1% __imp__sub_8273ACD8 < __imp__sub_8273A570 < __imp__sub_8273A570
+[  30.2693] profile:   0.1% __imp__sub_8273A570 < __imp__sub_8273A570 < __imp__sub_8273A570
+[  30.2693] profile:   0.1% __imp__sub_8272D998 < __imp__sub_8273A6D0 < __imp__sub_8273ACD8
+[  30.2693] profile:   0.1% __imp__sub_82724D08 < __imp__sub_82725470 < __imp__sub_82723468
+[  30.2693] profile:   0.1% __imp__sub_82530850 < __imp__sub_82AA48C0 < __imp__sub_82A9F278
+[  30.2693] profile:   0.1% __imp__sub_821F1368 < __imp__sub_821F1420 < __imp__sub_821F1508
+[  30.2693] profile:   0.1% __imp__sub_82AA1930 < __imp__sub_82AA3C50 < __imp__sub_82AA48C0
+[  30.2693] profile:   0.1% __imp__sub_828B2B48 < __imp__sub_8271C650 < __imp__sub_8271CA40
+[  30.2693] profile:   0.1% __imp__sub_827AFF68 < __imp__sub_827B0030 < __imp__sub_827B0088
+[  30.2693] profile:   0.1% __imp__sub_8273BB30 < __imp__sub_8273A618 < __imp__sub_8273A570
+[  30.2693] profile:   0.1% __imp__sub_8273A6D0 < __imp__sub_8273C128 < __imp__sub_8273A618
+[  30.2693] profile:   0.1% __imp__sub_8273A618 < __imp__sub_8273A570 < __imp__sub_8273A570
+[  30.2693] profile:   0.1% __imp__sub_8272D998 < __imp__sub_8273A6D0 < __imp__sub_8273C128
+[  30.2693] profile:   0.1% __imp__sub_8272C6F8 < __imp__sub_82723468 < __imp__sub_82AFA330
+[  30.2693] profile:   0.1% __imp__sub_8272A690 < __imp__sub_8272A900 < __imp__sub_8272A9E0
+[  30.2693] profile:   0.1% __imp__sub_82726798 < __imp__sub_8273BB30 < __imp__sub_8273A618
+[  30.2693] profile:   0.1% __imp__sub_82725200 < __imp__sub_82729C80 < __imp__sub_82729E20
+[  30.2693] profile:   0.1% __imp__sub_827235A0 < __imp__sub_82723688 < __imp__sub_8271CCD8
+[  30.2693] profile:   0.1% __imp__sub_82718F00 < __imp__sub_8272E780 < __imp__sub_8272E968
+[  30.2693] profile:   0.1% __imp__sub_826F1DB8 < __imp__sub_8271C650 < __imp__sub_8271CA40
+[  30.2693] profile:   0.1% __imp__sub_826EEEE0 < __imp__sub_826EF098 < __imp__sub_826EF570
+[  30.2693] profile:   0.1% __imp__sub_82530850 < __imp__sub_82530040 < __imp__sub_822232C8
+[  30.2693] profile:   0.1% __imp__sub_82459198 < __imp__sub_828B2BC8 < __imp__sub_8271C650
+[  30.2693] profile:   0.1% __imp__sub_822FD5B0 < __imp__sub_822E82B8 < __imp__sub_82459198
+[  30.2693] profile:   0.1% __imp__sub_821F5DE8 < __imp__sub_822992C8 < __imp__sub_8252FF20
+[  30.2693] profile:   0.1% __imp__sub_821F2AD0 < __imp__sub_821F2898 < __imp__sub_821F2738
+[  30.2693] profile:   0.1% __imp__sub_82AA41A0 < __imp__sub_82A9F278 < __imp__sub_827A7F70
+[  30.2693] profile:   0.1% __imp__sub_82AA3938 < __imp__sub_82AA3C50 < __imp__sub_82AA48C0
+[  30.2693] profile:   0.1% __imp__sub_82AA1458 < __imp__sub_82AA23C0 < __imp__sub_82AA2E78
+[  30.2693] profile:   0.1% __imp__sub_82AA1148 < __imp__sub_82A9EEA8 < __imp__sub_827A7980
+[  30.2693] profile:   0.1% __imp__sub_82A9F010 < __imp__sub_827A7AE0 < __imp__sub_827AEB18
+[  30.2693] profile:   0.1% __imp__sub_828B03E8 < __imp__sub_828B2B48 < __imp__sub_8271C650
+[  30.3116] switch: FM3_FREEZE_TIME off (environment)
+[  30.3131] frame time: world running again at main frame 8561
+[  30.3274] gpu: swap #6000
+[  30.3293] renderer: frame 6000: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  30.3382] xma: id A1000300: rate/channel bits 0/0 -> 3/0
+[  30.4186] xma: id A1000840: rate/channel bits 0/0 -> 3/0
+[  30.4244] gpu: register words written 2251003208, sent to the draw thread 575130830 (26%)
+[  30.4252] gpu: shader loads: 16773409, 9063424 repeats not sent (54%)
+[  30.4549] xma: id A10008C0: rate/channel bits 0/0 -> 3/0
+[  30.4763] xma: 5 s: 0 decode errors, 264 discontinuity flushes, 445 codec reopens, 0 pool waits, 1459 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 7 rate/channel changes, 0 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  30.4763] xma: 5 s: 16896 decoded samples dropped unplayed at stream restarts
+[  30.4940] gpu: swap #6060
+[  30.6459] perf lite: 360.2 fps, 2.78 ms/frame (p99 3.03 ms, max 3.30 ms) | 2706 draws/frame | GPU 0.02 ms/frame | draw thread 84% busy | 0 long
+[  30.6606] gpu: swap #6120
+[  30.8101] grid test: race start 40550D10 phase 3 flags 0 1 1, clock 9.502 s (main frame 8740)
+[  30.8175] xma: id A1000880: rate/channel bits 3/0 -> 2/1
+[  30.8280] gpu: swap #6180
+[  30.8325] xma: id A1000B40: rate/channel bits 3/0 -> 0/0
+[  30.8390] xma: id A1000CC0: rate/channel bits 3/0 -> 0/0
+[  30.8820] xma: id A1000640: rate/channel bits 0/0 -> 3/0
+[  30.9502] xma: id A1000300: rate/channel bits 3/0 -> 0/0
+[  30.9502] xma: id A1000800: rate/channel bits 3/0 -> 0/0
+[  30.9834] xma: id A10008C0: rate/channel bits 3/0 -> 0/0
+[  30.9835] xma: id A1000900: rate/channel bits 3/0 -> 0/0
+[  30.9836] xma: id A1000940: rate/channel bits 3/0 -> 0/0
+[  30.9837] xma: id A1000B80: rate/channel bits 3/0 -> 0/0
+[  30.9940] gpu: swap #6240
+[  31.0049] xma: id A1000100: rate/channel bits 0/0 -> 3/0
+[  31.0050] xma: id A1000340: rate/channel bits 0/0 -> 3/0
+[  31.0308] xma: id A1000140: rate/channel bits 0/0 -> 3/0
+[  31.1605] gpu: swap #6300
+[  31.2501] xma: id A1000140: rate/channel bits 3/0 -> 0/0
+[  31.3033] xma: id A10008C0: rate/channel bits 0/0 -> 3/0
+[  31.3208] xma: id A1000100: rate/channel bits 3/0 -> 0/0
+[  31.3278] gpu: swap #6360
+[  31.3404] xma: id A1000580: rate/channel bits 3/0 -> 0/0
+[  31.3985] xma: id A1000140: rate/channel bits 0/0 -> 3/0
+[  31.3985] xma: id A1000380: rate/channel bits 0/0 -> 3/0
+[  31.4362] xma: id A1000940: rate/channel bits 0/0 -> 3/0
+[  31.4532] xma: id A1000B80: rate/channel bits 0/0 -> 3/0
+[  31.4939] gpu: swap #6420
+[  31.6127] xma: id A1000AC0: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  31.6222] xma: id A1000840: read offset written by the title: 485 (expected 32), buffer 1 packet 0
+[  31.6223] xma: id A1000AC0: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  31.6511] perf lite: 359.6 fps, 2.78 ms/frame (p99 3.56 ms, max 3.77 ms) | 2708 draws/frame | GPU 0.02 ms/frame | draw thread 84% busy | 0 long
+[  31.6618] gpu: swap #6480
+[  31.8282] gpu: swap #6540
+[  31.8317] xma: id A1000AC0: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  31.8412] xma: id A1000040: read offset written by the title: 485 (expected 32), buffer 1 packet 0
+[  31.8413] xma: id A1000AC0: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  31.8792] xma: id A1000BC0: rate/channel bits 3/0 -> 0/0
+[  31.9267] xma: id A1000BC0: rate/channel bits 0/0 -> 3/0
+[  31.9705] xma: id A1000D40: rate/channel bits 3/0 -> 0/0
+[  31.9949] gpu: swap #6600
+[  31.9964] renderer: frame 6600: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  32.1455] xma: id A1000300: rate/channel bits 0/0 -> 3/0
+[  32.1564] xma: id A1000080: rate/channel bits 3/0 -> 0/0
+[  32.1565] xma: id A10008C0: rate/channel bits 3/0 -> 0/0
+[  32.1615] gpu: swap #6660
+[  32.1693] xma: id A1000040: read offset written by the title: 485 (expected 32), buffer 1 packet 0
+[  32.3275] gpu: swap #6720
+[  32.3646] xma: id A10002C0: rate/channel bits 0/0 -> 3/0
+[  32.4943] gpu: swap #6780
+[  32.4978] xma: id A1000040: read offset written by the title: 485 (expected 32), buffer 1 packet 0
+[  32.5453] xma: id A1000880: rate/channel bits 2/1 -> 3/0
+[  32.6145] xma: id A1000AC0: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  32.6312] xma: id A1000AC0: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  32.6547] perf lite: 360.4 fps, 2.77 ms/frame (p99 3.62 ms, max 3.92 ms) | 2721 draws/frame | GPU 0.02 ms/frame | draw thread 80% busy | 0 long
+[  32.6609] gpu: swap #6840
+[  32.7644] xma: id A1000D40: rate/channel bits 0/0 -> 3/0
+[  32.8276] gpu: swap #6900
+[  32.9940] gpu: swap #6960
+[  33.1607] gpu: swap #7020
+[  33.2614] xma: id A1000BC0: rate/channel bits 3/0 -> 0/0
+[  33.3274] gpu: swap #7080
+[  33.4361] xma: id A1000300: rate/channel bits 3/0 -> 0/0
+[  33.4943] gpu: swap #7140
+[  33.6168] xma: id A1000040: rate/channel bits 3/0 -> 0/0
+[  33.6582] perf lite: 359.9 fps, 2.78 ms/frame (p99 3.25 ms, max 3.38 ms) | 2658 draws/frame | GPU 0.02 ms/frame | draw thread 79% busy | 0 long
+[  33.6582] perf lite: VRAM 1247 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  33.6605] gpu: swap #7200
+[  33.6623] renderer: frame 7200: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  33.8272] gpu: swap #7260
+[  33.8472] xma: id A1000D80: rate/channel bits 0/0 -> 3/0
+[  33.8578] xma: id A1000BC0: rate/channel bits 0/0 -> 3/0
+[  33.9938] gpu: swap #7320
+[  34.0019] xma: id A1000040: rate/channel bits 0/0 -> 3/0
+[  34.1604] gpu: swap #7380
+[  34.3270] gpu: swap #7440
+[  34.4938] gpu: swap #7500
+[  34.4981] xma: id A1000300: rate/channel bits 0/0 -> 3/0
+[  34.6604] gpu: swap #7560
+[  34.6633] perf lite: 360.2 fps, 2.78 ms/frame (p99 3.07 ms, max 3.75 ms) | 2641 draws/frame | GPU 0.02 ms/frame | draw thread 81% busy | 0 long
+[  34.8270] gpu: swap #7620
+[  34.8285] xma: id A1000600: rate/channel bits 3/0 -> 0/0
+[  34.9134] xma: id A1000080: rate/channel bits 0/0 -> 3/0
+[  34.9506] xma: id A1000040: rate/channel bits 3/0 -> 0/0
+[  34.9662] xma: id A1000740: rate/channel bits 3/0 -> 0/0
+[  34.9934] gpu: swap #7680
+[  35.1224] xma: id A1000040: rate/channel bits 0/0 -> 3/0
+[  35.1434] xma: id A10002C0: rate/channel bits 3/0 -> 0/0
+[  35.1437] xma: id A1000740: rate/channel bits 0/0 -> 3/0
+[  35.1601] gpu: swap #7740
+[  35.2694] profile: thread 3, 3097 samples
+[  35.2694] profile:  86.7% ZwWaitForAlertByThreadId < RtlSleepConditionVariableSRW < SleepConditionVariableSRW
+[  35.2694] profile:   0.4% __imp__sub_82729C80 < __imp__sub_82729E20 < __imp__sub_827297A8
+[  35.2694] profile:   0.3% __imp__sub_82723688 < __imp__sub_82724D08 < __imp__sub_82725470
+[  35.2694] profile:   0.3% __imp__sub_8220CA10 < __imp__sub_8220D648 < __imp__sub_8220C540
+[  35.2694] profile:   0.3% __imp__sub_827235A0 < __imp__sub_82723688 < __imp__sub_82724D08
+[  35.2694] profile:   0.2% __imp__sub_8272A900 < __imp__sub_8272A9E0 < __imp__sub_82723468
+[  35.2694] profile:   0.2% __imp__sub_8220D608 < __imp__sub_8220D558 < __imp__sub_8220CA10
+[  35.2694] profile:   0.2% __imp__sub_82725470 < __imp__sub_82723468 < __imp__sub_82AFA330
+[  35.2694] profile:   0.2% __imp__sub_82724D08 < __imp__sub_82725470 < __imp__sub_82723468
+[  35.2694] profile:   0.2% RtlReleaseSRWLockExclusive < _Mtx_unlock < __imp__sub_828259C0
+[  35.2694] profile:   0.2% __imp__sub_8290D6B0 < __imp__sub_8290D7A0 < __imp__sub_829040D0
+[  35.2694] profile:   0.2% __imp__sub_829039C8 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  35.2694] profile:   0.2% __imp__sub_8272A448 < __imp__sub_82729C80 < __imp__sub_82729E20
+[  35.2694] profile:   0.2% __imp__sub_82729310 < __imp__sub_82725470 < __imp__sub_82723468
+[  35.2694] profile:   0.2% __imp__sub_82726798 < __imp__sub_82725470 < __imp__sub_82723468
+[  35.2694] profile:   0.2% __imp__sub_827252C0 < __imp__sub_82725470 < __imp__sub_82723468
+[  35.2694] profile:   0.1% __imp__sub_8220CA10 < __imp__sub_8220D648 < __imp__sub_822176C8
+[  35.2694] profile:   0.1% __imp__sub_8220C908 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  35.2694] profile:   0.1% __imp__sub_8273A338 < __imp__sub_8273AB60 < __imp__sub_8273A178
+[  35.2694] profile:   0.1% __imp__sub_8272C6F8 < __imp__sub_82723468 < __imp__sub_82AFA330
+[  35.2694] profile:   0.1% __imp__sub_82729E20 < __imp__sub_827297A8 < __imp__sub_82729170
+[  35.2694] profile:   0.1% __imp__sub_827235A0 < __imp__sub_82723688 < __imp__sub_8271CCD8
+[  35.2694] profile:   0.1% __imp__sub_827235A0 < __imp__sub_827127A8 < __imp__sub_82712A78
+[  35.2694] profile:   0.1% __imp__sub_826F1FF8 < __imp__sub_828B95F8 < __imp__sub_828AFBE0
+[  35.2694] profile:   0.1% __imp__sub_8220FDB8 < __imp__sub_8220FAE8 < __imp__sub_8220FA58
+[  35.2694] profile:   0.1% __imp__sub_82202078 < __imp__sub_822020F0 < __imp__sub_821FCD78
+[  35.2694] profile:   0.1% __imp__sub_821F2B90 < __imp__sub_821F29C0 < __imp__sub_821F2608
+[  35.2694] profile:   0.1% __imp__sub_821F26D8 < __imp__sub_821F2738 < __imp__sub_821F2838
+[  35.2694] profile:   0.1% __imp__sub_821F26D8 < __imp__sub_821F2608 < __imp__sub_82823018
+[  35.2694] profile:   0.1% __imp__sub_821F2490 < __imp__sub_821F2898 < __imp__sub_821F2738
+[  35.2694] profile:   0.1% RtlWakeAddressSingle < __imp__RtlLeaveCriticalSection < __imp__sub_821F2928
+[  35.2694] profile:   0.1% RtlReleaseSRWLockExclusive < _Mtx_unlock < __imp__sub_828252B8
+[  35.2694] profile:   0.1% __imp__sub_828B4210 < __imp__sub_828B47D0 < __imp__sub_826FEBE0
+[  35.2694] profile:   0.1% __imp__sub_8273C128 < __imp__sub_8273A618 < __imp__sub_8273A570
+[  35.2694] profile:   0.1% __imp__sub_8273A570 < __imp__sub_8273A570 < __imp__sub_8273A570
+[  35.2694] profile:   0.1% __imp__sub_8272DED8 < __imp__sub_8273C128 < __imp__sub_8273A618
+[  35.2694] profile:   0.1% __imp__sub_8272C258 < __imp__sub_8272C6F8 < __imp__sub_82723468
+[  35.2694] profile:   0.1% __imp__sub_8272A690 < __imp__sub_8272A900 < __imp__sub_8272A9E0
+[  35.2694] profile:   0.1% __imp__sub_8272A130 < __imp__sub_8272A2D0 < __imp__sub_827231A8
+[  35.2694] profile:   0.1% __imp__sub_8272A048 < __imp__sub_82729C80 < __imp__sub_82729E20
+[  35.2694] profile:   0.1% __imp__sub_82729B78 < __imp__sub_827297A8 < __imp__sub_82729170
+[  35.2694] profile:   0.1% __imp__sub_82725200 < __imp__sub_82729C80 < __imp__sub_82729E20
+[  35.2694] profile:   0.1% __imp__sub_827235A0 < __imp__sub_82725200 < __imp__sub_82729C80
+[  35.2694] profile:   0.1% __imp__sub_82723570 < __imp__sub_827250E8 < __imp__sub_827224E8
+[  35.2694] profile:   0.1% __imp__sub_82712728 < __imp__sub_82712A38 < __imp__sub_826FEB40
+[  35.2694] profile:   0.1% __imp__sub_826F1CC0 < __imp__sub_826FEBE0 < __imp__sub_823656C0
+[  35.2694] profile:   0.1% __imp__sub_826F0C40 < __imp__sub_826F1CC0 < __imp__sub_826FEBE0
+[  35.2694] profile:   0.1% __imp__sub_82530040 < __imp__sub_822232C8 < __imp__sub_826F1FF8
+[  35.2694] profile:   0.1% __imp__sub_822BFC58 < __imp__sub_822BFD30 < __imp__sub_828B7A40
+[  35.2694] profile:   0.1% __imp__sub_82235058 < __imp__sub_822BFC58 < __imp__sub_822BFD30
+[  35.2694] profile:   0.1% __imp__sub_822230C0 < __imp__sub_828B95F8 < __imp__sub_828AFBE0
+[  35.2694] profile:   0.1% __imp__sub_82218020 < __imp__sub_8220EEB0 < __imp__sub_823650C0
+[  35.2694] profile:   0.1% __imp__sub_82210730 < __imp__sub_8272D998 < __imp__sub_8273BDD8
+[  35.2694] profile:   0.1% __imp__sub_8220D608 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  35.2694] profile:   0.1% __imp__sub_8220D558 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  35.2694] profile:   0.1% __imp__sub_8220C9D0 < __imp__sub_8220C908 < __imp__sub_8220CA10
+[  35.2694] profile:   0.1% __imp__sub_8220C540 < __imp__sub_8220F598 < __imp__sub_82213A30
+[  35.2694] profile:   0.1% __imp__sub_8220C1F0 < __imp__sub_8220E058 < __imp__sub_82213A30
+[  35.2694] profile:   0.1% __imp__sub_8220C078 < __imp__sub_8220BFF0 < __imp__sub_8220BFB8
+[  35.2694] profile:   0.1% __imp__sub_8220BF08 < __imp__sub_8220BE38 < __imp__sub_8220B728
+[  35.3266] gpu: swap #7800
+[  35.3285] renderer: frame 7800: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  35.3285] xma: id A10000C0: rate/channel bits 3/0 -> 0/0
+[  35.3457] xma: id A10005C0: rate/channel bits 3/0 -> 0/0
+[  35.4776] xma: 5 s: 0 decode errors, 371 discontinuity flushes, 640 codec reopens, 0 pool waits, 1827 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 46 rate/channel changes, 10 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  35.4776] xma: 5 s: 23744 decoded samples dropped unplayed at stream restarts
+[  35.4932] gpu: swap #7860
+[  35.5694] xma: id A1000780: rate/channel bits 3/0 -> 0/0
+[  35.6598] gpu: swap #7920
+[  35.6677] perf lite: 360.2 fps, 2.78 ms/frame (p99 3.06 ms, max 3.23 ms) | 2574 draws/frame | GPU 0.02 ms/frame | draw thread 76% busy | 0 long
+[  35.8265] gpu: swap #7980
+[  35.9931] gpu: swap #8040
+[  36.0539] xma: id A1000B40: rate/channel bits 0/0 -> 3/0
+[  36.1598] gpu: swap #8100
+[  36.2203] xma: id A1000BC0: rate/channel bits 3/0 -> 0/0
+[  36.2792] xma: id A1000CC0: rate/channel bits 0/0 -> 3/0
+[  36.3263] gpu: swap #8160
+[  36.4152] gpu: swap #8192
+[  36.4608] vertex arena: 0.0 MB hashed, 0.00 MB copied, 0 hits a frame; 0 MB of 512 used, 0 buffers
+[  36.4929] gpu: swap #8220
+[  36.6602] gpu: swap #8280
+[  36.6702] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.03 ms, max 3.64 ms) | 2552 draws/frame | GPU 0.02 ms/frame | draw thread 81% busy | 0 long
+[  36.8262] gpu: swap #8340
+[  36.9660] xma: id A1000140: rate/channel bits 3/0 -> 0/0
+[  36.9937] gpu: swap #8400
+[  36.9950] renderer: frame 8400: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  37.1595] gpu: swap #8460
+[  37.3261] gpu: swap #8520
+[  37.3881] xma: id A1000740: rate/channel bits 3/0 -> 0/0
+[  37.4675] xma: id A1000780: rate/channel bits 0/0 -> 3/0
+[  37.4927] gpu: swap #8580
+[  37.5585] xma: id A1000D40: rate/channel bits 3/0 -> 0/0
+[  37.5586] xma: id A1000D80: rate/channel bits 3/0 -> 0/0
+[  37.5587] xma: id A1000DC0: rate/channel bits 3/0 -> 0/0
+[  37.5588] xma: id A1000E00: rate/channel bits 3/0 -> 0/0
+[  37.6593] gpu: swap #8640
+[  37.6749] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.11 ms, max 3.21 ms) | 2526 draws/frame | GPU 0.02 ms/frame | draw thread 76% busy | 0 long
+[  37.7658] xma: id A10007C0: rate/channel bits 0/0 -> 3/0
+[  37.8259] gpu: swap #8700
+[  37.8735] xma: id A1000980: rate/channel bits 0/0 -> 3/0
+[  37.9926] gpu: swap #8760
+[  38.1591] gpu: swap #8820
+[  38.3259] gpu: swap #8880
+[  38.4706] xma: id A10005C0: rate/channel bits 0/0 -> 3/0
+[  38.4924] gpu: swap #8940
+[  38.6593] gpu: swap #9000
+[  38.6609] renderer: frame 9000: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  38.6804] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.02 ms, max 3.82 ms) | 2475 draws/frame | GPU 0.02 ms/frame | draw thread 72% busy | 0 long
+[  38.6805] perf lite: VRAM 1247 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  38.7206] xma: id A1000780: rate/channel bits 3/0 -> 0/0
+[  38.8257] gpu: swap #9060
+[  38.9922] gpu: swap #9120
+[  39.0001] xma: id A10000C0: rate/channel bits 0/0 -> 3/0
+[  39.0464] xma: id A1000AC0: rate/channel bits 3/0 -> 0/0
+[  39.1600] gpu: swap #9180
+[  39.3262] gpu: swap #9240
+[  39.4931] gpu: swap #9300
+[  39.5587] xma: id A10009C0: rate/channel bits 3/0 -> 0/0
+[  39.6432] renderer memory: textures 0 MB (0; 0 MB in 0 not used for 30 s), cubes 0 MB (0), 3D 0 MB (0), mip chains 0 MB (0), resolved images 0 MB (0), EDRAM surfaces 191 MB (2), memory blocks 8 (1535 MB), upload rings 384 MB
+[  39.6432] renderer memory: memory blocks 1101 MB used, 434 MB free; resolved images: spares 0 MB (0), stale 0 MB; released so far: 0 resolved images, 0 spares, 0 cubes, 0 mip chains
+[  39.6593] gpu: swap #9360
+[  39.6840] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.22 ms, max 3.39 ms) | 2407 draws/frame | GPU 0.02 ms/frame | draw thread 72% busy | 0 long
+[  39.7127] xma: id A1000100: rate/channel bits 0/0 -> 3/0
+[  39.8259] gpu: swap #9420
+[  39.9927] gpu: swap #9480
+[  40.0970] xma: id A1000B80: rate/channel bits 3/0 -> 0/0
+[  40.1587] gpu: swap #9540
+[  40.2678] xma: id A1000040: rate/channel bits 3/0 -> 0/0
+[  40.2703] profile: thread 3, 3064 samples
+[  40.2704] profile:  86.1% ZwWaitForAlertByThreadId < RtlSleepConditionVariableSRW < SleepConditionVariableSRW
+[  40.2704] profile:   1.1% __imp__sub_8220CA10 < __imp__sub_8220D648 < __imp__sub_8220C540
+[  40.2704] profile:   0.4% __imp__sub_829039C8 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  40.2704] profile:   0.3% __imp__sub_8220C908 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  40.2704] profile:   0.2% __imp__sub_8220D608 < __imp__sub_8220D558 < __imp__sub_8220CA10
+[  40.2704] profile:   0.2% __imp__sub_8220D558 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  40.2704] profile:   0.2% __imp__sub_8220C9D0 < __imp__sub_8220C908 < __imp__sub_8220CA10
+[  40.2704] profile:   0.2% __imp__sub_821F2A90 < __imp__sub_821F29C0 < __imp__sub_821F2608
+[  40.2704] profile:   0.2% __imp__sub_821F2A90 < __imp__sub_821F2898 < __imp__sub_821F2738
+[  40.2704] profile:   0.2% __imp__sub_82235058 < __imp__sub_822BFC58 < __imp__sub_822BFD30
+[  40.2704] profile:   0.2% __imp__sub_821F2490 < __imp__sub_821F2898 < __imp__sub_821F2738
+[  40.2704] profile:   0.2% PPCMsrChanged < __imp__sub_828259C0 < __imp__sub_827FD148
+[  40.2704] profile:   0.1% __imp__sub_8220C8A8 < __imp__sub_8220D558 < __imp__sub_8220CA10
+[  40.2704] profile:   0.1% __imp__sub_821FCD78 < __imp__sub_821FB618 < __imp__sub_821ED3F8
+[  40.2704] profile:   0.1% __imp__sub_821F2AD0 < __imp__sub_821F2898 < __imp__sub_821F2738
+[  40.2704] profile:   0.1% __imp__sub_82729C80 < __imp__sub_82729E20 < __imp__sub_827297A8
+[  40.2704] profile:   0.1% __imp__sub_82724D08 < __imp__sub_82725470 < __imp__sub_82723468
+[  40.2704] profile:   0.1% __imp__sub_822BFC58 < __imp__sub_822BFD30 < __imp__sub_828B7A40
+[  40.2704] profile:   0.1% __imp__sub_8220D608 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  40.2704] profile:   0.1% __imp__sub_8220CA10 < __imp__sub_8220D648 < __imp__sub_822176C8
+[  40.2704] profile:   0.1% __imp__sub_8220C078 < __imp__sub_8220BFF0 < __imp__sub_8220BFB8
+[  40.2704] profile:   0.1% __imp__sub_8220BFF0 < __imp__sub_8220BFB8 < __imp__sub_8220BF08
+[  40.2704] profile:   0.1% __imp__sub_8220A5B8 < __imp__sub_8220A3C0 < __imp__sub_82210F48
+[  40.2704] profile:   0.1% __imp__sub_821F2AD0 < __imp__sub_821F29C0 < __imp__sub_821F2608
+[  40.2704] profile:   0.1% __imp__sub_821F2A90 < __imp__sub_821F2928 < __imp__sub_821F2608
+[  40.2704] profile:   0.1% __imp__sub_821F26D8 < __imp__sub_821F2608 < __imp__sub_821F1560
+[  40.2704] profile:   0.1% __imp__sub_821F0680 < __imp__sub_821F93D8 < __imp__sub_821F51C8
+[  40.2704] profile:   0.1% PPCMsrChanged < __imp__sub_828252B8 < __imp__sub_828B3818
+[  40.2704] profile:   0.1% __imp__sub_829065A8 < __imp__sub_8220A3C0 < __imp__sub_82210F48
+[  40.2704] profile:   0.1% __imp__sub_828AF030 < __imp__sub_828AF608 < __imp__sub_828B25D8
+[  40.2704] profile:   0.1% __imp__sub_82726798 < __imp__sub_82725470 < __imp__sub_82723468
+[  40.2704] profile:   0.1% __imp__sub_82725200 < __imp__sub_827127A8 < __imp__sub_82712A78
+[  40.2704] profile:   0.1% __imp__sub_82723688 < __imp__sub_82724D08 < __imp__sub_82725470
+[  40.2704] profile:   0.1% __imp__sub_827128F0 < __imp__sub_82712B58 < __imp__sub_826FD700
+[  40.2704] profile:   0.1% __imp__sub_826FF8B0 < __imp__sub_82701DE8 < __imp__sub_82703C18
+[  40.2704] profile:   0.1% __imp__sub_826F1FF8 < __imp__sub_828B95F8 < __imp__sub_828AFBE0
+[  40.2704] profile:   0.1% __imp__sub_826EEEE0 < __imp__sub_826EF098 < __imp__sub_826EF570
+[  40.2704] profile:   0.1% __imp__sub_826EEE28 < __imp__sub_826EEEE0 < __imp__sub_826EF098
+[  40.2704] profile:   0.1% __imp__sub_82532688 < __imp__sub_828AED48 < __imp__sub_828AEED8
+[  40.2704] profile:   0.1% __imp__sub_82532664 < __imp__sub_826F1FF8 < __imp__sub_828B95F8
+[  40.2704] profile:   0.1% __imp__sub_82530850 < __imp__sub_827FD1A8 < __imp__sub_828035F8
+[  40.2704] profile:   0.1% __imp__sub_82459198 < __imp__sub_828B2BC8 < __imp__sub_8271C650
+[  40.2704] profile:   0.1% __imp__sub_8227E118 < __imp__sub_828AF030 < __imp__sub_828AF588
+[  40.2704] profile:   0.1% __imp__sub_822528E8 < __imp__sub_82262408 < __imp__sub_826F1DB8
+[  40.2704] profile:   0.1% __imp__sub_82220388 < __imp__sub_82221A40 < __imp__sub_82221B58
+[  40.2704] profile:   0.1% __imp__sub_82215EF0 < __imp__sub_821F0D98 < __imp__sub_821F5DE8
+[  40.2704] profile:   0.1% __imp__sub_8220C9D0 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  40.2704] profile:   0.1% __imp__sub_8220BFF0 < __imp__sub_8220BFB8 < __imp__sub_8220C0A8
+[  40.2704] profile:   0.1% __imp__sub_8220B028 < __imp__sub_8220AB78 < __imp__sub_8220B098
+[  40.2704] profile:   0.1% __imp__sub_8220A970 < __imp__sub_8220AB78 < __imp__sub_8220B098
+[  40.2704] profile:   0.1% __imp__sub_82209A68 < __imp__sub_8220A3C0 < __imp__sub_82210F48
+[  40.2704] profile:   0.1% __imp__sub_82206480 < __imp__sub_821EFBE8 < __imp__sub_821EFB28
+[  40.2704] profile:   0.1% __imp__sub_822020F0 < __imp__sub_821FCD78 < __imp__sub_821FA5A8
+[  40.2704] profile:   0.1% __imp__sub_82201770 < __imp__sub_822018F0 < __imp__sub_822019E8
+[  40.2704] profile:   0.1% __imp__sub_821FCD78 < __imp__sub_821FA888 < __imp__sub_821F93D8
+[  40.2704] profile:   0.1% __imp__sub_821FCD78 < __imp__sub_821FA5A8 < __imp__sub_821F9EA8
+[  40.2704] profile:   0.1% __imp__sub_821FB618 < __imp__sub_821ED3F8 < __imp__sub_821F51C8
+[  40.2704] profile:   0.1% __imp__sub_821FA7F0 < __imp__sub_821FA888 < __imp__sub_821F93D8
+[  40.2704] profile:   0.1% __imp__sub_821F9EA8 < __imp__sub_821F93D8 < __imp__sub_821F51C8
+[  40.2704] profile:   0.1% __imp__sub_821F93D8 < __imp__sub_821F51C8 < __imp__sub_821F0D98
+[  40.3220] xma: id A1000B80: rate/channel bits 0/0 -> 3/0
+[  40.3262] gpu: swap #9600
+[  40.3273] renderer: frame 9600: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  40.4382] xma: id A10007C0: rate/channel bits 3/0 -> 0/0
+[  40.4441] xma: id A1000C40: rate/channel bits 0/0 -> 3/0
+[  40.4779] xma: 5 s: 0 decode errors, 256 discontinuity flushes, 447 codec reopens, 0 pool waits, 1529 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 24 rate/channel changes, 0 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  40.4779] xma: 5 s: 16384 decoded samples dropped unplayed at stream restarts
+[  40.4919] gpu: swap #9660
+[  40.5027] xma: id A1000600: rate/channel bits 0/0 -> 3/0
+[  40.6585] gpu: swap #9720
+[  40.6879] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.40 ms, max 3.48 ms) | 2309 draws/frame | GPU 0.02 ms/frame | draw thread 59% busy | 0 long
+[  40.8256] gpu: swap #9780
+[  40.8542] xma: id A1000A40: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  40.8653] xma: id A1000A40: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  40.8810] xma: id A1000E00: rate/channel bits 0/0 -> 3/0
+[  40.8814] xma: id A1000D80: rate/channel bits 0/0 -> 3/0
+[  40.8927] xma: id A1000D00: read offset written by the title: 485 (expected 32), buffer 1 packet 0
+[  40.9917] gpu: swap #9840
+[  41.0730] xma: id A10009C0: rate/channel bits 0/0 -> 3/0
+[  41.1217] xma: id A1000300: rate/channel bits 3/0 -> 0/0
+[  41.1584] gpu: swap #9900
+[  41.3250] gpu: swap #9960
+[  41.4915] gpu: swap #10020
+[  41.5904] xma: id A1000080: rate/channel bits 3/0 -> 0/0
+[  41.6589] gpu: swap #10080
+[  41.6952] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.05 ms, max 3.87 ms) | 2263 draws/frame | GPU 0.02 ms/frame | draw thread 59% busy | 0 long
+[  41.8250] gpu: swap #10140
+[  41.9916] gpu: swap #10200
+[  41.9933] renderer: frame 10200: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  42.1580] gpu: swap #10260
+[  42.2084] xma: id A1000D80: rate/channel bits 3/0 -> 0/0
+[  42.2085] xma: id A1000E00: rate/channel bits 3/0 -> 0/0
+[  42.2086] xma: id A1000E40: rate/channel bits 3/0 -> 0/0
+[  42.2086] xma: id A1000E80: rate/channel bits 3/0 -> 0/0
+[  42.3246] gpu: swap #10320
+[  42.3267] xma: id A1000100: rate/channel bits 3/0 -> 0/0
+[  42.4912] gpu: swap #10380
+[  42.6577] gpu: swap #10440
+[  42.6981] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.02 ms, max 3.10 ms) | 2070 draws/frame | GPU 0.02 ms/frame | draw thread 58% busy | 0 long
+[  42.7151] xma: id A1000100: rate/channel bits 0/0 -> 3/0
+[  42.8244] gpu: swap #10500
+[  42.9914] gpu: swap #10560
+[  43.0722] xma: id A1000400: rate/channel bits 0/0 -> 3/0
+[  43.1579] gpu: swap #10620
+[  43.3247] gpu: swap #10680
+[  43.4908] gpu: swap #10740
+[  43.5902] xma: id A1000440: rate/channel bits 0/0 -> 3/0
+[  43.6227] xma: id A1000480: rate/channel bits 0/0 -> 3/0
+[  43.6229] xma: id A1000740: rate/channel bits 0/0 -> 3/0
+[  43.6574] gpu: swap #10800
+[  43.6595] renderer: frame 10800: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  43.7028] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.04 ms, max 3.15 ms) | 1033 draws/frame | GPU 0.02 ms/frame | draw thread 17% busy | 0 long
+[  43.7028] perf lite: VRAM 1247 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  43.8239] gpu: swap #10860
+[  43.9906] gpu: swap #10920
+[  44.0111] shader scan: 1 candidates changed before they were confirmed (9 so far)
+[  44.1574] gpu: swap #10980
+[  44.3239] gpu: swap #11040
+[  44.4911] gpu: swap #11100
+[  44.4961] xma: id A1000B80: rate/channel bits 3/0 -> 0/0
+[  44.4962] xma: id A10009C0: rate/channel bits 3/0 -> 0/0
+[  44.4962] xma: id A1000A40: rate/channel bits 3/0 -> 0/0
+[  44.4964] xma: id A1000CC0: rate/channel bits 3/0 -> 1/0
+[  44.4965] xma: id A1000780: rate/channel bits 0/0 -> 3/0
+[  44.5238] xma: id A1000780: rate/channel bits 3/0 -> 0/0
+[  44.5509] xma: id A1000480: rate/channel bits 3/0 -> 0/0
+[  44.5926] xma: id A10005C0: rate/channel bits 3/0 -> 0/0
+[  44.6290] xma: id A1000640: rate/channel bits 3/0 -> 0/0
+[  44.6572] gpu: swap #11160
+[  44.7063] perf lite: 360.1 fps, 2.78 ms/frame (p99 2.98 ms, max 3.11 ms) | 864 draws/frame | GPU 0.02 ms/frame | draw thread 22% busy | 0 long
+[  44.7103] xma: id A1000740: rate/channel bits 3/0 -> 0/0
+[  44.8217] xma: id A1000480: rate/channel bits 0/0 -> 3/0
+[  44.8241] gpu: swap #11220
+[  44.8663] xma: id A1000600: rate/channel bits 3/0 -> 0/0
+[  44.8928] xma: id A1000A00: rate/channel bits 3/0 -> 0/0
+[  44.9286] xma: id A1000C40: rate/channel bits 3/0 -> 0/0
+[  44.9287] xma: id A1000CC0: rate/channel bits 1/0 -> 0/0
+[  44.9288] xma: id A1000D00: rate/channel bits 3/0 -> 1/0
+[  44.9556] xma: id A1000E00: rate/channel bits 0/0 -> 3/0
+[  44.9666] xma: id A1000E40: rate/channel bits 0/0 -> 3/0
+[  44.9818] xma: id A1000840: rate/channel bits 3/0 -> 0/0
+[  44.9906] gpu: swap #11280
+[  44.9931] xma: id A1000E80: rate/channel bits 0/0 -> 3/0
+[  45.0142] xma: id A1000200: rate/channel bits 3/0 -> 0/0
+[  45.0145] xma: id A1000CC0: rate/channel bits 0/0 -> 3/0
+[  45.0248] xma: id A10004C0: rate/channel bits 0/0 -> 3/0
+[  45.0617] xma: id A1000180: rate/channel bits 3/0 -> 0/0
+[  45.0620] xma: id A1000780: rate/channel bits 0/0 -> 3/0
+[  45.1369] xma: id A1000200: rate/channel bits 0/0 -> 3/0
+[  45.1573] gpu: swap #11340
+[  45.1582] xma: id A1000340: rate/channel bits 3/0 -> 0/0
+[  45.1854] xma: id A10004C0: rate/channel bits 3/0 -> 0/0
+[  45.2219] xma: id A1000340: rate/channel bits 0/0 -> 3/0
+[  45.2493] xma: id A10002C0: rate/channel bits 0/0 -> 3/0
+[  45.2717] profile: thread 3, 3077 samples
+[  45.2717] profile:  84.3% ZwWaitForAlertByThreadId < RtlSleepConditionVariableSRW < SleepConditionVariableSRW
+[  45.2717] profile:   0.9% __imp__sub_8220CA10 < __imp__sub_8220D648 < __imp__sub_8220C540
+[  45.2717] profile:   0.3% __imp__sub_821F2490 < __imp__sub_821F2898 < __imp__sub_821F2738
+[  45.2717] profile:   0.2% __imp__sub_821F2A90 < __imp__sub_821F2898 < __imp__sub_821F2738
+[  45.2717] profile:   0.2% __imp__sub_821F2A90 < __imp__sub_821F29C0 < __imp__sub_821F2608
+[  45.2717] profile:   0.2% __imp__sub_828FC7A0 < __imp__sub_8290BD10 < __imp__sub_822165F0
+[  45.2717] profile:   0.2% __imp__sub_8220D608 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  45.2717] profile:   0.2% __imp__sub_8220C908 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  45.2717] profile:   0.2% RtlWakeAddressSingle < __imp__RtlLeaveCriticalSection < __imp__sub_821F2928
+[  45.2717] profile:   0.1% __imp__sub_828AF030 < __imp__sub_828AF608 < __imp__sub_828B25D8
+[  45.2717] profile:   0.1% __imp__sub_82530850 < __imp__sub_82530040 < __imp__sub_821F1420
+[  45.2717] profile:   0.1% __imp__sub_82220388 < __imp__sub_82221A40 < __imp__sub_82221B58
+[  45.2717] profile:   0.1% __imp__sub_8220BFF0 < __imp__sub_8220BFB8 < __imp__sub_8220BF08
+[  45.2717] profile:   0.1% __imp__sub_8220B728 < __imp__sub_82211760 < __imp__sub_822114C0
+[  45.2717] profile:   0.1% __imp__sub_8220B510 < __imp__sub_8220B098 < __imp__sub_8220A3C0
+[  45.2717] profile:   0.1% __imp__sub_821F26D8 < __imp__sub_821F2738 < __imp__sub_821F2838
+[  45.2717] profile:   0.1% __imp__sub_827250E8 < __imp__sub_827224E8 < __imp__sub_82AFA2E8
+[  45.2717] profile:   0.1% __imp__sub_8271BC68 < __imp__sub_8272E780 < __imp__sub_8272E968
+[  45.2717] profile:   0.1% __imp__sub_826EEE28 < __imp__sub_826EEEE0 < __imp__sub_826EF098
+[  45.2717] profile:   0.1% __imp__sub_82235058 < __imp__sub_828B7A40 < __imp__sub_828B95F8
+[  45.2717] profile:   0.1% __imp__sub_8220D558 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  45.2717] profile:   0.1% __imp__sub_8220C9D0 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  45.2717] profile:   0.1% __imp__sub_8220BF08 < __imp__sub_8220B728 < __imp__sub_82211760
+[  45.2717] profile:   0.1% __imp__sub_8220B098 < __imp__sub_8220A3C0 < __imp__sub_82210F48
+[  45.2717] profile:   0.1% __imp__sub_8220A9F0 < __imp__sub_8220AB78 < __imp__sub_8220B098
+[  45.2717] profile:   0.1% __imp__sub_82202510 < __imp__sub_821FCE18 < __imp__sub_82208428
+[  45.2717] profile:   0.1% __imp__sub_821FCD78 < __imp__sub_821FB618 < __imp__sub_821ED3F8
+[  45.2717] profile:   0.1% __imp__sub_821FA888 < __imp__sub_821F93D8 < __imp__sub_821F51C8
+[  45.2717] profile:   0.1% __imp__sub_821F93D8 < __imp__sub_821F51C8 < __imp__sub_821F0D98
+[  45.2717] profile:   0.1% __imp__sub_821F2B30 < __imp__sub_821F2928 < __imp__sub_821F2608
+[  45.2717] profile:   0.1% __imp__sub_821F2AD0 < __imp__sub_821F2898 < __imp__sub_821F2738
+[  45.2717] profile:   0.1% __imp__RtlLeaveCriticalSection < __imp__sub_821F2898 < __imp__sub_821F2738
+[  45.2717] profile:   0.1% __imp__RtlEnterCriticalSection < __imp__sub_821F2928 < __imp__sub_821F2608
+[  45.2717] profile:   0.1% PPCMsrChanged < __imp__sub_828259C0 < __imp__sub_8227E118
+[  45.2717] profile:   0.1% __imp__sub_82A8DAE8 < __imp__sub_828B3368 < __imp__sub_828B35D0
+[  45.2717] profile:   0.1% __imp__sub_8290E3A8 < __imp__sub_829040D0 < __imp__sub_8220B728
+[  45.2717] profile:   0.1% __imp__sub_8290D6B0 < __imp__sub_8290D7A0 < __imp__sub_829040D0
+[  45.2717] profile:   0.1% __imp__sub_829039C8 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  45.2717] profile:   0.1% __imp__sub_828FC538 < __imp__sub_828FC7A0 < __imp__sub_8290BD10
+[  45.2717] profile:   0.1% __imp__sub_828B4210 < __imp__sub_828B47D0 < __imp__sub_828AF030
+[  45.2717] profile:   0.1% __imp__sub_828B03E8 < __imp__sub_828B2B48 < __imp__sub_8271C650
+[  45.2717] profile:   0.1% __imp__sub_828AEA40 < __imp__sub_828AEAF0 < __imp__sub_828AED48
+[  45.2717] profile:   0.1% __imp__sub_828252B8 < __imp__sub_828B4210 < __imp__sub_828B47D0
+[  45.2717] profile:   0.1% __imp__sub_827252C0 < __imp__sub_82729C80 < __imp__sub_82729E20
+[  45.2717] profile:   0.1% __imp__sub_827235A0 < __imp__sub_82725200 < __imp__sub_827127A8
+[  45.2717] profile:   0.1% __imp__sub_82723570 < __imp__sub_827250E8 < __imp__sub_827224E8
+[  45.2717] profile:   0.1% __imp__sub_822FD320 < __imp__sub_822FD9C0 < __imp__sub_82215EF0
+[  45.2717] profile:   0.1% __imp__sub_822E82B8 < __imp__sub_82459198 < __imp__sub_828B2B48
+[  45.2717] profile:   0.1% __imp__sub_82235058 < __imp__sub_822BFC58 < __imp__sub_822BFD30
+[  45.2717] profile:   0.1% __imp__sub_822230C0 < __imp__sub_828B95F8 < __imp__sub_828AFBE0
+[  45.2717] profile:   0.1% __imp__sub_8220D608 < __imp__sub_8220D558 < __imp__sub_8220CA10
+[  45.2717] profile:   0.1% __imp__sub_8220C540 < __imp__sub_8220F598 < __imp__sub_82213A30
+[  45.2717] profile:   0.1% __imp__sub_8220BF08 < __imp__sub_8220BE38 < __imp__sub_8220B728
+[  45.2717] profile:   0.1% __imp__sub_8220BF08 < __imp__sub_8220B510 < __imp__sub_8220B098
+[  45.2717] profile:   0.1% __imp__sub_8220BE38 < __imp__sub_8220B728 < __imp__sub_82211760
+[  45.2717] profile:   0.1% __imp__sub_8220B028 < __imp__sub_828FC7A0 < __imp__sub_8290BD10
+[  45.2717] profile:   0.1% __imp__sub_8220B028 < __imp__sub_8220B098 < __imp__sub_8220A3C0
+[  45.2717] profile:   0.1% __imp__sub_822020F0 < __imp__sub_821FCD78 < __imp__sub_821FB618
+[  45.2717] profile:   0.1% __imp__sub_822020F0 < __imp__sub_821FCD78 < __imp__sub_821FA888
+[  45.2717] profile:   0.1% __imp__sub_821FA7F0 < __imp__sub_821FA888 < __imp__sub_821F93D8
+[  45.2814] xma: id A10005C0: rate/channel bits 0/0 -> 3/0
+[  45.2815] xma: id A1000A00: rate/channel bits 0/0 -> 3/0
+[  45.2915] xma: id A1000AC0: rate/channel bits 0/0 -> 3/0
+[  45.3239] gpu: swap #11400
+[  45.3258] renderer: frame 11400: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  45.3672] xma: id A1000780: rate/channel bits 3/0 -> 0/0
+[  45.3675] xma: id A1000840: rate/channel bits 0/0 -> 3/0
+[  45.4091] xma: id A10007C0: rate/channel bits 0/0 -> 3/0
+[  45.4673] xma: id A1000CC0: rate/channel bits 3/0 -> 0/0
+[  45.4798] xma: 5 s: 0 decode errors, 263 discontinuity flushes, 472 codec reopens, 3 pool waits, 1602 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 53 rate/channel changes, 3 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  45.4798] xma: 5 s: 16832 decoded samples dropped unplayed at stream restarts
+[  45.4891] xma: id A10004C0: rate/channel bits 0/0 -> 3/0
+[  45.4905] gpu: swap #11460
+[  45.4996] xma: id A1000A00: rate/channel bits 3/0 -> 0/0
+[  45.5159] xma: id A1000740: rate/channel bits 0/0 -> 3/0
+[  45.5911] xma: id A1000780: rate/channel bits 0/0 -> 3/0
+[  45.6574] gpu: swap #11520
+[  45.7118] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.00 ms, max 3.07 ms) | 848 draws/frame | GPU 0.02 ms/frame | draw thread 20% busy | 0 long
+[  45.7884] xma: id A1000A40: rate/channel bits 0/0 -> 3/0
+[  45.8236] gpu: swap #11580
+[  45.9906] gpu: swap #11640
+[  46.1574] gpu: swap #11700
+[  46.3235] gpu: swap #11760
+[  46.3999] xma: id A1000780: rate/channel bits 3/0 -> 0/0
+[  46.4568] vertex arena: 0.0 MB hashed, 0.00 MB copied, 0 hits a frame; 0 MB of 512 used, 0 buffers
+[  46.4901] gpu: swap #11820
+[  46.4978] xma: id A10009C0: rate/channel bits 0/0 -> 3/0
+[  46.6351] xma: id A1000940: rate/channel bits 3/0 -> 0/0
+[  46.6569] gpu: swap #11880
+[  46.6614] xma: id A1000140: rate/channel bits 0/0 -> 3/0
+[  46.6774] xma: id A1000AC0: rate/channel bits 3/0 -> 0/0
+[  46.7169] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.00 ms, max 3.04 ms) | 847 draws/frame | GPU 0.02 ms/frame | draw thread 20% busy | 0 long
+[  46.8243] gpu: swap #11940
+[  46.9904] gpu: swap #12000
+[  46.9920] renderer: frame 12000: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  46.9925] xma: id A10009C0: rate/channel bits 3/0 -> 0/0
+[  47.0143] xma: id A1000000: rate/channel bits 3/0 -> 0/0
+[  47.0567] xma: id A1000140: rate/channel bits 3/0 -> 0/0
+[  47.1369] xma: id A1000000: rate/channel bits 0/0 -> 3/0
+[  47.1568] gpu: swap #12060
+[  47.1843] xma: id A1000A40: rate/channel bits 3/0 -> 0/0
+[  47.2272] xma: id A1000B00: rate/channel bits 3/0 -> 0/0
+[  47.2329] xma: id A1000C40: rate/channel bits 0/0 -> 3/0
+[  47.2919] xma: id A1000440: rate/channel bits 3/0 -> 0/0
+[  47.3077] xma: id A1000640: rate/channel bits 0/0 -> 3/0
+[  47.3232] gpu: swap #12120
+[  47.4899] gpu: swap #12180
+[  47.5260] xma: id A1000100: rate/channel bits 3/0 -> 0/0
+[  47.6564] gpu: swap #12240
+[  47.7063] xma: id A1000AC0: rate/channel bits 0/0 -> 3/0
+[  47.7211] perf lite: 360.0 fps, 2.78 ms/frame (p99 3.00 ms, max 3.21 ms) | 806 draws/frame | GPU 0.02 ms/frame | draw thread 20% busy | 0 long
+[  47.8231] gpu: swap #12300
+[  47.9896] gpu: swap #12360
+[  48.0267] xma: id A1000100: rate/channel bits 0/0 -> 3/0
+[  48.0272] xma: id A1000040: rate/channel bits 0/0 -> 3/0
+[  48.1185] xma: id A1000940: rate/channel bits 0/0 -> 3/0
+[  48.1563] gpu: swap #12420
+[  48.2347] xma: id A1000B00: rate/channel bits 0/0 -> 3/0
+[  48.3155] xma: id A1000A80: rate/channel bits 0/0 -> 3/0
+[  48.3229] gpu: swap #12480
+[  48.3254] xma: id A1000B40: rate/channel bits 3/0 -> 0/0
+[  48.3373] xma: id A1000C80: rate/channel bits 0/0 -> 3/0
+[  48.3434] xma: id A1000D00: rate/channel bits 1/0 -> 3/0
+[  48.4263] xma: id A10007C0: rate/channel bits 3/0 -> 0/0
+[  48.4264] xma: id A1000100: rate/channel bits 3/0 -> 0/0
+[  48.4265] xma: id A1000A80: rate/channel bits 3/0 -> 1/0
+[  48.4757] xma: id A1000B00: rate/channel bits 3/0 -> 0/0
+[  48.4897] gpu: swap #12540
+[  48.4970] xma: id A1000C80: rate/channel bits 3/0 -> 0/0
+[  48.5250] xma: id A1000940: rate/channel bits 3/0 -> 0/0
+[  48.6565] gpu: swap #12600
+[  48.6583] renderer: frame 12600: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  48.6834] xma: id A1000A80: rate/channel bits 1/0 -> 0/0
+[  48.7259] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.02 ms, max 3.34 ms) | 784 draws/frame | GPU 0.02 ms/frame | draw thread 22% busy | 0 long
+[  48.7259] perf lite: VRAM 1247 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  48.7749] xma: id A1000380: rate/channel bits 3/0 -> 0/0
+[  48.8227] gpu: swap #12660
+[  48.9894] gpu: swap #12720
+[  49.1561] gpu: swap #12780
+[  49.3226] gpu: swap #12840
+[  49.4090] xma: id A1000380: rate/channel bits 0/0 -> 3/0
+[  49.4569] xma: id A1000A40: rate/channel bits 0/0 -> 3/0
+[  49.4897] gpu: swap #12900
+[  49.5108] xma: id A10007C0: rate/channel bits 0/0 -> 3/0
+[  49.6165] xma: id A1000B00: rate/channel bits 0/0 -> 3/0
+[  49.6275] xma: id A1000B40: rate/channel bits 0/0 -> 3/0
+[  49.6276] xma: id A1000C00: rate/channel bits 0/0 -> 3/0
+[  49.6557] gpu: swap #12960
+[  49.6914] xma: id A1000100: rate/channel bits 0/0 -> 3/0
+[  49.7228] xma: id A1000C80: rate/channel bits 0/0 -> 3/0
+[  49.7313] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.01 ms, max 3.09 ms) | 755 draws/frame | GPU 0.02 ms/frame | draw thread 23% busy | 0 long
+[  49.8090] xma: id A10007C0: rate/channel bits 3/0 -> 0/0
+[  49.8091] xma: id A1000040: rate/channel bits 3/0 -> 0/0
+[  49.8091] xma: id A1000A40: rate/channel bits 3/0 -> 1/0
+[  49.8226] gpu: swap #13020
+[  49.9891] gpu: swap #13080
+[  50.1561] gpu: swap #13140
+[  50.2717] profile: thread 3, 3078 samples
+[  50.2717] profile:  83.0% ZwWaitForAlertByThreadId < RtlSleepConditionVariableSRW < SleepConditionVariableSRW
+[  50.2717] profile:   1.1% __imp__sub_8220CA10 < __imp__sub_8220D648 < __imp__sub_8220C540
+[  50.2717] profile:   0.6% __imp__sub_828FC7A0 < __imp__sub_8290BD10 < __imp__sub_822165F0
+[  50.2717] profile:   0.3% __imp__sub_826EEE28 < __imp__sub_826EEEE0 < __imp__sub_826EF098
+[  50.2717] profile:   0.2% __imp__sub_8220BFF0 < __imp__sub_8220BFB8 < __imp__sub_8220BF08
+[  50.2717] profile:   0.2% __imp__sub_8220D558 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  50.2717] profile:   0.2% __imp__sub_8220C908 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  50.2717] profile:   0.2% __imp__sub_821F93D8 < __imp__sub_821F51C8 < __imp__sub_821F0D98
+[  50.2717] profile:   0.2% __imp__sub_821F2B90 < __imp__sub_821F29C0 < __imp__sub_821F2608
+[  50.2717] profile:   0.2% __imp__sub_821F2B30 < __imp__sub_821F29C0 < __imp__sub_821F2608
+[  50.2717] profile:   0.2% __imp__sub_821F2A90 < __imp__sub_821F2928 < __imp__sub_821F2608
+[  50.2717] profile:   0.1% __imp__sub_82744F10 < __imp__sub_821F93D8 < __imp__sub_821F51C8
+[  50.2717] profile:   0.1% __imp__sub_8271C650 < __imp__sub_8271D200 < __imp__sub_826FD700
+[  50.2717] profile:   0.1% __imp__sub_8220D608 < __imp__sub_8220D558 < __imp__sub_8220CA10
+[  50.2717] profile:   0.1% __imp__sub_8220C9D0 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  50.2717] profile:   0.1% __imp__sub_8220C9D0 < __imp__sub_8220C908 < __imp__sub_8220CA10
+[  50.2717] profile:   0.1% __imp__sub_8220BF08 < __imp__sub_8220BE38 < __imp__sub_8220B728
+[  50.2717] profile:   0.1% __imp__sub_8220BE38 < __imp__sub_8220B728 < __imp__sub_82211760
+[  50.2717] profile:   0.1% __imp__sub_8220B728 < __imp__sub_82211760 < __imp__sub_822114C0
+[  50.2717] profile:   0.1% __imp__sub_8220B510 < __imp__sub_8220B098 < __imp__sub_8220A3C0
+[  50.2717] profile:   0.1% __imp__sub_821FCD78 < __imp__sub_821FA5A8 < __imp__sub_821F9EA8
+[  50.2717] profile:   0.1% __imp__sub_821FA888 < __imp__sub_821F93D8 < __imp__sub_821F51C8
+[  50.2717] profile:   0.1% __imp__sub_821F8DC0 < __imp__sub_821FB618 < __imp__sub_821ED3F8
+[  50.2717] profile:   0.1% __imp__sub_821F2AD0 < __imp__sub_821F2898 < __imp__sub_821F2738
+[  50.2717] profile:   0.1% __imp__sub_821F2490 < __imp__sub_821F2898 < __imp__sub_821F2738
+[  50.2717] profile:   0.1% __imp__sub_82530850 < __imp__sub_82723A38 < __imp__sub_82712728
+[  50.2717] profile:   0.1% __imp__sub_82302988 < __imp__sub_82215EF0 < __imp__sub_821F0D98
+[  50.2717] profile:   0.1% __imp__sub_8220D608 < __imp__sub_8220CA10 < __imp__sub_8220D648
+[  50.2717] profile:   0.1% __imp__sub_8220C8A8 < __imp__sub_8220D558 < __imp__sub_8220CA10
+[  50.2717] profile:   0.1% __imp__sub_8220C078 < __imp__sub_8220BFF0 < __imp__sub_8220BFB8
+[  50.2717] profile:   0.1% __imp__sub_8220BF08 < __imp__sub_8220B510 < __imp__sub_8220B098
+[  50.2717] profile:   0.1% __imp__sub_82206B30 < __imp__sub_82207138 < __imp__sub_82207378
+[  50.2717] profile:   0.1% __imp__sub_822020F0 < __imp__sub_821FCD78 < __imp__sub_821FB618
+[  50.2717] profile:   0.1% __imp__sub_821FCD78 < __imp__sub_821FB618 < __imp__sub_821ED3F8
+[  50.2717] profile:   0.1% __imp__sub_821FB618 < __imp__sub_821ED3F8 < __imp__sub_821F51C8
+[  50.2717] profile:   0.1% __imp__sub_821F7010 < __imp__sub_821E9A70 < __imp__sub_821EB050
+[  50.2717] profile:   0.1% __imp__sub_821F2A90 < __imp__sub_821F29C0 < __imp__sub_821F2608
+[  50.2717] profile:   0.1% RtlWakeAddressSingle < __imp__RtlLeaveCriticalSection < __imp__sub_821F2928
+[  50.2717] profile:   0.1% __imp__sub_8290A800 < __imp__sub_82213A30 < __imp__sub_828FF758
+[  50.2717] profile:   0.1% __imp__sub_82903CF0 < __imp__sub_828FC7A0 < __imp__sub_8290BD10
+[  50.2717] profile:   0.1% __imp__sub_828B7A40 < __imp__sub_828B95F8 < __imp__sub_828AFBE0
+[  50.2717] profile:   0.1% __imp__sub_828B03E8 < __imp__sub_828B2B48 < __imp__sub_8271C650
+[  50.2717] profile:   0.1% __imp__sub_828AF030 < __imp__sub_828AF608 < __imp__sub_828B25D8
+[  50.2717] profile:   0.1% __imp__sub_828AF030 < __imp__sub_828AF588 < __imp__sub_828B4210
+[  50.2717] profile:   0.1% __imp__sub_82856E70 < __imp__sub_829065A8 < __imp__sub_8220A3C0
+[  50.2717] profile:   0.1% __imp__sub_82729170 < __imp__sub_82722598 < __imp__sub_827232A0
+[  50.2718] profile:   0.1% __imp__sub_827250E8 < __imp__sub_827224E8 < __imp__sub_82AFA2E8
+[  50.2718] profile:   0.1% __imp__sub_826FFAE8 < __imp__sub_82717640 < __imp__sub_827178B8
+[  50.2718] profile:   0.1% __imp__sub_826FDD18 < __imp__sub_82437878 < __imp__sub_82420A20
+[  50.2718] profile:   0.1% __imp__sub_826FD590 < __imp__sub_824205B8 < __imp__sub_82712E58
+[  50.2718] profile:   0.1% __imp__sub_825362E8 < __imp__sub_828B9CE0 < __imp__sub_828AF030
+[  50.2718] profile:   0.1% __imp__sub_82530850 < __imp__sub_828AF030 < __imp__sub_828AF608
+[  50.2718] profile:   0.1% __imp__sub_82530850 < __imp__sub_828AF030 < __imp__sub_828AF588
+[  50.2718] profile:   0.1% __imp__sub_82530850 < __imp__sub_82530040 < __imp__sub_822232C8
+[  50.2718] profile:   0.1% __imp__sub_82530850 < __imp__sub_82530040 < __imp__sub_821F1420
+[  50.2718] profile:   0.1% __imp__sub_824205B8 < __imp__sub_82712E58 < __imp__sub_826FF8B0
+[  50.2718] profile:   0.1% __imp__sub_82307E58 < __imp__sub_8242A2C0 < __imp__sub_82712E58
+[  50.2718] profile:   0.1% __imp__sub_822E82B8 < __imp__sub_82459198 < __imp__sub_828B2BC8
+[  50.2718] profile:   0.1% __imp__sub_82235058 < __imp__sub_822BFC58 < __imp__sub_822BFD30
+[  50.2718] profile:   0.1% __imp__sub_822230C0 < __imp__sub_828B95F8 < __imp__sub_828AFBE0
+[  50.2738] shader scan: 1 candidates changed before they were confirmed (10 so far)
+[  50.3225] gpu: swap #13200
+[  50.3245] renderer: frame 13200: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures

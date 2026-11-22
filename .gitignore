@@ -1,0 +1,7 @@
+*.fir
+*.exe
+*.obj
+*.pdb
+__pycache__/
+godot/.godot/
+

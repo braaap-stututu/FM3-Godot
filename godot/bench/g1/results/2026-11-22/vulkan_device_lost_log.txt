@@ -1,0 +1,94 @@
+ERROR: Printing last known breadcrumbs in reverse order (last executed first).
+Some of them might be inaccurate. Try running with --accurate-breadcrumbs for precise information.
+   at: print_lost_device_info (drivers/vulkan/rendering_device_driver_vulkan.cpp:7012)
+ERROR: Searching last breadcrumb. We've sent up to ID: 8082
+ERROR: Last breadcrumb ID found: 8077
+ERROR: Last known breadcrumb: BLIT_PASS
+ERROR: Last known breadcrumb: UI_PASS
+ERROR: Last known breadcrumb: BLIT_PASS
+ERROR: Last known breadcrumb: UI_PASS
+ERROR: Last known breadcrumb: BLIT_PASS
+ERROR: Last known breadcrumb: UI_PASS
+ERROR: Last known breadcrumb: BLIT_PASS
+ERROR: Last known breadcrumb: UI_PASS
+ERROR: ** Report from VK_EXT_device_fault **
+Description: Device lost detected
+Vendor infos:
+Addresses info:
+   at: on_device_lost (drivers/vulkan/rendering_device_driver_vulkan.cpp:6993)
+ERROR: === Driver Memory Report ===
+Launch with --extra-gpu-memory-tracking and build with DEBUG_ENABLED for this functionality to work.
+Device memory may be unavailable if the API does not support it(e.g. VK_EXT_device_memory_report is unsupported).
+
+Total Driver Memory:0.0 MB
+Total Driver Num Allocations: 0
+Total Device Memory:0.0 MB
+Total Device Num Allocations: 0
+
+Memory use by object type (CSV format):
+
+Category; Driver memory in MB; Driver Allocation Count; Device memory in MB; Device Allocation Count
+UNKNOWN;0.0;0;0.0;0
+INSTANCE;0.0;0;0.0;0
+PHYSICAL_DEVICE;0.0;0;0.0;0
+DEVICE;0.0;0;0.0;0
+QUEUE;0.0;0;0.0;0
+SEMAPHORE;0.0;0;0.0;0
+COMMAND_BUFFER;0.0;0;0.0;0
+FENCE;0.0;0;0.0;0
+DEVICE_MEMORY;0.0;0;0.0;0
+BUFFER;0.0;0;0.0;0
+IMAGE;0.0;0;0.0;0
+EVENT;0.0;0;0.0;0
+QUERY_POOL;0.0;0;0.0;0
+BUFFER_VIEW;0.0;0;0.0;0
+IMAGE_VIEW;0.0;0;0.0;0
+SHADER_MODULE;0.0;0;0.0;0
+PIPELINE_CACHE;0.0;0;0.0;0
+PIPELINE_LAYOUT;0.0;0;0.0;0
+RENDER_PASS;0.0;0;0.0;0
+PIPELINE;0.0;0;0.0;0
+DESCRIPTOR_SET_LAYOUT;0.0;0;0.0;0
+SAMPLER;0.0;0;0.0;0
+DESCRIPTOR_POOL;0.0;0;0.0;0
+DESCRIPTOR_SET;0.0;0;0.0;0
+FRAMEBUFFER;0.0;0;0.0;0
+COMMAND_POOL;0.0;0;0.0;0
+DESCRIPTOR_UPDATE_TEMPLATE_KHR;0.0;0;0.0;0
+SURFACE_KHR;0.0;0;0.0;0
+SWAPCHAIN_KHR;0.0;0;0.0;0
+DEBUG_UTILS_MESSENGER_EXT;0.0;0;0.0;0
+DEBUG_REPORT_CALLBACK_EXT;0.0;0;0.0;0
+ACCELERATION_STRUCTURE;0.0;0;0.0;0
+VMA_BUFFER_OR_IMAGE;0.0;0;0.0;0
+   at: on_device_lost (drivers/vulkan/rendering_device_driver_vulkan.cpp:7002)
+ERROR: Vulkan device was lost. This could be due to a driver issue, a hardware issue, or the driver resetting itself because it was unresponsive for too long (TDR).
+   at: command_queue_execute_and_present (drivers/vulkan/rendering_device_driver_vulkan.cpp:3268)
+
+================================================================
+CrashHandlerException: Program crashed with signal 4
+Engine version: Godot Engine v4.7.2.stable.official (ed1daf0bf001b61586d9930840f2f1394092c079)
+Dumping the backtrace. Please include this when reporting the bug on: https://github.com/godotengine/godot/issues
+Load address: 7ff620210000
+
+[1] 7ff7642e4d03 (main+40d4d03) - no debug info in PE/COFF executable
+[2] 7ffc0d597732 (ntdll.dll+127732) - no debug info in PE/COFF executable
+[3] 7ffc0d5dab3e (ntdll.dll+16ab3e) - no debug info in PE/COFF executable
+[4] 7ffc0d536984 (ntdll.dll+c6984) - no debug info in PE/COFF executable
+[5] 7ffc0d5da47d (ntdll.dll+16a47d) - no debug info in PE/COFF executable
+[6] 7ff761580620 (main+1370620) - no debug info in PE/COFF executable
+[7] 7ff7634a2b8c (main+3292b8c) - no debug info in PE/COFF executable
+[8] 7ff7634a3282 (main+3293282) - no debug info in PE/COFF executable
+[9] 7ff7634fbe6a (main+32ebe6a) - no debug info in PE/COFF executable
+[10] 7ff76359442d (main+338442d) - no debug info in PE/COFF executable
+[11] 7ff76026dba1 (main+5dba1) - no debug info in PE/COFF executable
+[12] 7ff760212ef0 (main+2ef0) - no debug info in PE/COFF executable
+[13] 7ff760262b41 (main+52b41) - no debug info in PE/COFF executable
+[14] 7ff760262b7d (main+52b7d) - no debug info in PE/COFF executable
+[15] 7ff7602110c8 (main+10c8) - no debug info in PE/COFF executable
+[16] 7ff7602113f5 (main+13f5) - no debug info in PE/COFF executable
+[17] 7ffc0c29dda6 (kernel32.dll+2dda6) - no debug info in PE/COFF executable
+[18] 7ffc0d539c5b (ntdll.dll+c9c5b) - no debug info in PE/COFF executable
+[19] -1 (main+-7ff760210001) - no debug info in PE/COFF executable
+-- END OF C++ BACKTRACE --
+================================================================

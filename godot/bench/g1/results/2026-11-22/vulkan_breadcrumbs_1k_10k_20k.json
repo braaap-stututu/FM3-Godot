@@ -1,0 +1,89 @@
+{
+  "adapter": "AMD Radeon RX 7900 XTX",
+  "benchmark": "G1",
+  "cpu": "AMD Ryzen 7 9800X3D 8-Core Processor",
+  "godot": "4.7.2-stable (official)",
+  "layout": {
+    "fits": false,
+    "game_fov_y_deg": 155.372833,
+    "mode": "auto",
+    "screens": [
+      {
+        "aspect": 1.77777791,
+        "far": 4000.0,
+        "near": 0.0500000007,
+        "offset": [
+          0.0,
+          0.0
+        ],
+        "rot_y": 0.965748847,
+        "size": 0.0294901766
+      },
+      {
+        "aspect": 1.77777791,
+        "far": 4000.0,
+        "near": 0.0500000007,
+        "offset": [
+          0.0,
+          0.0
+        ],
+        "rot_y": 0.0,
+        "size": 0.0294901766
+      },
+      {
+        "aspect": 1.77777791,
+        "far": 4000.0,
+        "near": 0.0500000007,
+        "offset": [
+          0.0,
+          0.0
+        ],
+        "rot_y": -0.965748847,
+        "size": 0.0294901766
+      }
+    ]
+  },
+  "msaa": 4,
+  "renderer": "vulkan",
+  "results": [
+    {
+      "draw_calls_mean": 552.676786313318,
+      "fps": 745.219321804612,
+      "frame_ms_mean": 1.34188683886834,
+      "frame_ms_p99": 2.08333333333333,
+      "frames": 5962,
+      "instances": 1000,
+      "objects_drawn_mean": 632.305769875881,
+      "render_cpu_ms_mean": 0.473934585710313,
+      "render_gpu_ms_mean": 1.06887151993729
+    },
+    {
+      "draw_calls_mean": 2931.39912152269,
+      "fps": 426.862003576506,
+      "frame_ms_mean": 2.3426774733319,
+      "frame_ms_p99": 2.38095238095238,
+      "frames": 3415,
+      "instances": 10000,
+      "objects_drawn_mean": 6318.89224011713,
+      "render_cpu_ms_mean": 1.48955578309638,
+      "render_gpu_ms_mean": 1.98628316238021
+    },
+    {
+      "draw_calls_mean": 4391.45065629558,
+      "fps": 257.101068175573,
+      "frame_ms_mean": 3.88952098525357,
+      "frame_ms_p99": 5.55555555555555,
+      "frames": 2057,
+      "instances": 20000,
+      "objects_drawn_mean": 12930.4846864366,
+      "render_cpu_ms_mean": 2.58891930012779,
+      "render_gpu_ms_mean": 3.15876762075626
+    }
+  ],
+  "screen": [
+    2560,
+    1440
+  ],
+  "shadows": true,
+  "unique_meshes": 300
+}

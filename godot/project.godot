@@ -1,0 +1,21 @@
+; Godot 4.7 project for the Frame IR Godot backend pieces and benchmarks.
+; The main scene is the G1 benchmark (bench/g1). See README.md.
+
+config_version=5
+
+[application]
+
+config/name="Frame IR Godot backend"
+run/main_scene="res://bench/g1/g1.tscn"
+run/max_fps=0
+
+[display]
+
+window/size/viewport_width=7680
+window/size/viewport_height=1440
+window/size/borderless=true
+window/vsync/vsync_mode=0
+
+[rendering]
+
+renderer/rendering_method="forward_plus"

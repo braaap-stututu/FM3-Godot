@@ -1,0 +1,871 @@
+[   0.0049] fm3: game folder G:\claude code projects\FM3-ReGPU recomp\reference\rexglue recomp reference\hl360-forza3\game\disc1
+[   0.2077] loader: unknown kernel variable ordinal 156, giving it zeroed storage
+[   0.2077] loader: unknown kernel variable ordinal 1BF, giving it zeroed storage
+[   0.2100] indirect calls: game:\default.xex, 45629 functions
+[   0.2100] indirect calls: 45629 functions in 1 images
+[   0.2100] loader: G:\claude code projects\FM3-ReGPU recomp\reference\rexglue recomp reference\hl360-forza3\game\disc1\default.xex title 4D53084D entry 82529DD8 stack 0x10000 tls 64 slots + 0x1820 bytes @82CE7C00
+[   0.2617] runtime: TSC 4294.967 MHz, user data in G:\claude code projects\FM3-ReGPU recomp\out\user
+[   0.2622] runtime: profile Baseline, saves in G:\claude code projects\FM3-ReGPU recomp\out\user\profiles\Baseline\content
+[   0.2622] gpu: anti-aliasing filter off, supersampling 1.00x, EQAA off
+[   0.2623] hyper: preset off; scene scale as set; upscale as set
+[   0.2623] switch: REGPU_NO_FENCE_ORDER on (not reached yet: kept for when it is)
+[   0.2623] switch: REGPU_TEXTURE_CHECK_STAGGER on
+[   0.2623] switch: REGPU_DIRECT_DYNAMIC_INDICES on (not reached yet: kept for when it is)
+[   0.2624] gpu: one guest tile on
+[   0.2624] gpu: command processor spins while idle
+[   0.2624] gpu: asynchronous present on
+[   0.2624] long stacks: frames sampled once they have run 7.5 ms
+[   0.2625] gpu: upload ring in VRAM on (if resizable BAR)
+[   0.2625] gpu: draw workers on by default (occlusion queries counted on the command processor)
+[   0.2625] frame time: 360 fps, guest vblank 720 Hz, mainthread30fps on (a main frame every second vblank); frame time from the vblank clock (FM3_GAME_FRAME_TIME=1: the game's)
+[   0.2625] gpu: ReGPU at 2560x1440, msaa 4, vblank 720 Hz
+[   0.2626] xma: engine sound crossfade off
+[   0.2627] thread 1 created: main 82529DD8 param 00000000
+[   0.2641] debug: listening on 127.0.0.1:7341 (tools/regpuctl.py)
+[   0.2658] thread 2 created: entry 826F4310 param 40162000 (suspended)
+[   0.2669] ExGetXConfigSetting: unknown setting 0003/0001, returning 0
+[   0.2669] loader: no recompiled module named xam.xex
+[   0.2669] XexLoadImage("xam.xex"): not available
+[   0.2672] XexGetProcedureAddress(xam.xex, 1BA): XamInputGetUserVibrationLevel, at 82FFF000
+[   0.2672] XexGetProcedureAddress(xam.xex, 208): XamUserGetDeviceContext, at 82FFF004
+[   0.2672] XexGetProcedureAddress(xboxkrnl.exe, 282): XInputdFFGetDeviceInfo, at 82FFF008
+[   0.2672] XexGetProcedureAddress(xboxkrnl.exe, 283): XInputdFFSetEffect, at 82FFF00C
+[   0.2672] XexGetProcedureAddress(xboxkrnl.exe, 284): XInputdFFUpdateEffect, at 82FFF010
+[   0.2672] XexGetProcedureAddress(xboxkrnl.exe, 285): XInputdFFEffectOperation, at 82FFF014
+[   0.2672] XexGetProcedureAddress(xboxkrnl.exe, 286): XInputdFFDeviceControl, at 82FFF018
+[   0.2672] XexGetProcedureAddress(xboxkrnl.exe, 287): XInputdFFSetDeviceGain, at 82FFF01C
+[   0.2672] XexGetProcedureAddress(xboxkrnl.exe, 288): XInputdFFCancelIo, at 82FFF020
+[   0.2672] XexGetProcedureAddress(xboxkrnl.exe, 289): XInputdFFSetRumble, at 82FFF024
+[   0.2673] thread 3 created: entry 822992C8 param 00000000 (suspended)
+[   0.2731] presenter: picture in the game window
+[   0.3787] presenter: Vulkan device 0: AMD Radeon RX 7900 XTX (API 1.4.359)
+[   0.3788] presenter: Vulkan device 1: AMD Radeon(TM) Graphics (API 1.4.315)
+[   0.4149] thread 4 created: entry 828E46D8 param 00000000 (suspended)
+[   0.4149] thread 5 created: entry 828E4778 param 00000000 (suspended)
+[   0.4150] thread 6 created: entry 828E4820 param 00000000 (suspended)
+[   0.4151] thread 7 created: entry 822BDE68 param 4010D7F0 (suspended)
+[   0.4154] gpu: interrupt callback 824B4B50 data 40100080
+[   0.4155] thread 8 created: gpu vblank irq 00000000 param 00000000
+[   0.4156] thread 9 created: gpu command processor 00000000 param 00000000
+[   0.4156] gpu: ring buffer at B09662C0, 8192 dwords
+[   0.4156] gpu: rptr writeback at B8C2603C (from 18C2603C), block log2 6
+[   0.4157] thread 10 created: entry 824C8FB0 param 40102D10
+[   0.4157] thread 10  (entry 824C8FB0) base priority 0 -> 17
+[   0.4158] gpu: draw worker thread started
+[   0.4160] front end: frame limit 120 fps (front end, menus animate per frame; cap 360)
+[   0.4160] one tile: scenario 0 (3 tiles) drawn as one 1280x720 tile
+[   0.4162] gpu: 1 distinct shaders seen
+[   0.4169] gpu: swap #1
+[   0.4170] gpu: frame cap 120 fps (max 120, vsync off)
+[   0.4171] tick wait: 20 us
+[   0.4171] gpu: swap #2
+[   0.4171] perf lite: light performance log on (REGPU_PERF_LITE): one line a second, no per-draw timing
+[   0.4172] perf lite: long-frame log on (REGPU_LONG_FRAMES): frames over 2x the recent average, with what they did
+[   0.4303] thread 11 created: entry 82A615D0 param 42622410 (suspended)
+[   0.4303] thread 11  (entry 82A615D0) base priority 0 -> 16
+[   0.4338] gpu: swap #4
+[   0.4552] audio: output 5.1 float at 48000 Hz
+[   0.4553] thread 12 created: audio driver 00000000 param 00000000
+[   0.4553] xma: write 00000002 to APU register 601
+[   0.4554] thread 13 created: entry 829A09F8 param 426DFE70 (suspended)
+[   0.4554] thread 13  (entry 829A09F8) base priority 0 -> 0
+[   0.4567] thread 14 created: entry 829A09F8 param 426DFCF4 (suspended)
+[   0.4567] thread 14  (entry 829A09F8) base priority 0 -> 16
+[   0.4581] thread 15 created: entry 829A09F8 param 426DF438 (suspended)
+[   0.4581] thread 15  (entry 829A09F8) base priority 0 -> 2
+[   0.4597] intro: sequencer setter 822BD7B8 wrapped
+[   0.4598] intro: skipped (legal text, logos, intro video): 6 s 4 s 10 s 10 s 5 s 70 s
+[   0.4672] gpu: swap #8
+[   0.4864] io: large read turn10_logo.bik offset 1292 length 15760808 -> 42E40060: __imp__NtReadFile+260 (imports_io.cpp:439) < __imp__sub_8252A748+1C7 (ppc_recomp.53.cpp:19398) < __imp__sub_82B78150+88E (ppc_recomp.176.cpp:39455) < __imp__sub_82B6E3F0+1AAA (ppc_recomp.176.cpp:17335) < __imp__sub_82709C38+4EC (ppc_recomp.81.cpp:12062) < __imp__sub_8270ADB0+B9 (ppc_recomp.81.cpp:14504) < __imp__sub_828E2E60+599 (ppc_recomp.117.cpp:7024) < __imp__sub_828E46D8+17F (ppc_recomp.117.cpp:10553) < __imp__sub_8252FF20+A8 (ppc_recomp.54.cpp:5721) < `anonymous namespace'::HostThreadMain+335 (thread.cpp:112)
+[   0.4893] thread 16 created: entry 82B72790 param 82B80208 (suspended)
+[   0.4919] io: large read msgs_logo.bik offset 1152 length 9006440 -> 43DA0060: __imp__NtReadFile+260 (imports_io.cpp:439) < __imp__sub_8252A748+1C7 (ppc_recomp.53.cpp:19398) < __imp__sub_82B78150+88E (ppc_recomp.176.cpp:39455) < __imp__sub_82B6E3F0+1AAA (ppc_recomp.176.cpp:17335) < __imp__sub_82709C38+4EC (ppc_recomp.81.cpp:12062) < __imp__sub_8270ADB0+B9 (ppc_recomp.81.cpp:14504) < __imp__sub_828E2E60+599 (ppc_recomp.117.cpp:7024) < __imp__sub_828E46D8+17F (ppc_recomp.117.cpp:10553) < __imp__sub_8252FF20+A8 (ppc_recomp.54.cpp:5721) < `anonymous namespace'::HostThreadMain+335 (thread.cpp:112)
+[   0.4970] thread 17 created: entry 82B72790 param 82B8022C (suspended)
+[   0.5027] xma: A1001900 stepped 8 times waiting for a 2-channel codec: opened in place
+[   0.5039] xma: A1001900 is music (the first stream recognised)
+[   0.5044] thread 18 created: entry 829A09F8 param 402406F0 (suspended)
+[   0.5044] thread 18  (entry 829A09F8) base priority 0 -> 1
+[   0.5062] thread 19 created: entry 82581500 param 44BBA7E0
+[   0.5065] thread 20 created: entry 827EE120 param 402BD000 (suspended)
+[   0.5074] thread 21 created: entry 8289A7F0 param 00000000 (suspended)
+[   0.5074] XLiveBase message 00058004 answered with success
+[   0.5110] io: large read gamedb.slt offset 0 length 7638016 -> 454F0030: __imp__NtReadFile+260 (imports_io.cpp:439) < __imp__sub_8252A748+1C7 (ppc_recomp.53.cpp:19398) < __imp__sub_826F4290+C1 (ppc_recomp.78.cpp:28195) < __imp__sub_828A69A8+173 (ppc_recomp.112.cpp:12821) < __imp__sub_8289DC78+2AE (ppc_recomp.111.cpp:22833) < __imp__sub_827828B8+2E3 (ppc_recomp.91.cpp:21231) < __imp__sub_82783108+A8E (ppc_recomp.91.cpp:22810) < __imp__sub_827837E0+A5 (ppc_recomp.91.cpp:23427) < __imp__sub_8277C7B8+175 (ppc_recomp.91.cpp:5969) < __imp__sub_82777F20+122 (ppc_recomp.90.cpp:30179)
+[   0.5380] gpu: swap #16
+[   0.6675] gpu: swap #32
+[   0.7087] thread 4  (entry 828E46D8) base priority 0 -> 16
+[   0.7087] thread 4  (entry 828E46D8) base priority 16 -> 0
+[   0.7504] thread 17  (entry 82B72790) base priority 0 -> 16
+[   0.7914] presenter: Vulkan pipeline cache 290189 KB
+[   0.8011] presenter: Vulkan on AMD Radeon RX 7900 XTX (AMD proprietary driver 26.11.2 (LLPC)), 24560 MB video memory, discrete, host-visible VRAM (resizable BAR); conditional rendering yes, host memory import yes, push descriptors yes, dynamic blend yes, pipeline libraries no
+[   0.8116] long stacks: sampling the draw thread 16932 every millisecond
+[   0.8593] thread 22 created: entry 826EDB20 param 40245DD0 (suspended)
+[   0.8951] presenter: swap chain 2560x1440, 3 images, format 37, immediate (tearing)
+[   0.8951] presenter: window and Vulkan swap chain ready
+[   0.9128] gpu: window minimized (FM3_MINIMIZED)
+[   1.0714] grid test: on: pressing A until the race starts, then freezing at 9.00 s of its countdown clock
+[   1.0784] content: enumerating 4 packages of type 00000001
+[   1.0850] thread 23 created: entry 827D8070 param 82C78B44 (suspended)
+[   1.2036] thread 16  (entry 82B72790) base priority 0 -> 16
+[   1.2038] audio cadence: game audio updates at most about 120 a second
+[   1.2055] thread 24 created: entry 8284C9D8 param 44D6BAE0 (suspended)
+[   1.2077] thread 25 created: entry 8284C9D8 param 44E1D270 (suspended)
+[   1.2144] xma: A1000000 stepped 8 times waiting for a 2-channel codec: opened in place
+[   1.3475] gpu: swap #60
+[   1.3800] gpu: swap #64
+[   1.5218] perf lite: 66.7 fps, 14.99 ms/frame (p99 454.22 ms, max 454.22 ms) | 111 draws/frame | GPU 0.00 ms/frame | draw thread -1% busy | 0 long
+[   1.8473] gpu: swap #120
+[   1.9140] gpu: swap #128
+[   2.2862] content: enumerating 8 packages of type 00000002
+[   2.2862] content: DLCRoot0: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0013
+[   2.2863] content: DLCRoot1: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0014
+[   2.2863] content: DLCRoot2: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0015
+[   2.2864] content: DLCRoot3: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0030
+[   2.2864] content: DLCRoot4: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0035
+[   2.2865] content: DLCRoot5: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0040
+[   2.2866] content: DLCRoot6: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0045
+[   2.2866] content: DLCRoot7: -> G:\claude code projects\FM3-ReGPU recomp\out\user\dlc\4D53084D0CCF0060
+[   2.3462] gpu: swap #180
+[   2.5269] perf lite: 120.0 fps, 8.33 ms/frame (p99 8.55 ms, max 8.56 ms) | 129 draws/frame | GPU 0.00 ms/frame | draw thread 0% busy | 0 long
+[   2.8043] content: E0000BA5E11E0001: -> G:\claude code projects\FM3-ReGPU recomp\out\user\profiles\Baseline\content\00000001\ForzaProfile
+[   2.8462] gpu: swap #240
+[   2.8577] frame time: main frame 390 took 580 ms (a load)
+[   2.8817] car shadows: shadow passes run every 1 frame (as the game does)
+[   2.8886] gpu: 51 distinct shaders seen
+[   2.9888] gpu: 101 distinct shaders seen
+[   2.9889] gpu: swap #256
+[   2.9891] gpu: 151 distinct shaders seen
+[   3.3492] gpu: swap #300
+[   3.4314] perf lite: 119.9 fps, 8.34 ms/frame (p99 9.00 ms, max 9.53 ms) | 363 draws/frame | GPU 0.00 ms/frame | draw thread 0% busy | 0 long
+[   3.7739] xma: A1000040 stepped 8 times waiting for a 2-channel codec: opened in place
+[   3.7745] xma: id A1000040: rate/channel bits 0/1 -> 3/1
+[   3.8484] gpu: swap #360
+[   4.3483] gpu: swap #420
+[   4.5371] perf lite: 120.0 fps, 8.33 ms/frame (p99 8.54 ms, max 8.55 ms) | 336 draws/frame | GPU 0.00 ms/frame | draw thread 0% busy | 0 long
+[   4.8481] gpu: swap #480
+[   5.1148] gpu: swap #512
+[   5.3481] gpu: swap #540
+[   5.4398] perf lite: 120.0 fps, 8.33 ms/frame (p99 8.61 ms, max 8.61 ms) | 239 draws/frame | GPU 0.00 ms/frame | draw thread 0% busy | 0 long
+[   5.4650] xma: 5 s: 0 decode errors, 0 discontinuity flushes, 4 codec reopens, 21 pool waits, 75 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 1 rate/channel changes, 0 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[   5.8479] gpu: swap #600
+[   5.8904] long stacks: 30.4 ms frame, 16 samples; top functions:
+[   5.8904] long stacks:   ZwWaitForAlertByThreadId x16
+[   5.8904] long stacks:   x16 ZwWaitForAlertByThreadId < RtlWaitOnAddress < WaitOnAddress < __std_atomic_wait_direct < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[   5.9421] long frame 601: 30.42 ms (avg 8.33) | 270 draws | idle 30.35 ms | gpu wait 0.00 ms | builds 0 waits 0.00 ms, 0 pipelines, 0 created | textures 0 new 0 changed 0 KB 0.00 ms | swap 0.00 ms | fences 0.00 ms | replay 0.00 ms | cpu 0.26 ms (avg 0.18)
+[   6.0196] thread 26 created: entry 822974B0 param 4023A720 (suspended)
+[   6.1528] thread 27 created: entry 822974B0 param 4023A720 (suspended)
+[   6.3692] gpu: swap #660
+[   6.5440] perf lite: 117.4 fps, 8.52 ms/frame (p99 8.62 ms, max 30.42 ms) | 298 draws/frame | GPU 0.00 ms/frame | draw thread 0% busy | 1 long
+[   6.5963] frame time: main frame 1510 took 409 ms (a load)
+[   6.8669] thread 28 created: entry 829070B8 param 46A039A0 (suspended)
+[   6.8674] thread 29 created: entry 829070B8 param 465CF240 (suspended)
+[   6.8677] thread 30 created: entry 829070B8 param 42A18AB0 (suspended)
+[   6.8682] thread 31 created: entry 829070B8 param 46A00BE0 (suspended)
+[   6.8687] thread 32 created: entry 829070B8 param 448C17B0 (suspended)
+[   6.8692] thread 33 created: entry 829070B8 param 401543C0 (suspended)
+[   6.8695] gpu: swap #720
+[   6.8697] thread 34 created: entry 829070B8 param 44D6DD40 (suspended)
+[   6.8702] thread 35 created: entry 829070B8 param 44D1C720 (suspended)
+[   6.8786] thread 36 created: entry 82835298 param 46512BD0 (suspended)
+[   7.0283] vfs: no mapping for "Update:\media\cars\driver\SteerLock2LockSmall.gr2"
+[   7.0297] vfs: no mapping for "Update:\media\cars\driver\SteerLock2LockLarge.gr2"
+[   7.0310] vfs: no mapping for "Update:\media\cars\driver\ShiftStickConsoleLeft.gr2"
+[   7.3692] gpu: swap #780
+[   7.5475] perf lite: 120.0 fps, 8.33 ms/frame (p99 8.55 ms, max 8.57 ms) | 270 draws/frame | GPU 0.00 ms/frame | draw thread 0% busy | 0 long
+[   7.8694] gpu: swap #840
+[   8.3692] gpu: swap #900
+[   8.5451] frame time: main frame 1605 took 1042 ms (a load)
+[   8.5512] perf lite: 120.0 fps, 8.33 ms/frame (p99 8.54 ms, max 8.56 ms) | 270 draws/frame | GPU 0.00 ms/frame | draw thread 0% busy | 0 long
+[   8.5816] thread 37 created: entry 8284C9D8 param 42727F60 (suspended)
+[   8.6053] thread 38 created: entry 82889A20 param 471BB850 (suspended)
+[   8.6111] thread 39 created: entry 82B01890 param 42729AB0 (suspended)
+[   8.8692] gpu: swap #960
+[   8.8861] grid test: race start 40550E40 phase 3 flags 0 0 0, clock 0.000 s (main frame 1651)
+[   8.8880] xma: A1000000 stepped 8 times waiting for a 1-channel codec: opened in place
+[   8.8885] xma: id A1000000: rate/channel bits 0/1 -> 0/0
+[   8.8886] xma: A1000040 stepped 8 times waiting for a 1-channel codec: opened in place
+[   8.8891] xma: id A1000040: rate/channel bits 3/1 -> 0/0
+[   8.8892] xma: A1000080 stepped 8 times waiting for a 1-channel codec: opened in place
+[   8.8898] xma: id A1000080: rate/channel bits 0/1 -> 0/0
+[   8.8898] xma: A10000C0 stepped 8 times waiting for a 1-channel codec: opened in place
+[   8.8904] xma: id A10000C0: rate/channel bits 0/1 -> 0/0
+[   8.8904] xma: A1000100 stepped 8 times waiting for a 1-channel codec: opened in place
+[   8.8905] xma: keeping 5 spare codecs for 1 ch 24000 Hz (5 taken between refills)
+[   8.8911] xma: A1000140 stepped 8 times waiting for a 1-channel codec: opened in place
+[   8.8918] xma: A10001C0 stepped 8 times waiting for a 1-channel codec: opened in place
+[   8.9000] xma: A10002C0 stepped 8 times waiting for a 1-channel codec: opened in place
+[   8.9007] xma: A1000300 stepped 8 times waiting for a 1-channel codec: opened in place
+[   8.9014] xma: A1000300 stepped 8 times waiting for a 1-channel codec: opened in place
+[   8.9021] xma: A1000380 stepped 8 times waiting for a 1-channel codec: opened in place
+[   8.9027] xma: A1000400 stepped 8 times waiting for a 1-channel codec: opened in place
+[   8.9033] xma: A1000440 stepped 8 times waiting for a 1-channel codec: opened in place
+[   8.9039] xma: keeping 8 spare codecs for 1 ch 48000 Hz (8 taken between refills)
+[   8.9740] mirror: rendered every 1 frame (as the game does)
+[   9.0454] car reflections: faces rendered every 1 time (as the game does)
+[   9.1098] gpu: 201 distinct shaders seen
+[   9.1306] renderer: memory architecture discrete (own video memory)
+[   9.1360] renderer: guest memory heap over a view of its own: mapped
+[   9.1382] ring wait: mode 2 (sleep 100 us)
+[   9.2357] renderer: guest memory mapped for the GPU (zero-copy vertex fetch)
+[   9.2373] renderer: anti-aliasing 4x (setting 4)
+[   9.2426] renderer: upload ring 128 MB per frame
+[   9.2426] renderer: GPU upload heaps supported (resizable BAR on)
+[   9.2725] renderer: Vulkan objects ready (3 frame slots, 128 MB upload ring each)
+[   9.2775] renderer: manifest lists 6366 pipelines to rebuild
+[   9.2776] renderer: Vulkan renderer ready
+[   9.2951] renderer: upload ring in VRAM (GPU upload heap)
+[   9.3103] vertex arena: 512 MB on the GPU for large vertex buffers
+[   9.3161] renderer: EDRAM colour surface at base 000
+[   9.3192] renderer: EDRAM depth surface at base 2D0
+[   9.3202] precompile: 513 shaders and 6366 pipelines stored
+[   9.3214] spirv direct: 1 shaders translated directly (0.36 ms average)
+[   9.4210] spirv direct: 100 shaders translated directly (0.80 ms average)
+[   9.5013] spirv direct: 200 shaders translated directly (0.70 ms average)
+[   9.5934] spirv direct: 300 shaders translated directly (0.70 ms average)
+[   9.6819] spirv direct: 400 shaders translated directly (0.69 ms average)
+[   9.8426] spirv direct: 500 shaders translated directly (0.69 ms average)
+[  10.4659] xma: 5 s: 0 decode errors, 2 discontinuity flushes, 2 codec reopens, 91 pool waits, 109 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 4 rate/channel changes, 0 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  10.4659] xma: 5 s: 128 decoded samples dropped unplayed at stream restarts
+[  10.7822] precompile: done in 1.5 s (112 shaders loaded, 3654 pipelines started)
+[  10.8888] static shaders: 823 loaded from static_shaders.bin
+[  10.9398] spirv direct: 600 shaders translated directly (0.65 ms average)
+[  10.9980] spirv direct: 700 shaders translated directly (0.64 ms average)
+[  11.0784] spirv direct: 800 shaders translated directly (0.66 ms average)
+[  11.1118] xma: id A1000180: rate/channel bits 0/0 -> 0/1
+[  11.1290] grid test: race start 40550E40 phase 3 flags 1 1 0, clock 0.111 s (main frame 1724)
+[  11.1291] grid test: race start under way: presses stopped
+[  11.1565] spirv direct: 900 shaders translated directly (0.67 ms average)
+[  11.1818] static shaders: vertex shader variants in the seed: 92, 92 rebuilt from the shipped shaders, 0 new to compile
+[  11.1818] static shaders: 456 new, 0 to compile (prepared in 0.4 s)
+[  11.1842] seed pipelines: 3647 listed, 3647 already built, 0 to build (0 of them stored ones the warm-up skipped), 0 need 0 shaders the game makes at run time
+[  11.2180] long stacks: 2285.8 ms frame, 1071 samples; top functions:
+[  11.2180] long stacks:   ZwDelayExecution x363 | RtlSizeHeap x167 | RtlFreeHeap x72 | NtCreateFile x37 | std::_Hash<std::_Uset_traits<`anonymous namespace'::PipelineKey,std::_~ x30 | PrecompileAll x30 | std::_Tree<std::_Tmap_traits<std::vector<unsigned int,std::allocator<u~ x28 | `anonymous namespace'::__std_mismatch_impl<`anonymous namespace'::_Fin~ x28 | __crt_stdio_output::output_processor<char,__crt_stdio_output::string_o~ x25 | std::_Hash<std::_Uset_traits<unsigned long long,std::_Uhash_compare<un~ x17
+[  11.2181] long stacks:   x363 ZwDelayExecution < RtlDelayExecution < SleepEx < PrecompileAll < RendererOnSwapImpl < RendererOnSwap < FrameOnSwap < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  11.2181] long stacks:   x48 RtlSizeHeap < RtlSizeHeap < RtlAllocateHeap < _malloc_base < operator new < `anonymous namespace'::EnsurePipeline < PrecompileAll < RendererOnSwapImpl < RendererOnSwap < FrameOnSwap < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  11.2181] long stacks:   x30 std::_Hash<std::_Uset_traits<`anonymous namespace'::PipelineKey,std::_~ < `anonymous namespace'::EnsurePipeline < PrecompileAll < RendererOnSwapImpl < RendererOnSwap < FrameOnSwap < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  11.2181] long stacks:   x30 PrecompileAll < RendererOnSwapImpl < RendererOnSwap < FrameOnSwap < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  11.2181] long stacks:   x30 NtCreateFile < GetDriveTypeW < CreateFileW < __std_fs_open_handle < std::filesystem::_Canonical < std::filesystem::weakly_canonical < std::filesystem::relative < `anonymous namespace'::SearchFiles::<lambda_3>::operator() < `anonymous namespace'::ListOnce < StaticShadersSaved < PrecompileAll < RendererOnSwapImpl < RendererOnSwap < FrameOnSwap < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  11.2181] long stacks:   x19 __crt_stdio_output::output_processor<char,__crt_stdio_output::string_o~ < __stdio_common_vsprintf < snprintf < `anonymous namespace'::EnsurePipeline < PrecompileAll < RendererOnSwapImpl < RendererOnSwap < FrameOnSwap < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  11.2627] long frame 964: 2285.85 ms (avg 8.34) | 1249 draws | idle 227.34 ms | gpu wait 0.00 ms | builds 0 waits 0.00 ms, 2716 pipelines, 2 created | textures 0 new 0 changed 0 KB 0.00 ms | swap 1868.68 ms | fences 0.00 ms | replay 0.00 ms | cpu 1145.37 ms (avg 0.11)
+[  11.2627] long frame 966: 26.94 ms (avg 8.72) | 1113 draws | idle 4.41 ms | gpu wait 0.00 ms | builds 0 waits 0.00 ms, 0 pipelines, 0 created | textures 0 new 0 changed 0 KB 0.00 ms | swap 4.05 ms | fences 0.00 ms | replay 0.00 ms | cpu 13.94 ms (avg 0.13)
+[  11.2627] long frame 969: 20.37 ms (avg 9.11) | 1099 draws | idle 1.27 ms | gpu wait 0.00 ms | builds 0 waits 0.00 ms, 0 pipelines, 0 created | textures 0 new 0 changed 0 KB 0.00 ms | swap 4.03 ms | fences 0.00 ms | replay 0.00 ms | cpu 16.59 ms (avg 0.16)
+[  11.2628] perf lite: 19.8 fps, 50.51 ms/frame (p99 2285.85 ms, max 2285.85 ms) | 293 draws/frame | GPU 0.00 ms/frame | draw thread 44% busy | 3 long
+[  11.6625] gpu: swap #1020
+[  11.6962] gpu: swap #1024
+[  12.0031] xma: id A1000180: rate/channel bits 0/1 -> 0/0
+[  12.0032] xma: id A10002C0: rate/channel bits 3/0 -> 0/0
+[  12.0032] xma: id A1000300: rate/channel bits 3/0 -> 0/0
+[  12.0034] xma: id A1000340: rate/channel bits 3/0 -> 0/0
+[  12.0161] renderer: EDRAM colour surface at base 500000
+[  12.0288] front end: frame limit 360 fps (race; cap 360)
+[  12.0288] one tile: scenario 1 (2 tiles) drawn as one 1280x720 tile
+[  12.0320] gpu: frame cap 360 fps (max 360, vsync off)
+[  12.0785] gpu: swap #1080
+[  12.2675] perf lite: 154.9 fps, 6.46 ms/frame (p99 20.37 ms, max 26.94 ms) | 669 draws/frame | GPU 0.01 ms/frame | draw thread 27% busy | 0 long
+[  12.2993] gpu: 251 distinct shaders seen
+[  12.3218] long stacks: 112.1 ms frame, 68 samples; top functions:
+[  12.3218] long stacks:   ZwWaitForAlertByThreadId x67 | _Query_perf_counter x1
+[  12.3218] long stacks:   x67 ZwWaitForAlertByThreadId < RtlWaitOnAddress < WaitOnAddress < __std_atomic_wait_direct < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  12.3218] long stacks:   x1 _Query_perf_counter < `anonymous namespace'::WorkerLoop < std::thread::_Invoke<std::tuple<void (*)()>,0> < thread_start<unsigned int (__cdecl*)(void *),1> < BaseThreadInitThunk < RtlUserThreadStart
+[  12.3223] grid test: race start 40550E40 phase 3 flags 0 1 0, clock 0.017 s (main frame 2100)
+[  12.3294] xma: id A1000380: rate/channel bits 3/0 -> 0/0
+[  12.3295] xma: A10003C0 stepped 8 times waiting for a 1-channel codec: opened in place
+[  12.3304] xma: keeping 6 spare codecs for 1 ch 24000 Hz (6 taken between refills)
+[  12.3304] xma: id A10003C0: rate/channel bits 3/0 -> 0/0
+[  12.3306] xma: A1000400 stepped 8 times waiting for a 1-channel codec: opened in place
+[  12.3314] xma: id A1000400: rate/channel bits 3/0 -> 0/0
+[  12.3316] xma: A1000440 stepped 8 times waiting for a 1-channel codec: opened in place
+[  12.3322] xma: id A1000440: rate/channel bits 3/0 -> 0/0
+[  12.3326] xma: A1000500 stepped 8 times waiting for a 1-channel codec: opened in place
+[  12.3355] xma: keeping 11 spare codecs for 1 ch 24000 Hz (11 taken between refills)
+[  12.3663] xma: id A1000800: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  12.3677] long frame 1127: 112.06 ms (avg 3.56) | 2845 draws | idle 110.78 ms | gpu wait 0.00 ms | builds 0 waits 0.00 ms, 0 pipelines, 0 created | textures 0 new 0 changed 0 KB 0.00 ms | swap 0.02 ms | fences 0.00 ms | replay 0.00 ms | cpu 2.92 ms (avg 0.29)
+[  12.3677] long frame 1128: 11.38 ms (avg 3.78) | 899 draws | idle 11.00 ms | gpu wait 0.00 ms | builds 0 waits 0.00 ms, 0 pipelines, 0 created | textures 0 new 0 changed 0 KB 0.00 ms | swap 0.02 ms | fences 0.00 ms | replay 0.00 ms | cpu 0.68 ms (avg 0.31)
+[  12.3766] xma: id A1000800: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  12.3833] xma: id A1000940: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  12.3931] gpu: swap #1140
+[  12.3937] xma: id A1000940: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  12.4232] shader scan: 5 candidates changed before they were confirmed (5 so far)
+[  12.5363] xma: id A1000800: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  12.5580] xma: id A1000800: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  12.5631] xma: id A1000B00: read offset written by the title: 834 (expected 32), buffer 0 packet 0
+[  12.6391] xma: id A1000300: rate/channel bits 0/0 -> 3/0
+[  12.7261] gpu: swap #1200
+[  12.7265] renderer: frame 1200: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  12.7280] xma: id A1000800: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  12.7553] xma: id A1000800: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  12.9417] xma: id A1000800: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  12.9741] xma: id A1000800: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  13.0590] gpu: swap #1260
+[  13.0640] xma: id A1000B00: read offset written by the title: 834 (expected 32), buffer 0 packet 0
+[  13.1827] xma: id A10007C0: rate/channel bits 3/0 -> 1/0
+[  13.1932] xma: id A1000740: read offset written by the title: 41 (expected 32), buffer 0 packet 0
+[  13.2721] perf lite: 164.4 fps, 6.08 ms/frame (p99 11.38 ms, max 112.06 ms) | 984 draws/frame | GPU 0.02 ms/frame | draw thread 19% busy | 2 long
+[  13.2721] perf lite: VRAM 1363 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  13.3926] gpu: swap #1320
+[  13.7160] xma: id A1000B00: read offset written by the title: 834 (expected 32), buffer 0 packet 0
+[  13.7161] xma: id A1000740: read offset written by the title: 41 (expected 32), buffer 0 packet 0
+[  13.7260] gpu: swap #1380
+[  13.9819] shader scan: 3 candidates changed before they were confirmed (8 so far)
+[  14.0588] gpu: swap #1440
+[  14.1172] xma: id A1000940: read offset written by the title: 1428 (expected 32), buffer 0 packet 0
+[  14.2766] perf lite: 180.1 fps, 5.55 ms/frame (p99 6.47 ms, max 6.71 ms) | 1188 draws/frame | GPU 0.02 ms/frame | draw thread 22% busy | 0 long
+[  14.3454] xma: id A1000740: read offset written by the title: 41 (expected 32), buffer 0 packet 0
+[  14.3918] gpu: swap #1500
+[  14.5193] xma: id A1000B00: read offset written by the title: 834 (expected 32), buffer 0 packet 0
+[  14.7248] gpu: swap #1560
+[  15.0438] xma: id A1000740: read offset written by the title: 41 (expected 32), buffer 0 packet 0
+[  15.0578] gpu: swap #1620
+[  15.2803] perf lite: 180.1 fps, 5.55 ms/frame (p99 6.37 ms, max 6.38 ms) | 1203 draws/frame | GPU 0.02 ms/frame | draw thread 17% busy | 0 long
+[  15.3416] xma: id A1000940: read offset written by the title: 1428 (expected 32), buffer 0 packet 0
+[  15.3913] gpu: swap #1680
+[  15.4662] xma: 5 s: 0 decode errors, 126 discontinuity flushes, 209 codec reopens, 49 pool waits, 993 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 11 rate/channel changes, 20 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  15.4662] xma: 5 s: 8000 decoded samples dropped unplayed at stream restarts
+[  15.7244] gpu: swap #1740
+[  15.7998] xma: id A1000740: read offset written by the title: 41 (expected 32), buffer 0 packet 0
+[  16.0570] gpu: swap #1800
+[  16.0574] renderer: frame 1800: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  16.2848] perf lite: 180.1 fps, 5.55 ms/frame (p99 6.57 ms, max 6.60 ms) | 1202 draws/frame | GPU 0.02 ms/frame | draw thread 16% busy | 0 long
+[  16.3903] gpu: swap #1860
+[  16.5897] xma: id A1000740: read offset written by the title: 41 (expected 32), buffer 0 packet 0
+[  16.7065] xma: id A1000940: read offset written by the title: 1428 (expected 32), buffer 0 packet 0
+[  16.7234] gpu: swap #1920
+[  17.0561] gpu: swap #1980
+[  17.1007] shader scan: 2 candidates changed before they were confirmed (10 so far)
+[  17.2876] perf lite: 180.1 fps, 5.55 ms/frame (p99 6.59 ms, max 6.62 ms) | 1074 draws/frame | GPU 0.02 ms/frame | draw thread 16% busy | 0 long
+[  17.3630] xma: id A1000200: rate/channel bits 0/0 -> 3/0
+[  17.3839] xma: id A1000300: rate/channel bits 3/0 -> 0/0
+[  17.3899] gpu: swap #2040
+[  17.4001] xma: id A10007C0: rate/channel bits 1/0 -> 3/0
+[  17.4003] xma: id A1000740: read offset written by the title: 41 (expected 32), buffer 0 packet 0
+[  17.4341] gpu: swap #2048
+[  17.7230] gpu: swap #2100
+[  17.7578] xma: id A1000B80: rate/channel bits 0/0 -> 3/0
+[  17.8759] xma: id A1000CC0: read offset written by the title: 1029 (expected 32), buffer 0 packet 0
+[  17.9129] xma: id A1000A40: read offset written by the title: 834 (expected 32), buffer 0 packet 0
+[  17.9329] xma: id A1000C80: read offset written by the title: 1292 (expected 32), buffer 0 packet 0
+[  18.0558] gpu: swap #2160
+[  18.0563] xma: id A1000300: rate/channel bits 0/0 -> 3/0
+[  18.0565] xma: id A1000880: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  18.0660] xma: id A1000880: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  18.1152] xma: id A1000900: read offset written by the title: 485 (expected 32), buffer 1 packet 0
+[  18.1893] xma: id A10009C0: rate/channel bits 3/0 -> 0/0
+[  18.1996] xma: id A1000CC0: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  18.2113] xma: id A1000CC0: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  18.2479] xma: id A1000880: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  18.2693] xma: id A1000880: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  18.2916] perf lite: 180.1 fps, 5.55 ms/frame (p99 6.61 ms, max 6.64 ms) | 1019 draws/frame | GPU 0.02 ms/frame | draw thread 17% busy | 0 long
+[  18.2917] perf lite: VRAM 1363 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  18.3279] xma: id A1000600: rate/channel bits 3/0 -> 0/0
+[  18.3280] xma: id A10007C0: rate/channel bits 3/0 -> 0/0
+[  18.3281] xma: id A10008C0: rate/channel bits 3/0 -> 0/0
+[  18.3889] gpu: swap #2220
+[  18.5037] xma: id A1000900: read offset written by the title: 485 (expected 32), buffer 1 packet 0
+[  18.5466] xma: id A1000040: rate/channel bits 0/0 -> 2/1
+[  18.6601] shader scan: 2 candidates changed before they were confirmed (12 so far)
+[  18.6918] xma: id A1000940: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  18.7024] xma: id A1000940: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  18.7225] gpu: swap #2280
+[  18.8182] xma: id A1000080: rate/channel bits 0/0 -> 3/0
+[  18.8458] xma: id A10000C0: rate/channel bits 0/0 -> 3/0
+[  19.0559] gpu: swap #2340
+[  19.1176] xma: id A1000080: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  19.1272] xma: id A1000080: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  19.1337] xma: id A10009C0: rate/channel bits 0/0 -> 3/0
+[  19.2729] xma: id A1000080: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  19.2878] xma: id A1000080: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  19.2956] perf lite: 180.2 fps, 5.55 ms/frame (p99 6.49 ms, max 6.58 ms) | 993 draws/frame | GPU 0.02 ms/frame | draw thread 17% busy | 0 long
+[  19.3885] gpu: swap #2400
+[  19.3887] renderer: frame 2400: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  19.4379] xma: id A1000080: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  19.4585] xma: id A1000080: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  19.4906] xma: id A1000200: read offset written by the title: 834 (expected 32), buffer 0 packet 0
+[  19.5420] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.5420] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.5420] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.5420] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.5421] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.5421] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.5421] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.5421] xma: id A1001940: read offset written by the title: 636 (expected 32), buffer 0 packet 0
+[  19.5446] xma: id A1000300: rate/channel bits 3/0 -> 2/1
+[  19.5985] xma: id A1000040: rate/channel bits 2/1 -> 3/0
+[  19.6299] xma: id A1000080: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  19.6514] xma: id A1000080: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  19.7217] gpu: swap #2460
+[  19.8272] xma: id A1000900: read offset written by the title: 1292 (expected 32), buffer 0 packet 0
+[  19.8289] xma: keeping 9 spare codecs for 1 ch 48000 Hz (9 taken between refills)
+[  19.8378] xma: id A1000A40: read offset written by the title: 485 (expected 32), buffer 1 packet 0
+[  19.8474] xma: id A1000180: rate/channel bits 0/0 -> 3/0
+[  19.8476] xma: id A1000080: read offset written by the title: 633 (expected 32), buffer 0 packet 0
+[  19.8642] xma: id A1000080: read offset written by the title: 1122 (expected 32), buffer 0 packet 0
+[  19.8863] xma: id A1000180: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  19.8964] xma: id A1000180: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  20.0550] gpu: swap #2520
+[  20.0571] xma: id A1000C00: rate/channel bits 0/0 -> 3/0
+[  20.2978] perf lite: 180.0 fps, 5.56 ms/frame (p99 7.12 ms, max 7.68 ms) | 1550 draws/frame | GPU 0.02 ms/frame | draw thread 20% busy | 0 long
+[  20.3882] gpu: swap #2580
+[  20.4664] xma: 5 s: 0 decode errors, 249 discontinuity flushes, 466 codec reopens, 24 pool waits, 1598 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 17 rate/channel changes, 40 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  20.4664] xma: 5 s: 15616 decoded samples dropped unplayed at stream restarts
+[  20.5465] xma: id A1000B40: rate/channel bits 3/0 -> 2/1
+[  20.5577] xma: id A1000300: rate/channel bits 2/1 -> 3/0
+[  20.7209] gpu: swap #2640
+[  20.8995] long frame 2656: 14.03 ms (avg 5.54) | 2905 draws | idle 12.80 ms | gpu wait 0.00 ms | builds 0 waits 0.00 ms, 0 pipelines, 0 created | textures 0 new 0 changed 0 KB 0.00 ms | swap 0.01 ms | fences 0.00 ms | replay 0.00 ms | cpu 2.40 ms (avg 1.43)
+[  20.9394] gpu: swap #2700
+[  21.1060] gpu: swap #2760
+[  21.2079] xma: id A1000BC0: rate/channel bits 0/0 -> 3/0
+[  21.2725] gpu: swap #2820
+[  21.3024] perf lite: 251.5 fps, 3.98 ms/frame (p99 6.16 ms, max 14.03 ms) | 2455 draws/frame | GPU 0.02 ms/frame | draw thread 51% busy | 1 long
+[  21.3053] grid test: frozen on the grid at 9.001 s of the countdown clock (main frame 5337)
+[  21.3079] frame time: world frozen (dt 0) at main frame 5338
+[  21.4391] gpu: swap #2880
+[  21.5494] switch: FM3_FREEZE_TIME on (environment)
+[  21.6062] gpu: swap #2940
+[  21.7723] gpu: swap #3000
+[  21.7742] renderer: frame 3000: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  21.9390] gpu: swap #3060
+[  22.1058] gpu: swap #3120
+[  22.2722] gpu: swap #3180
+[  22.3058] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.01 ms, max 3.52 ms) | 2708 draws/frame | GPU 0.02 ms/frame | draw thread 76% busy | 0 long
+[  22.4388] gpu: swap #3240
+[  22.6062] gpu: swap #3300
+[  22.6806] xma: id A1000B40: rate/channel bits 2/1 -> 0/0
+[  22.7727] gpu: swap #3360
+[  22.9397] gpu: swap #3420
+[  23.1053] gpu: swap #3480
+[  23.2727] gpu: swap #3540
+[  23.3091] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.34 ms, max 3.51 ms) | 2708 draws/frame | GPU 0.02 ms/frame | draw thread 79% busy | 0 long
+[  23.3091] perf lite: VRAM 1363 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  23.3376] shader scan: 2 candidates changed before they were confirmed (14 so far)
+[  23.4385] gpu: swap #3600
+[  23.4404] renderer: frame 3600: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  23.6052] gpu: swap #3660
+[  23.7194] xma: id A1000C40: rate/channel bits 3/0 -> 0/0
+[  23.7720] gpu: swap #3720
+[  23.9385] gpu: swap #3780
+[  24.1053] gpu: swap #3840
+[  24.2719] gpu: swap #3900
+[  24.3142] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.30 ms, max 3.56 ms) | 2706 draws/frame | GPU 0.02 ms/frame | draw thread 81% busy | 0 long
+[  24.4389] gpu: swap #3960
+[  24.6050] gpu: swap #4020
+[  24.7715] gpu: swap #4080
+[  24.8160] gpu: swap #4096
+[  24.9382] gpu: swap #4140
+[  25.1048] gpu: swap #4200
+[  25.1066] renderer: frame 4200: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  25.2716] gpu: swap #4260
+[  25.3196] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.02 ms, max 3.62 ms) | 2706 draws/frame | GPU 0.02 ms/frame | draw thread 76% busy | 0 long
+[  25.4000] xma: id A1000C80: rate/channel bits 3/0 -> 0/0
+[  25.4385] gpu: swap #4320
+[  25.4672] xma: 5 s: 0 decode errors, 299 discontinuity flushes, 495 codec reopens, 0 pool waits, 1558 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 6 rate/channel changes, 0 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  25.4673] xma: 5 s: 19136 decoded samples dropped unplayed at stream restarts
+[  25.6047] gpu: swap #4380
+[  25.7713] gpu: swap #4440
+[  25.9379] gpu: swap #4500
+[  26.1045] gpu: swap #4560
+[  26.1140] vertex arena: 0.0 MB hashed, 0.00 MB copied, 0 hits a frame; 0 MB of 512 used, 0 buffers
+[  26.2713] gpu: swap #4620
+[  26.2955] xma: id A1000CC0: rate/channel bits 3/0 -> 0/0
+[  26.3256] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.43 ms, max 3.59 ms) | 2706 draws/frame | GPU 0.02 ms/frame | draw thread 84% busy | 0 long
+[  26.4377] gpu: swap #4680
+[  26.6044] gpu: swap #4740
+[  26.6168] renderer: EDRAM colour surface at base 500000 released (unused for 3618 frames)
+[  26.7710] gpu: swap #4800
+[  26.7728] renderer: frame 4800: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  26.9376] gpu: swap #4860
+[  27.1044] gpu: swap #4920
+[  27.2707] gpu: swap #4980
+[  27.3298] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.01 ms, max 3.05 ms) | 2706 draws/frame | GPU 0.02 ms/frame | draw thread 87% busy | 0 long
+[  27.4375] gpu: swap #5040
+[  27.6042] gpu: swap #5100
+[  27.7563] xma: id A1000D00: rate/channel bits 3/0 -> 0/0
+[  27.7564] xma: id A1000D40: rate/channel bits 3/0 -> 0/0
+[  27.7706] gpu: swap #5160
+[  27.9372] gpu: swap #5220
+[  28.1040] gpu: swap #5280
+[  28.2706] gpu: swap #5340
+[  28.3340] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.00 ms, max 3.34 ms) | 2706 draws/frame | GPU 0.02 ms/frame | draw thread 79% busy | 0 long
+[  28.3340] perf lite: VRAM 1247 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  28.4371] gpu: swap #5400
+[  28.4391] renderer: frame 5400: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  28.6037] gpu: swap #5460
+[  28.7704] gpu: swap #5520
+[  28.9370] gpu: swap #5580
+[  29.1039] gpu: swap #5640
+[  29.2702] gpu: swap #5700
+[  29.3393] perf lite: 360.1 fps, 2.78 ms/frame (p99 2.98 ms, max 3.24 ms) | 2706 draws/frame | GPU 0.02 ms/frame | draw thread 84% busy | 0 long
+[  29.4373] gpu: swap #5760
+[  29.6034] gpu: swap #5820
+[  29.7701] gpu: swap #5880
+[  29.9367] gpu: swap #5940
+[  30.1042] gpu: swap #6000
+[  30.1054] renderer: frame 6000: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  30.1302] xma: id A1000000: rate/channel bits 0/0 -> 3/0
+[  30.2630] gpu: rendering on AMD Radeon RX 7900 XTX (1002:744C)
+[  30.2630] gpu memory: local 1247 / budget 23748 MB (peak 1247), shared 288 / 15147 MB (peak 288), RAM working set 3225 MB, private 5918 MB (peak 5918)
+[  30.2700] gpu: swap #6060
+[  30.3160] switch: FM3_FREEZE_TIME off (environment)
+[  30.3187] frame time: world running again at main frame 8584
+[  30.3437] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.04 ms, max 3.62 ms) | 2706 draws/frame | GPU 0.02 ms/frame | draw thread 87% busy | 0 long
+[  30.4173] gpu: register words written 2322858435, sent to the draw thread 592892691 (26%)
+[  30.4174] gpu: shader loads: 17266973, 9332736 repeats not sent (54%)
+[  30.4373] gpu: swap #6120
+[  30.4675] xma: id A1000600: rate/channel bits 0/0 -> 3/0
+[  30.4696] xma: 5 s: 0 decode errors, 301 discontinuity flushes, 495 codec reopens, 0 pool waits, 1563 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 5 rate/channel changes, 0 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  30.4696] xma: 5 s: 19264 decoded samples dropped unplayed at stream restarts
+[  30.5371] xma: id A10007C0: rate/channel bits 0/0 -> 3/0
+[  30.6038] gpu: swap #6180
+[  30.7704] gpu: swap #6240
+[  30.8158] grid test: race start 40550E40 phase 3 flags 0 1 1, clock 9.501 s (main frame 8763)
+[  30.8226] xma: id A1000780: rate/channel bits 3/0 -> 2/1
+[  30.8277] xma: id A10008C0: rate/channel bits 0/0 -> 3/0
+[  30.8393] xma: id A1000980: rate/channel bits 3/0 -> 0/0
+[  30.8443] xma: id A10009C0: rate/channel bits 3/0 -> 0/0
+[  30.9093] xma: id A1000B40: rate/channel bits 0/0 -> 3/0
+[  30.9376] gpu: swap #6300
+[  30.9570] xma: id A10000C0: rate/channel bits 3/0 -> 0/0
+[  30.9570] xma: id A1000740: rate/channel bits 3/0 -> 0/0
+[  30.9888] xma: id A1000900: rate/channel bits 3/0 -> 0/0
+[  30.9889] xma: id A1000A40: rate/channel bits 3/0 -> 0/0
+[  30.9890] xma: id A1000B00: rate/channel bits 3/0 -> 0/0
+[  30.9890] xma: id A1000BC0: rate/channel bits 3/0 -> 0/0
+[  31.0102] xma: id A1000100: rate/channel bits 0/0 -> 3/0
+[  31.0102] xma: id A1000340: rate/channel bits 0/0 -> 3/0
+[  31.0424] xma: id A10000C0: rate/channel bits 0/0 -> 3/0
+[  31.0577] xma: id A1000740: rate/channel bits 0/0 -> 3/0
+[  31.1037] gpu: swap #6360
+[  31.2704] gpu: swap #6420
+[  31.2876] xma: id A1000640: rate/channel bits 3/0 -> 0/0
+[  31.3253] xma: id A10000C0: rate/channel bits 3/0 -> 0/0
+[  31.3489] perf lite: 359.8 fps, 2.78 ms/frame (p99 3.38 ms, max 3.70 ms) | 2707 draws/frame | GPU 0.02 ms/frame | draw thread 79% busy | 0 long
+[  31.3727] xma: id A1000800: rate/channel bits 3/0 -> 0/0
+[  31.3788] xma: id A1000940: rate/channel bits 3/0 -> 0/0
+[  31.4059] xma: id A1000640: rate/channel bits 0/0 -> 3/0
+[  31.4318] xma: id A1000380: rate/channel bits 0/0 -> 3/0
+[  31.4368] gpu: swap #6480
+[  31.4485] xma: id A1000800: rate/channel bits 0/0 -> 3/0
+[  31.4580] xma: id A1000B00: rate/channel bits 0/0 -> 3/0
+[  31.6033] gpu: swap #6540
+[  31.6194] xma: id A1000BC0: rate/channel bits 0/0 -> 3/0
+[  31.6196] xma: id A1000C00: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  31.6283] xma: id A1000BC0: read offset written by the title: 485 (expected 32), buffer 1 packet 0
+[  31.6284] xma: id A1000C00: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  31.7697] gpu: swap #6600
+[  31.7713] renderer: frame 6600: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  31.7986] xma: id A1000080: rate/channel bits 3/0 -> 0/0
+[  31.8317] xma: id A1000B40: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  31.8411] xma: id A1000B00: read offset written by the title: 485 (expected 32), buffer 1 packet 0
+[  31.8412] xma: id A1000B40: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  31.8687] xma: id A10002C0: rate/channel bits 0/0 -> 3/0
+[  31.9362] gpu: swap #6660
+[  31.9855] xma: id A1000140: rate/channel bits 0/0 -> 3/0
+[  32.0077] xma: id A1000AC0: rate/channel bits 3/0 -> 0/0
+[  32.0662] xma: id A1000BC0: rate/channel bits 3/0 -> 0/0
+[  32.0663] xma: id A1000C00: rate/channel bits 3/0 -> 0/0
+[  32.1028] gpu: swap #6720
+[  32.1091] xma: id A1000300: rate/channel bits 3/0 -> 0/0
+[  32.1507] xma: id A1000080: rate/channel bits 0/0 -> 3/0
+[  32.1688] xma: id A1000B00: read offset written by the title: 485 (expected 32), buffer 1 packet 0
+[  32.2535] perf lite: 360.4 fps, 2.77 ms/frame (p99 3.38 ms, max 3.80 ms) | 2724 draws/frame | GPU 0.02 ms/frame | draw thread 75% busy | 0 long
+[  32.2694] gpu: swap #6780
+[  32.4362] gpu: swap #6840
+[  32.4981] xma: id A1000B00: read offset written by the title: 485 (expected 32), buffer 1 packet 0
+[  32.6028] gpu: swap #6900
+[  32.6160] xma: id A1000B40: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  32.6162] xma: id A1000780: rate/channel bits 2/1 -> 3/0
+[  32.6323] xma: id A1000B40: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  32.6536] xma: id A1000A40: rate/channel bits 0/0 -> 3/0
+[  32.6845] xma: id A1000BC0: rate/channel bits 0/0 -> 3/0
+[  32.7693] gpu: swap #6960
+[  32.9360] gpu: swap #7020
+[  33.1025] gpu: swap #7080
+[  33.2574] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.04 ms, max 3.13 ms) | 2674 draws/frame | GPU 0.02 ms/frame | draw thread 78% busy | 0 long
+[  33.2574] perf lite: VRAM 1247 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  33.2692] gpu: swap #7140
+[  33.2712] xma: id A1000B80: rate/channel bits 3/0 -> 0/0
+[  33.4358] gpu: swap #7200
+[  33.4376] renderer: frame 7200: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  33.4531] xma: id A1000580: rate/channel bits 3/0 -> 0/0
+[  33.6026] gpu: swap #7260
+[  33.6238] xma: id A1000080: rate/channel bits 3/0 -> 0/0
+[  33.7698] gpu: swap #7320
+[  33.8427] xma: id A1000C40: rate/channel bits 0/0 -> 3/0
+[  33.9058] xma: id A1000B80: rate/channel bits 0/0 -> 3/0
+[  33.9356] gpu: swap #7380
+[  34.0175] xma: id A1000080: rate/channel bits 0/0 -> 3/0
+[  34.1024] gpu: swap #7440
+[  34.2567] shader scan: 1 candidates changed before they were confirmed (15 so far)
+[  34.2630] perf lite: 360.0 fps, 2.78 ms/frame (p99 3.04 ms, max 3.56 ms) | 2650 draws/frame | GPU 0.02 ms/frame | draw thread 84% busy | 0 long
+[  34.2691] gpu: swap #7500
+[  34.4359] gpu: swap #7560
+[  34.4713] xma: id A10005C0: rate/channel bits 3/0 -> 0/0
+[  34.4931] xma: id A1000580: rate/channel bits 0/0 -> 3/0
+[  34.6022] gpu: swap #7620
+[  34.7689] gpu: swap #7680
+[  34.7755] xma: id A1000000: rate/channel bits 3/0 -> 0/0
+[  34.9353] gpu: swap #7740
+[  34.9618] xma: id A1000780: rate/channel bits 3/0 -> 0/0
+[  34.9775] xma: id A10007C0: rate/channel bits 3/0 -> 0/0
+[  35.1018] gpu: swap #7800
+[  35.1038] renderer: frame 7800: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  35.1268] xma: id A1000000: rate/channel bits 0/0 -> 3/0
+[  35.1484] xma: id A1000780: rate/channel bits 0/0 -> 3/0
+[  35.2186] xma: id A1000600: rate/channel bits 3/0 -> 0/0
+[  35.2655] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.02 ms, max 3.03 ms) | 2603 draws/frame | GPU 0.02 ms/frame | draw thread 79% busy | 0 long
+[  35.2686] gpu: swap #7860
+[  35.3294] xma: id A1000200: rate/channel bits 3/0 -> 0/0
+[  35.3461] xma: id A1000740: rate/channel bits 3/0 -> 0/0
+[  35.3833] xma: id A1000980: rate/channel bits 0/0 -> 3/0
+[  35.3934] xma: id A10009C0: rate/channel bits 0/0 -> 3/0
+[  35.4352] gpu: swap #7920
+[  35.4698] xma: 5 s: 0 decode errors, 377 discontinuity flushes, 643 codec reopens, 0 pool waits, 1841 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 54 rate/channel changes, 10 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  35.4698] xma: 5 s: 24128 decoded samples dropped unplayed at stream restarts
+[  35.6018] gpu: swap #7980
+[  35.7685] gpu: swap #8040
+[  35.9350] gpu: swap #8100
+[  36.0543] xma: id A1000600: rate/channel bits 0/0 -> 3/0
+[  36.1016] gpu: swap #8160
+[  36.1111] vertex arena: 0.0 MB hashed, 0.00 MB copied, 0 hits a frame; 0 MB of 512 used, 0 buffers
+[  36.1906] gpu: swap #8192
+[  36.2684] gpu: swap #8220
+[  36.2698] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.04 ms, max 3.55 ms) | 2554 draws/frame | GPU 0.02 ms/frame | draw thread 79% busy | 0 long
+[  36.4349] gpu: swap #8280
+[  36.6015] gpu: swap #8340
+[  36.7681] gpu: swap #8400
+[  36.7702] renderer: frame 8400: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  36.9347] gpu: swap #8460
+[  36.9781] xma: id A1000100: rate/channel bits 3/0 -> 0/0
+[  37.1015] gpu: swap #8520
+[  37.1953] xma: id A1000000: rate/channel bits 3/0 -> 0/0
+[  37.1954] xma: id A1000780: rate/channel bits 3/0 -> 0/0
+[  37.1955] xma: id A1000A40: rate/channel bits 3/0 -> 0/0
+[  37.1955] xma: id A1000B40: rate/channel bits 3/0 -> 0/0
+[  37.2681] gpu: swap #8580
+[  37.2736] perf lite: 360.2 fps, 2.78 ms/frame (p99 3.03 ms, max 3.36 ms) | 2534 draws/frame | GPU 0.02 ms/frame | draw thread 79% busy | 0 long
+[  37.4090] xma: id A1000C40: rate/channel bits 3/0 -> 0/0
+[  37.4346] gpu: swap #8640
+[  37.4755] xma: id A1000C80: rate/channel bits 0/0 -> 3/0
+[  37.5489] xma: id A1000D00: rate/channel bits 0/0 -> 3/0
+[  37.6012] gpu: swap #8700
+[  37.7678] gpu: swap #8760
+[  37.8313] xma: id A1000D40: rate/channel bits 0/0 -> 3/0
+[  37.9344] gpu: swap #8820
+[  38.1012] gpu: swap #8880
+[  38.2676] gpu: swap #8940
+[  38.2786] perf lite: 360.1 fps, 2.78 ms/frame (p99 2.98 ms, max 3.76 ms) | 2522 draws/frame | GPU 0.02 ms/frame | draw thread 69% busy | 0 long
+[  38.2786] perf lite: VRAM 1247 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  38.3855] xma: id A10000C0: rate/channel bits 0/0 -> 3/0
+[  38.4343] gpu: swap #9000
+[  38.4363] renderer: frame 9000: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  38.4703] xma: id A1000200: rate/channel bits 0/0 -> 3/0
+[  38.5348] xma: id A1000600: rate/channel bits 3/0 -> 0/0
+[  38.6009] gpu: swap #9060
+[  38.6943] xma: id A1000600: rate/channel bits 0/0 -> 3/0
+[  38.7315] xma: id A1000640: rate/channel bits 3/0 -> 0/0
+[  38.7678] gpu: swap #9120
+[  38.8657] xma: id A1000380: rate/channel bits 3/0 -> 0/0
+[  38.9344] gpu: swap #9180
+[  38.9364] shader scan: 1 candidates changed before they were confirmed (16 so far)
+[  39.1010] gpu: swap #9240
+[  39.2676] gpu: swap #9300
+[  39.2796] renderer memory: textures 0 MB (0; 0 MB in 0 not used for 30 s), cubes 0 MB (0), 3D 0 MB (0), mip chains 0 MB (0), resolved images 0 MB (0), EDRAM surfaces 191 MB (2), memory blocks 8 (1535 MB), upload rings 384 MB
+[  39.2796] renderer memory: memory blocks 1101 MB used, 434 MB free; resolved images: spares 0 MB (0), stale 0 MB; released so far: 0 resolved images, 0 spares, 0 cubes, 0 mip chains
+[  39.2817] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.10 ms, max 3.43 ms) | 2438 draws/frame | GPU 0.02 ms/frame | draw thread 69% busy | 0 long
+[  39.4344] gpu: swap #9360
+[  39.5489] xma: id A10000C0: rate/channel bits 3/0 -> 0/0
+[  39.5797] xma: id A1000C80: rate/channel bits 3/0 -> 0/0
+[  39.5799] xma: id A1000D80: rate/channel bits 0/0 -> 3/0
+[  39.6009] gpu: swap #9420
+[  39.7674] gpu: swap #9480
+[  39.7781] xma: id A1000740: rate/channel bits 0/0 -> 3/0
+[  39.7978] xma: id A1000DC0: rate/channel bits 3/0 -> 0/0
+[  39.8834] xma: id A1000040: rate/channel bits 3/0 -> 0/0
+[  39.8999] xma: id A10000C0: rate/channel bits 0/0 -> 3/0
+[  39.9166] xma: id A1000380: rate/channel bits 0/0 -> 3/0
+[  39.9339] gpu: swap #9540
+[  39.9803] xma: id A1000740: rate/channel bits 3/0 -> 0/0
+[  40.1009] gpu: swap #9600
+[  40.1025] renderer: frame 9600: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  40.2673] gpu: swap #9660
+[  40.2873] perf lite: 360.0 fps, 2.78 ms/frame (p99 3.14 ms, max 3.29 ms) | 2338 draws/frame | GPU 0.02 ms/frame | draw thread 59% busy | 0 long
+[  40.3963] xma: id A10005C0: rate/channel bits 0/0 -> 3/0
+[  40.4338] gpu: swap #9720
+[  40.4703] xma: 5 s: 0 decode errors, 244 discontinuity flushes, 427 codec reopens, 0 pool waits, 1501 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 26 rate/channel changes, 0 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  40.4703] xma: 5 s: 15616 decoded samples dropped unplayed at stream restarts
+[  40.5094] xma: id A1000880: read offset written by the title: 384 (expected 32), buffer 0 packet 0
+[  40.5190] xma: id A1000880: read offset written by the title: 809 (expected 32), buffer 0 packet 0
+[  40.5297] xma: id A1000B40: rate/channel bits 0/0 -> 3/0
+[  40.6006] gpu: swap #9780
+[  40.7670] gpu: swap #9840
+[  40.9336] gpu: swap #9900
+[  41.1002] gpu: swap #9960
+[  41.1371] xma: id A1000200: rate/channel bits 3/0 -> 0/0
+[  41.2668] gpu: swap #10020
+[  41.2895] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.04 ms, max 3.41 ms) | 2309 draws/frame | GPU 0.02 ms/frame | draw thread 59% busy | 0 long
+[  41.4336] gpu: swap #10080
+[  41.6001] gpu: swap #10140
+[  41.6073] xma: id A1000880: rate/channel bits 3/0 -> 0/0
+[  41.7666] gpu: swap #10200
+[  41.7687] renderer: frame 10200: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  41.9335] gpu: swap #10260
+[  41.9479] xma: id A1000AC0: rate/channel bits 0/0 -> 3/0
+[  42.0999] gpu: swap #10320
+[  42.2153] xma: id A10005C0: rate/channel bits 3/0 -> 0/0
+[  42.2154] xma: id A1000D00: rate/channel bits 3/0 -> 0/0
+[  42.2155] xma: id A1000E00: rate/channel bits 3/0 -> 0/0
+[  42.2666] gpu: swap #10380
+[  42.2955] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.06 ms, max 3.17 ms) | 2204 draws/frame | GPU 0.02 ms/frame | draw thread 58% busy | 0 long
+[  42.3323] xma: id A1000600: rate/channel bits 3/0 -> 0/0
+[  42.4333] gpu: swap #10440
+[  42.5024] xma: id A10001C0: rate/channel bits 0/0 -> 3/0
+[  42.5981] xma: id A1000840: rate/channel bits 3/0 -> 0/0
+[  42.5982] xma: id A10008C0: rate/channel bits 3/0 -> 0/0
+[  42.5997] gpu: swap #10500
+[  42.6479] xma: id A10003C0: rate/channel bits 0/0 -> 3/0
+[  42.6801] xma: id A1000400: rate/channel bits 0/0 -> 3/0
+[  42.7664] gpu: swap #10560
+[  42.9327] gpu: swap #10620
+[  43.0994] gpu: swap #10680
+[  43.2661] gpu: swap #10740
+[  43.2993] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.03 ms, max 3.25 ms) | 1407 draws/frame | GPU 0.02 ms/frame | draw thread 34% busy | 0 long
+[  43.2993] perf lite: VRAM 1247 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  43.4326] gpu: swap #10800
+[  43.4349] renderer: frame 10800: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  43.5992] gpu: swap #10860
+[  43.6165] shader scan: 1 candidates changed before they were confirmed (17 so far)
+[  43.6239] xma: id A1000440: rate/channel bits 0/0 -> 3/0
+[  43.6239] xma: id A1000480: rate/channel bits 0/0 -> 3/0
+[  43.6241] xma: id A1000940: rate/channel bits 0/0 -> 3/0
+[  43.7658] gpu: swap #10920
+[  43.9324] gpu: swap #10980
+[  44.0990] gpu: swap #11040
+[  44.2657] gpu: swap #11100
+[  44.3064] perf lite: 360.1 fps, 2.78 ms/frame (p99 2.98 ms, max 3.30 ms) | 869 draws/frame | GPU 0.02 ms/frame | draw thread 20% busy | 0 long
+[  44.4324] gpu: swap #11160
+[  44.5135] xma: id A1000D40: rate/channel bits 3/0 -> 0/0
+[  44.5138] xma: id A1000D80: rate/channel bits 3/0 -> 0/0
+[  44.5139] xma: id A1000E40: rate/channel bits 3/0 -> 1/0
+[  44.5141] xma: id A1000640: rate/channel bits 0/0 -> 3/0
+[  44.5242] xma: id A1000E80: rate/channel bits 3/0 -> 0/0
+[  44.5722] xma: id A10000C0: rate/channel bits 3/0 -> 0/0
+[  44.5723] xma: id A1000440: rate/channel bits 3/0 -> 0/0
+[  44.5992] gpu: swap #11220
+[  44.6037] xma: id A1000480: rate/channel bits 3/0 -> 0/0
+[  44.6151] xma: id A1000580: rate/channel bits 3/0 -> 0/0
+[  44.6514] xma: id A1000800: rate/channel bits 3/0 -> 0/0
+[  44.7657] gpu: swap #11280
+[  44.9332] gpu: swap #11340
+[  44.9819] xma: id A1000940: rate/channel bits 3/0 -> 0/0
+[  45.0991] gpu: swap #11400
+[  45.1011] renderer: frame 11400: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  45.1750] xma: id A10009C0: rate/channel bits 3/0 -> 0/0
+[  45.1752] xma: id A10001C0: rate/channel bits 3/0 -> 0/0
+[  45.2499] xma: id A1000E00: rate/channel bits 0/0 -> 3/0
+[  45.2659] gpu: swap #11460
+[  45.2707] xma: id A1000440: rate/channel bits 0/0 -> 3/0
+[  45.2873] xma: id A10007C0: rate/channel bits 0/0 -> 3/0
+[  45.3121] perf lite: 360.2 fps, 2.78 ms/frame (p99 3.04 ms, max 3.16 ms) | 857 draws/frame | GPU 0.02 ms/frame | draw thread 19% busy | 0 long
+[  45.3182] xma: id A10002C0: rate/channel bits 3/0 -> 0/0
+[  45.3186] xma: id A10008C0: rate/channel bits 0/0 -> 3/0
+[  45.3235] xma: id A1000C80: rate/channel bits 0/0 -> 3/0
+[  45.3664] xma: id A1000140: rate/channel bits 3/0 -> 0/0
+[  45.4323] gpu: swap #11520
+[  45.4712] xma: 5 s: 0 decode errors, 257 discontinuity flushes, 471 codec reopens, 0 pool waits, 1570 packets decoded; 0 packets FFmpeg complained about (0 dumps so far); contexts: 0 buffer moves, 36 rate/channel changes, 2 offset writes by the title; registers: 0 kicks, 0 locks, 0 clears
+[  45.4712] xma: 5 s: 16448 decoded samples dropped unplayed at stream restarts
+[  45.4728] xma: id A1000180: rate/channel bits 3/0 -> 0/0
+[  45.4841] xma: id A10001C0: rate/channel bits 0/0 -> 3/0
+[  45.5369] xma: id A1000180: rate/channel bits 0/0 -> 3/0
+[  45.5535] xma: id A1000040: rate/channel bits 0/0 -> 3/0
+[  45.5747] xma: id A10002C0: rate/channel bits 0/0 -> 3/0
+[  45.5990] gpu: swap #11580
+[  45.6815] xma: id A1000300: rate/channel bits 0/0 -> 3/0
+[  45.7344] xma: id A10003C0: rate/channel bits 3/0 -> 0/0
+[  45.7345] xma: id A1000400: rate/channel bits 3/0 -> 0/0
+[  45.7657] gpu: swap #11640
+[  45.8856] xma: id A1000440: rate/channel bits 3/0 -> 0/0
+[  45.9322] gpu: swap #11700
+[  45.9855] xma: id A1000080: rate/channel bits 3/0 -> 0/0
+[  46.0230] xma: id A10000C0: rate/channel bits 0/0 -> 3/0
+[  46.0711] xma: id A1000740: rate/channel bits 0/0 -> 3/0
+[  46.0988] gpu: swap #11760
+[  46.1071] vertex arena: 0.0 MB hashed, 0.00 MB copied, 0 hits a frame; 0 MB of 512 used, 0 buffers
+[  46.2655] gpu: swap #11820
+[  46.3171] perf lite: 360.1 fps, 2.78 ms/frame (p99 2.99 ms, max 3.03 ms) | 868 draws/frame | GPU 0.02 ms/frame | draw thread 26% busy | 0 long
+[  46.4166] xma: id A10000C0: rate/channel bits 3/0 -> 0/0
+[  46.4321] gpu: swap #11880
+[  46.5870] xma: id A1000080: rate/channel bits 0/0 -> 3/0
+[  46.5991] gpu: swap #11940
+[  46.6307] xma: id A10007C0: rate/channel bits 3/0 -> 0/0
+[  46.6559] xma: id A10008C0: rate/channel bits 3/0 -> 0/0
+[  46.7356] shader scan: 3 candidates changed before they were confirmed (20 so far)
+[  46.7655] gpu: swap #12000
+[  46.7671] renderer: frame 12000: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  46.8649] xma: id A1000A40: rate/channel bits 0/0 -> 3/0
+[  46.9326] gpu: swap #12060
+[  46.9397] xma: id A1000780: rate/channel bits 0/0 -> 3/0
+[  46.9618] xma: id A1000A40: rate/channel bits 3/0 -> 0/0
+[  46.9618] xma: id A1000BC0: rate/channel bits 3/0 -> 0/0
+[  47.0414] xma: id A10008C0: rate/channel bits 0/0 -> 3/0
+[  47.0993] gpu: swap #12120
+[  47.1110] xma: id A1000A40: rate/channel bits 0/0 -> 3/0
+[  47.1208] xma: id A1000C40: rate/channel bits 0/0 -> 3/0
+[  47.1267] xma: id A1000D00: rate/channel bits 0/0 -> 3/0
+[  47.2658] gpu: swap #12180
+[  47.2769] xma: id A1000B40: rate/channel bits 3/0 -> 0/0
+[  47.3244] perf lite: 359.9 fps, 2.78 ms/frame (p99 3.02 ms, max 3.24 ms) | 858 draws/frame | GPU 0.02 ms/frame | draw thread 25% busy | 0 long
+[  47.4327] gpu: swap #12240
+[  47.4465] xma: id A1000B40: rate/channel bits 0/0 -> 3/0
+[  47.5990] gpu: swap #12300
+[  47.7656] gpu: swap #12360
+[  47.8636] xma: id A1000000: rate/channel bits 0/0 -> 3/0
+[  47.8894] xma: id A1000400: rate/channel bits 0/0 -> 3/0
+[  47.9324] gpu: swap #12420
+[  48.0172] xma: id A1000080: rate/channel bits 3/0 -> 0/0
+[  48.0989] gpu: swap #12480
+[  48.2656] gpu: swap #12540
+[  48.3282] perf lite: 360.1 fps, 2.78 ms/frame (p99 3.37 ms, max 3.45 ms) | 839 draws/frame | GPU 0.02 ms/frame | draw thread 22% busy | 0 long
+[  48.3282] perf lite: VRAM 1247 MB used of 23748 MB budget | system memory for the GPU 288 MB of 15147 MB
+[  48.4322] gpu: swap #12600
+[  48.4340] renderer: frame 12600: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  48.4746] xma: id A1000100: rate/channel bits 0/0 -> 3/0
+[  48.4814] xma: id A1000640: rate/channel bits 3/0 -> 0/0
+[  48.4971] xma: id A1000780: rate/channel bits 3/0 -> 0/0
+[  48.4972] xma: id A1000B80: rate/channel bits 3/0 -> 0/0
+[  48.5132] xma: id A1000BC0: rate/channel bits 0/0 -> 3/0
+[  48.5242] xma: id A1000300: rate/channel bits 3/0 -> 0/0
+[  48.5400] xma: id A1000C40: rate/channel bits 3/0 -> 0/0
+[  48.5773] xma: id A1000BC0: rate/channel bits 3/0 -> 0/0
+[  48.5776] xma: id A1000480: rate/channel bits 0/0 -> 3/0
+[  48.5989] gpu: swap #12660
+[  48.6088] xma: id A10005C0: rate/channel bits 0/0 -> 3/0
+[  48.6245] xma: id A1000080: rate/channel bits 0/0 -> 3/0
+[  48.6298] xma: id A1000140: rate/channel bits 0/0 -> 3/0
+[  48.7421] xma: id A1000100: rate/channel bits 3/0 -> 0/0
+[  48.7653] gpu: swap #12720
+[  48.7851] xma: id A1000480: rate/channel bits 3/0 -> 0/0
+[  48.8113] xma: id A10005C0: rate/channel bits 3/0 -> 0/0
+[  48.8171] xma: id A1000640: rate/channel bits 0/0 -> 3/0
+[  48.9122] xma: id A10002C0: rate/channel bits 3/0 -> 0/0
+[  48.9319] gpu: swap #12780
+[  48.9337] xma: id A10003C0: rate/channel bits 0/0 -> 3/0
+[  48.9880] xma: id A1000100: rate/channel bits 0/0 -> 3/0
+[  48.9982] xma: id A1000480: rate/channel bits 0/0 -> 3/0
+[  49.0839] xma: id A1000140: rate/channel bits 3/0 -> 0/0
+[  49.0985] gpu: swap #12840
+[  49.1047] xma: id A1000780: rate/channel bits 0/0 -> 3/0
+[  49.2654] gpu: swap #12900
+[  49.3331] perf lite: 360.0 fps, 2.78 ms/frame (p99 3.08 ms, max 3.17 ms) | 798 draws/frame | GPU 0.02 ms/frame | draw thread 19% busy | 0 long
+[  49.4317] gpu: swap #12960
+[  49.5983] gpu: swap #13020
+[  49.6866] xma: id A1000300: rate/channel bits 0/0 -> 3/0
+[  49.7288] xma: id A1000A80: rate/channel bits 0/0 -> 3/0
+[  49.7648] gpu: swap #13080
+[  49.8556] shader scan: 1 candidates changed before they were confirmed (21 so far)
+[  49.9318] gpu: swap #13140
+[  50.0173] xma: id A1000100: rate/channel bits 3/0 -> 0/0
+[  50.0438] xma: id A10002C0: rate/channel bits 0/0 -> 3/0
+[  50.0980] gpu: swap #13200
+[  50.1003] renderer: frame 13200: 0 draws, 0 skipped, 969 shaders, 2716 pipelines, 0 textures
+[  50.2090] xma: id A1000080: rate/channel bits 3/0 -> 0/0
+[  50.2466] xma: id A1000100: rate/channel bits 0/0 -> 3/0
+[  50.2520] xma: id A1000A40: rate/channel bits 3/0 -> 0/0
+[  50.2648] gpu: swap #13260
+[  50.3362] perf lite: 360.2 fps, 2.78 ms/frame (p99 3.01 ms, max 3.09 ms) | 778 draws/frame | GPU 0.02 ms/frame | draw thread 16% busy | 0 long
