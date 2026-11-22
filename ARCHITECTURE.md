@@ -14,7 +14,7 @@ This document ties the specs together and holds the plan. Specs:
 | [SCENE_API.md](SCENE_API.md) + [`scene_api.h`](scene_api.h) | Scene API: what the core tells the renderer; material types |
 | [ASSETS.md](ASSETS.md) | Asset DB, world/model assembly, capture sessions, conversion, upgrades, bakes, replacement packs |
 | [CORE.md](CORE.md) | Threads, camera determination, classification, persistent scene, interpolation, claims, multi-screen views, compositing, pacing |
-| [M1.md](M1.md) | The capture tap: stages, stage 1's Xenos-native records, first capture results |
+| [M1.md](M1.md) | The capture tap: stages, stage 1's Xenos-native records, first capture results, stage 2 (geometry, transforms, camera, glTF) |
 | [GAME-LOGIC.md](GAME-LOGIC.md) | Game-logic CPU today, tracing tools, Pinyon Shift's findings, the route to native replacement |
 
 ---
@@ -99,6 +99,10 @@ translation (~0.75 µs each today), and the tap's own cost per draw must stay we
 
 **M1 stage 1 done 2026-11-22** (M1.md): ReGPU captures FM3's frames to `.fir` files (Xenos-native records); first
 capture verified, 98.6-100 % of draws stable across frames by content, draw order not stable, no cost when off.
+
+**M1 stage 2 transforms done 2026-11-22** (M1.md): vertex shaders run offline give 94.5 % of a frame's draws their
+clip positions (matching a screenshot); one camera (53.00 deg, exact rotation) and per-object world matrices recovered;
+the frame exports as glTF and renders in Godot from the captured camera. Open: skinned/instanced draws mirrored.
 
 M0–M2 do not touch FM4 work and can start immediately. M1's tap is passive, so it
 cannot slow ReGPU when disabled.
