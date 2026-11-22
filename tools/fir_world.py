@@ -499,6 +499,26 @@ def materials(cap, path, objs):
             out[id(p)] = {'drop': True}
             why['rule: ' + rule['name'] + ' (left out)'] += 1
             continue
+        if rule and rule.get('shadow_blob') and 0 in fetch_at and np.ptp(np.nan_to_num(fetch_at[0][:, :2]), axis=0).max() > 0.5:
+            n_ = 64
+            t_ = (np.arange(n_) + 0.5) / n_
+            e_ = np.minimum(t_, 1 - t_)
+            f_ = np.clip(e_ / 0.3, 0, 1)
+            f_ = f_ * f_ * (3 - 2 * f_)
+            a_ = (np.outer(f_, f_) * float(rule['shadow_blob']) * 255).astype(np.uint8)
+            c_ = np.clip([consts.get(k, 0.0) for k in range(3)], 0, 1)
+            img_ = np.zeros((n_, n_, 4), np.uint8)
+            img_[..., :3] = (c_ * 255).astype(np.uint8)
+            img_[..., 3] = a_
+            out[id(p)] = {'uv': fetch_at[0][:, :2].astype(np.float32), 'image': {'w': n_, 'h': n_, 'bytes': img_.tobytes()},
+                          'key': 'shadowblob' + ''.join('%02x' % int(v * 255) for v in c_), 'factor': [1.0, 1.0, 1.0, 1.0],
+                          'blend': 'BLEND', 'color': color, 'lightmap': None, 'unlit': True}
+            why['rule: car shadow blob (procedural)'] += 1
+            continue
+        if rule and rule.get('shadow_blob'):
+            out[id(p)] = {'drop': True}  # (the blob's other draws: constant UVs, a second pass over the same quad)
+            why['rule: car shadow blob, constant-UV pass (left out)'] += 1
+            continue
         if rule:
             # A profile rule (profiles/fm3/materials.json): albedo colour, texture and coverage by role.
             colour = np.array(rule.get('color', [1.0, 1.0, 1.0]), dtype=np.float64)
@@ -728,6 +748,23 @@ def materials(cap, path, objs):
         m = out.get(next((id(q[0]) for q in objs if q[0][0]['seq'] == seq), None))
         desc = 'dropped' if m and m.get('drop') else (f"blend={m['blend']} tex={'y' if m.get('image') is not None else 'n'} factor={[round(x, 2) for x in m['factor']]}" if m else 'no material')
         print(f'  why {seq} ps {ps}: {diff} -> {desc}')
+    # Draws that read one texel everywhere (constant UVs: palette textures, e.g. a car's wiper at (0, 0)) get that texel
+    # as a flat colour: filtered with repeat wrapping, a corner texel would blend with the opposite edges.
+    flat = 0
+    for m in out.values():
+        uv = m.get('uv') if isinstance(m, dict) else None
+        img = m.get('image') if isinstance(m, dict) else None
+        if uv is None or img is None or not len(uv) or np.ptp(np.nan_to_num(np.asarray(uv)), axis=0).max() > 1e-6:
+            continue
+        w, h = img['w'], img['h']
+        u, v = np.nan_to_num(np.asarray(uv)[0])
+        x, y = int(np.floor((u % 1.0) * w)) % w, int(np.floor((v % 1.0) * h)) % h
+        px = np.frombuffer(img['bytes'][:w * h * 4], np.uint8).reshape(h, w, 4)[y, x] / 255.0
+        m['factor'] = [float(px[i] * m['factor'][i]) for i in range(3)] + [m['factor'][3]]
+        m['image'] = m['uv'] = m['key'] = None
+        m.pop('mr_image', None)
+        flat += 1
+    why['constant UVs: one texel as a flat colour'] += flat
     for k, v in why.most_common():
         print(f'  materials: {k}: {v}')
     return out
@@ -803,7 +840,8 @@ def write_gltf(out, objs, cam, mats=None, merge=False, sun=None):
             mode = mat['blend'] if isinstance(mat['blend'], str) else ('BLEND' if mat['blend'] else None)
             materials_.append({'pbrMetallicRoughness': pbr, 'doubleSided': True, **occ,
                                **({'alphaMode': mode} if mode else {}), **({'alphaCutoff': 0.5} if mode == 'MASK' else {}),
-                               **({'extensions': {'KHR_materials_unlit': {}}} if mat.get('unlit') else {})})
+                               **({'extensions': {'KHR_materials_unlit': {}}} if mat.get('unlit') else {}),
+                               **({'name': 'fm3_shadow_blob'} if (mat.get('key') or '').startswith('shadowblob') else {})})
             mat_ids[key] = len(materials_) - 1
         return mat_ids[key]
 

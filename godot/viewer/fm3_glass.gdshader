@@ -25,7 +25,7 @@ uniform vec3 tint1 = vec3(1.0);  // reflection tint (P[2].rgb: (0.5, 1, 1) on th
 uniform vec3 ambient = vec3(0.14, 0.14, 0.18);  // FM3 PS c247
 uniform vec3 sun = vec3(1.58, 1.57, 1.5);  // FM3 PS c248
 uniform float unlit_level = 0.6;
-uniform float shadow_strength = 0.62;
+uniform float shadow_strength = 0.85;  // (linear: FM3 darkens shadowed ground to ~0.42 of its gamma-space value, 0.42^2.2 = 0.15)
 
 vec3 to_linear(vec3 c) {
 	c = clamp(c, 0.0, 1.0);

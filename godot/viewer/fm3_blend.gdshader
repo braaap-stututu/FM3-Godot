@@ -26,7 +26,7 @@ uniform float grain_mean = 0.5;
 uniform vec3 ambient = vec3(0.14, 0.14, 0.18);  // FM3 PS c247
 uniform vec3 sun = vec3(1.58, 1.57, 1.5);  // FM3 PS c248
 uniform float unlit_level = 0.6;  // without a lightmap
-uniform float shadow_strength = 0.62;
+uniform float shadow_strength = 0.85;  // (linear: FM3 darkens shadowed ground to ~0.42 of its gamma-space value, 0.42^2.2 = 0.15)
 uniform vec3 env_zenith = vec3(0.40, 0.58, 0.74);  // mode 7: the reflected environment (gamma space), a sky gradient
 uniform vec3 env_horizon = vec3(0.45, 0.52, 0.56);  // (the track's surroundings: hills, trees, haze)
 uniform vec3 env_ground = vec3(0.16, 0.16, 0.14);

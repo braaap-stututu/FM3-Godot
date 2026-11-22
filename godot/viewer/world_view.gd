@@ -130,6 +130,10 @@ func _init() -> void:
 				baked += 1
 				continue
 			m = m.duplicate()
+			if m.resource_name == "fm3_shadow_blob":
+				# a car's soft contact shadow (fir_world.py): lie just above the road it would otherwise z-fight
+				mi.global_position += Vector3(0, 0.03, 0)
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			if m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:  # (the glTF's unlit materials stay unlit)
 				m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL if lit else BaseMaterial3D.SHADING_MODE_UNSHADED
 			m.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -157,6 +161,12 @@ func _init() -> void:
 				m.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
 			if lit and m.roughness >= 0.9:
 				m.metallic_specular = 0.15  # matte surfaces: little sky reflection at grazing angles (FM3's look)
+			if lit and m.roughness_texture != null and m.albedo_texture != null:
+				# car paint (fir_world.py writes a roughness texture only for paint): FM3's paint is a clear coat over the
+				# colour, reflecting the environment with a Fresnel falloff
+				m.clearcoat_enabled = true
+				m.clearcoat = 0.3  # (calibrated on the grid's cars: 1.0 turns dark paint into chrome)
+				m.clearcoat_roughness = 0.12
 			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 			mi.set_surface_override_material(s, m)
 	if id_mode:
@@ -223,7 +233,10 @@ func _init() -> void:
 		probe.update_mode = ReflectionProbe.UPDATE_ONCE
 		probe.max_distance = 1500.0
 		probe.ambient_mode = ReflectionProbe.AMBIENT_DISABLED
-		probe.position = cam.global_transform.origin + (-cam.global_transform.basis.z * 8.0) + Vector3(0, 0.6, 0) if cam.is_inside_tree() else cam.transform.origin + (-cam.transform.basis.z * 8.0) + Vector3(0, 0.6, 0)
+		# (above the cars: placed among them, the probe saw the nearest car's interior and every car reflected it)
+		var cam_o := cam.global_transform.origin if cam.is_inside_tree() else cam.transform.origin
+		var cam_f := -(cam.global_transform.basis.z if cam.is_inside_tree() else cam.transform.basis.z)
+		probe.position = cam_o + Vector3(cam_f.x, 0, cam_f.z).normalized() * 15.0 + Vector3(0, 6.0, 0)
 		root.add_child(probe)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-sun_elev, sun_azim, 0)
