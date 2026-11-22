@@ -102,8 +102,9 @@ capture verified, 98.6-100 % of draws stable across frames by content, draw orde
 
 **M1 stage 2 transforms done 2026-11-22** (M1.md): vertex shaders run offline give 94.5 % of a frame's draws their
 clip positions (matching a screenshot); one camera (53.00 deg, exact rotation) and per-object world matrices recovered;
-the frame exports as glTF and renders in Godot from the captured camera. FM3's scene target reaches the screen rotated 180 deg. First materials pass: base textures and UVs from the
-pixel shaders (75 % of exported draws); multi-texture shaders (track, car paint) need per-shader material rules.
+the frame exports as glTF and renders in Godot from the captured camera. FM3's scene target reaches the screen rotated 180 deg. Materials from the pixel shaders plus first FM3 material rules
+(profiles/fm3/materials.json); a lit Godot render looks like the game. Triple screen from a triple capture: Godot draws the
+grid frame on three 1440p screens at ~289 fps with 4x MSAA and shadows (merged meshes; ReGPU 146) - see M1.md.
 
 M0–M2 do not touch FM4 work and can start immediately. M1's tap is passive, so it
 cannot slow ReGPU when disabled.

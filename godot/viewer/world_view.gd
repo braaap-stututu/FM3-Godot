@@ -6,12 +6,20 @@ var _out := ""
 var _frames := 0
 var _scene: Node
 var _cam: Camera3D
+var _triple_layout := ""  # --triple <layout.json>: three screens (core/triple_view layout), stitched side by side
+var _screens := []
+var _msaa := 0  # --msaa 2|4|8 on the screens
+var _bench := 0  # --bench N: after the picture, render N more frames and report the frame rate
+var _bench_t0 := 0
+var _screen_size := Vector2i(1280, 720)
+const TripleCameras = preload("res://triple_cameras.gd")
 
 
 func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	var gltf_path := ""
 	var size := Vector2i(1280, 720)
+	var no_shadows := false
 	var lit := false  # --lit: materials shaded, a sun with shadows and sky ambient (--sun elevation,azimuth in degrees)
 	var sun_elev := 50.0
 	var sun_azim := 30.0
@@ -29,6 +37,14 @@ func _init() -> void:
 				textured = true
 			"--lit":
 				textured = true; lit = true
+			"--no-shadows":
+				no_shadows = true
+			"--msaa":
+				_msaa = int(args[i + 1]); i += 1
+			"--bench":
+				_bench = int(args[i + 1]); i += 1
+			"--triple":
+				_triple_layout = args[i + 1]; i += 1
 			"--sun":
 				var q := args[i + 1].split(","); sun_elev = float(q[0]); sun_azim = float(q[1]); i += 1
 		i += 1
@@ -92,7 +108,7 @@ func _init() -> void:
 	sun.rotation_degrees = Vector3(-sun_elev, sun_azim, 0)
 	sun.light_energy = 1.35 if lit else 1.0
 	sun.light_color = Color(1.0, 0.93, 0.82)
-	sun.shadow_enabled = lit
+	sun.shadow_enabled = lit and not no_shadows
 	sun.directional_shadow_max_distance = 250.0
 	root.add_child(sun)
 	print("world_view: camera ", cam.global_transform if cam.is_inside_tree() else cam.transform, " parent ", cam.get_parent().name)
@@ -101,6 +117,20 @@ func _init() -> void:
 
 func _process(_delta: float) -> bool:
 	_frames += 1
+	if _frames == 2 and _triple_layout != "":
+		var layout = JSON.parse_string(FileAccess.get_file_as_string(_triple_layout))
+		_screen_size = root.size
+		root.size = Vector2i(_screen_size.x * 3, _screen_size.y)
+		DisplayServer.window_set_size(root.size)
+		_screens = TripleCameras.make_screens(root, _screen_size)
+		for scr in _screens:
+			scr["viewport"].msaa_3d = {2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X, 8: Viewport.MSAA_8X}.get(_msaa, Viewport.MSAA_DISABLED)
+		var game := _cam.global_transform
+		for k in 3:
+			var sc: Dictionary = layout["screens"][k]
+			TripleCameras.apply(_screens[k]["camera"], game, float(sc["rot_y"]), float(sc["size"]),
+				Vector2(float(sc["offset"][0]), float(sc["offset"][1])), float(sc["near"]), float(sc["far"]))
+		print("world_view: triple screens from ", _triple_layout)
 	if _frames == 2:
 		var first := _scene.find_child("draw723", true, false) as Node3D
 		if first:
@@ -108,9 +138,28 @@ func _process(_delta: float) -> bool:
 			var v0: Vector3 = mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX][0] if mi and mi.mesh else Vector3.ZERO
 			print("world_view: draw723 ", first.global_transform, " v0 ", v0, " world ", first.global_transform * v0, " screen ", _cam.unproject_position(first.global_transform * v0))
 		print("world_view: camera ", _cam.global_transform)
-	if _frames == 5:
+	if _frames == 8 and not _screens.is_empty():
+		var out := Image.create(_screen_size.x * 3, _screen_size.y, false, Image.FORMAT_RGBA8)
+		for k in 3:
+			var im: Image = _screens[k]["viewport"].get_texture().get_image()
+			im.convert(Image.FORMAT_RGBA8)
+			out.blit_rect(im, Rect2i(Vector2i.ZERO, _screen_size), Vector2i(_screen_size.x * k, 0))
+		out.save_png(_out)
+		print("world_view: saved ", _out)
+		if _bench == 0:
+			quit(0)
+		_bench_t0 = Time.get_ticks_usec()
+	if _bench > 0 and _frames == 8 + 60:
+		_bench_t0 = Time.get_ticks_usec()  # (after 60 warm-up frames)
+	if _bench > 0 and _frames == 8 + 60 + _bench:
+		var secs := (Time.get_ticks_usec() - _bench_t0) / 1e6
+		print("world_view: bench %d frames in %.3f s = %.1f fps (%s, %d draws visible to the renderer)" % [_bench, secs, _bench / secs,
+			"triple" if not _screens.is_empty() else "single", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)])
+		quit(0)
+	if _frames == 5 and _screens.is_empty():
 		var img := root.get_texture().get_image()
 		img.save_png(_out)
 		print("world_view: saved ", _out)
-		quit(0)
+		if _bench == 0:
+			quit(0)
 	return false

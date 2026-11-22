@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """fir_world.py: split a captured frame's clip transforms into one camera and per-object world matrices, export glTF.
 
-    python fir_world.py capture.fir [--gltf out.gltf] [--frame N]
+    python fir_world.py capture.fir [--gltf out.gltf [--merge]] [--frame N]
 
 1. Every draw of the scene pass is run through its vertex shader (fir_frame.place); draws whose last linear map into
    clip space takes three atoms (an object-space position) give a 4x4 matrix M (clip from object).
@@ -196,7 +196,7 @@ def main():
     if '--gltf' in sys.argv:
         out = sys.argv[sys.argv.index('--gltf') + 1]
         mats = materials(cap, path, objs)
-        write_gltf(out, objs, cam, mats)
+        write_gltf(out, objs, cam, mats, merge='--merge' in sys.argv)
     return 0
 
 
@@ -394,7 +394,7 @@ def smooth_normals(P, tris):
     return (n / ln[:, None]).astype(np.float32)
 
 
-def write_gltf(out, objs, cam, mats=None):
+def write_gltf(out, objs, cam, mats=None, merge=False):
     # FM3's scene target reaches the screen rotated 180 deg: clip x is screen-left and clip y screen-down.
     right, up, fwd = -cam['right'], -cam['up'], cam['forward']
     S = np.eye(4)
@@ -406,6 +406,7 @@ def write_gltf(out, objs, cam, mats=None):
     mesh_ids = {}
     offset = 0
     checks = []
+    groups = {}  # merge mode: material index -> [(world positions, normals, uvs, triangles)]
     images, textures, materials_, mat_ids = [], [], [], {}
     tex_dir = os.path.splitext(out)[0] + '_tex'
 
@@ -461,6 +462,16 @@ def write_gltf(out, objs, cam, mats=None):
         mat = (mats or {}).get(id(p))
         if mat is not None and mat.get('drop'):
             continue
+        if merge:
+            uvm = mat['uv'] if mat is not None and mat['uv'] is not None and mat['image'] is not None and np.all(np.isfinite(mat['uv'])) else None
+            mi_ = material_index(mat) if mat is not None and (uvm is not None or mat['image'] is None) else -1
+            Pw = (Wg[:3, :3] @ P.astype(np.float64).T).T + Wg[:3, 3]
+            Nw = smooth_normals(P, tris).astype(np.float64) @ np.linalg.inv(Wg[:3, :3])
+            Nw /= np.maximum(np.linalg.norm(Nw, axis=1, keepdims=True), 1e-12)
+            groups.setdefault(mi_, []).append((Pw.astype(np.float32), Nw.astype(np.float32),
+                                               uvm if uvm is not None else np.zeros((len(P), 2), np.float32), tris))
+            checks.append((per_vert, np.eye(4), Pw.astype(np.float32)))
+            continue
         uv = mat['uv'] if mat is not None and mat['uv'] is not None and np.all(np.isfinite(mat['uv'])) else None
         mkey = (mat['key'] or '') + str(mat['factor']) if mat is not None else ''
         h = hashlib.blake2b(P.tobytes() + tris.tobytes() + (uv.tobytes() if uv is not None else b'') + mkey.encode(),
@@ -485,6 +496,30 @@ def write_gltf(out, objs, cam, mats=None):
             mesh_ids[h] = len(meshes) - 1
         checks.append((per_vert, Wg, P))
         nodes.append({'mesh': mesh_ids[h], 'matrix': Wg.T.ravel().tolist(), 'name': f"draw{d['seq']}"})
+    for mi_, parts in groups.items():
+        # One mesh per material, vertices in world space (fewer draw calls for a renderer without automatic batching).
+        Pm = np.concatenate([q[0] for q in parts])
+        Nm = np.concatenate([q[1] for q in parts])
+        Um = np.concatenate([q[2] for q in parts])
+        base, tl = 0, []
+        for q in parts:
+            tl.append(q[3].astype(np.uint32) + base)
+            base += len(q[0])
+        Tm = np.concatenate(tl)
+        accessors.append({'bufferView': add_view(Pm.tobytes(), 34962), 'componentType': 5126, 'count': len(Pm), 'type': 'VEC3',
+                          'min': Pm.min(axis=0).tolist(), 'max': Pm.max(axis=0).tolist()})
+        prim = {'attributes': {'POSITION': len(accessors) - 1}}
+        accessors.append({'bufferView': add_view(Nm.tobytes(), 34962), 'componentType': 5126, 'count': len(Nm), 'type': 'VEC3'})
+        prim['attributes']['NORMAL'] = len(accessors) - 1
+        if mi_ >= 0:
+            if 'baseColorTexture' in materials_[mi_]['pbrMetallicRoughness']:
+                accessors.append({'bufferView': add_view(Um.tobytes(), 34962), 'componentType': 5126, 'count': len(Um), 'type': 'VEC2'})
+                prim['attributes']['TEXCOORD_0'] = len(accessors) - 1
+            prim['material'] = mi_
+        accessors.append({'bufferView': add_view(Tm.ravel().tobytes(), 34963), 'componentType': 5125, 'count': int(Tm.size), 'type': 'SCALAR'})
+        prim['indices'] = len(accessors) - 1
+        meshes.append({'primitives': [prim]})
+        nodes.append({'mesh': len(meshes) - 1, 'name': f'merged_material_{mi_}'})
     C = np.eye(4)
     C[:3, 0], C[:3, 1], C[:3, 2], C[:3, 3] = right, up, -fwd, pos
     nodes.append({'camera': 0, 'matrix': C.T.ravel().tolist(), 'name': 'capture_camera'})
