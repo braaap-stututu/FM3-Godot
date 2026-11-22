@@ -90,7 +90,14 @@ Debug helpers: `fir_pick.py <fir> x,y` (draws under a pixel), `fir_disasm.py <fi
 
 ## 6. State of every repository (nothing is pushed)
 
-- **frame-ir**: all work committed locally (`git log`; ~37 commits this session, latest "Handoff ..."). No remote.
+- **frame-ir** = GitHub **[FM3-Godot](https://github.com/braaap-stututu/FM3-Godot)** (remote `origin`, branch `main`,
+  public): the FM3 application, full history. Remote **`upstream`** =
+  **[GodotRenderOffloadForRecomps](https://github.com/braaap-stututu/GodotRenderOffloadForRecomps)** (public): the general
+  framework (specs, core, Godot side, ReGPU patches, `tools/fir_*`, the FM3 profile as an example), imported from here
+  and merged back with `-s ours` so the histories are linked. Its local clone: `G:\claude code projects\GodotRenderOffloadForRecomps`.
+  **Workflow:** general changes (specs, core, capture tools, Godot side) are made in the upstream clone, committed and
+  pushed there, then `git fetch upstream && git merge upstream/main` here; FM3-specific work (fm3_* tools, FM3 shaders,
+  profiles/fm3 tuning, docs about FM3) is committed here and pushed to origin. Game data never goes into either.
 - **FM3-ReGPU recomp**: committed (last `22ff609 NOTES: fix a path`), not pushed since 5e993eb..22ff609 (check
   `git status -sb`). Untracked `FM3 DLC\` and `Project Forza Plus 3\` (game data, never commit).
 - **ReGPU** (`thirdparty\ReGPU`): checked out detached at `604dd2b` (what FM3 main pins) **with the fir tap applied
@@ -136,7 +143,8 @@ Debug helpers: `fir_pick.py <fir> x,y` (draws under a pixel), `fir_disasm.py <fi
 
 ## 9. How we work (the user's preferences)
 
-- Commit and push only when the user asks (local commits after finished steps are fine and expected here; never push).
+- Commit locally after finished steps; push FM3-Godot / GodotRenderOffloadForRecomps when a step is done and the user
+  wants it shared (they set these repos up on 2026-11-22); FM3-ReGPU and ReGPU only when the user asks.
 - Never commit game data; exports stay in git-ignored `out\`.
 - Check that `fm3.exe` is not running before booting or building FM3.
 - frame-ir files use LF line endings; the FM3 repo uses autocrlf.
