@@ -1,5 +1,5 @@
 {
-  "_doc": "FM3 material rules by pixel shader hash, for tools/fir_world.py (a first slice of the FM3 profile's material archetypes, SCENE_API.md). color_const: the PS constant (cN, pixel-shader numbering) holding the albedo colour. texture: the slot of the albedo texture; texture_mode 'over_alpha' composites it over the colour by its alpha (liveries over paint), 'multiply' multiplies. alpha_texture/alpha_channel: the slot and channel giving coverage (decals). color: a fixed albedo. alpha: a constant coverage (glass). drop: leave the draw out (effects that only read render targets made during the frame). unlit: the sky and other emissive surfaces (glTF KHR_materials_unlit). under: with alpha_texture, the colour beneath the paint (the draw is the surface itself, opaque). _lightmap_slot: the slot FM3 world shaders keep their baked lightmap in (exported as the occlusion texture on a second UV set). _sun_const: PS constants holding the direction to the sun. roughness/metallic: PBR values for the material (default 1/0). color_scale: multiplies the colour (from a constant or fixed). glass: transparent glass (strong reflections in the viewer).",
+  "_doc": "FM3 material rules by pixel shader hash, for tools/fir_world.py (a first slice of the FM3 profile's material archetypes, SCENE_API.md). color_const: the PS constant (cN, pixel-shader numbering) holding the albedo colour. texture: the slot of the albedo texture; texture_mode 'over_alpha' composites it over the colour by its alpha (liveries over paint), 'multiply' multiplies. alpha_texture/alpha_channel: the slot and channel giving coverage (decals). color: a fixed albedo. alpha: a constant coverage (glass). drop: leave the draw out (effects that only read render targets made during the frame). unlit: the sky and other emissive surfaces (glTF KHR_materials_unlit). under: with alpha_texture, the colour beneath the paint (the draw is the surface itself, opaque). _lightmap_slot: the slot FM3 world shaders keep their baked lightmap in (exported as the occlusion texture on a second UV set). _sun_const: PS constants holding the direction to the sun. roughness/metallic: PBR values for the material (default 1/0). color_scale: multiplies the colour (from a constant or fixed). glass: transparent glass (strong reflections in the viewer). The sky dome's colour (0.92, 0.97, 1.0) is calibrated against the game's screenshot (its shader scales by texture alpha and c249.y/c222.x, not yet reproduced). The asphalt colour 0.34 is calibrated against the game's screenshot with the viewer's FM3 lighting (fm3_baked.gdshader, linear tone mapping). sheen: added to the composited colour (the game's sky reflection on painted lines, measured against its screenshot).",
   "e41e183a423e6f1b": {
     "name": "car paint",
     "color_const": 118,
@@ -17,15 +17,20 @@
       0.16,
       0.16
     ],
-    "color_scale": 0.75
+    "color_scale": 0.75,
+    "sheen": [
+      0.1,
+      0.13,
+      0.17
+    ]
   },
   "fd6b3d2ab76c24bb": {
     "name": "track asphalt",
     "texture": 1,
     "color": [
-      0.55,
-      0.55,
-      0.55
+      0.34,
+      0.34,
+      0.34
     ],
     "texture_mode": "multiply"
   },
@@ -69,8 +74,8 @@
     "name": "sky dome",
     "texture": 0,
     "color": [
-      1.0,
-      1.0,
+      0.92,
+      0.97,
       1.0
     ],
     "texture_mode": "multiply",

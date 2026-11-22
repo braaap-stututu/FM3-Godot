@@ -28,6 +28,7 @@ func _init() -> void:
 	var grey_shadow := false
 	var id_mode := false  # debug: every mesh instance a unique flat colour; writes <out>.ids.txt (index -> node name)  # debug: one grey lit material everywhere, sun shadows on
 	var lit := false  # --lit: materials shaded, a sun with shadows and sky ambient (--sun elevation,azimuth in degrees)
+	var filmic := false  # --filmic: Godot's filmic tone mapper and grade (the look before matching FM3's own)
 	var sun_elev := 50.0
 	var sun_azim := 30.0
 	var textured := false  # --textured: the glTF's own materials, unshaded (no normals yet); else one grey lit material
@@ -44,6 +45,8 @@ func _init() -> void:
 				textured = true
 			"--lit":
 				textured = true; lit = true
+			"--filmic":
+				filmic = true
 			"--fly":
 				_fly = true
 			"--id":
@@ -79,7 +82,7 @@ func _init() -> void:
 	var meshes := 0
 	var baked := 0
 	var baked_no_tex := 0
-	var baked_gain := 1.15  # (calibrated against the game: the sun now reaches the baked world)
+	var baked_gain := 1.0  # (the baked shader evaluates FM3's own lightmap formula; 1 = as the game)
 	var grey_unshaded := StandardMaterial3D.new()
 	grey_unshaded.albedo_color = Color(0.5, 0.5, 0.5)
 	grey_unshaded.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -150,6 +153,7 @@ func _init() -> void:
 		return
 	var cam := cams[0] as Camera3D
 	cam.keep_aspect = Camera3D.KEEP_HEIGHT
+	cam.far = maxf(cam.far, 100000.0)  # the sky dome is ~5 km out (FM3: infinite far plane)
 	cam.current = true
 	_cam = cam
 	var env := WorldEnvironment.new()
@@ -171,13 +175,19 @@ func _init() -> void:
 		env.environment.background_mode = Environment.BG_SKY
 		env.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 		env.environment.ambient_light_color = Color(0.72, 0.73, 0.75)
-		env.environment.ambient_light_energy = 0.85
+		env.environment.ambient_light_energy = 0.85 if filmic else 0.12
 		env.environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
-		env.environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-		env.environment.tonemap_exposure = 1.2
-		env.environment.adjustment_enabled = true
-		env.environment.adjustment_contrast = 1.12
-		env.environment.adjustment_saturation = 0.95
+		if filmic:
+			env.environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+			env.environment.tonemap_exposure = 1.2
+			env.environment.adjustment_enabled = true
+			env.environment.adjustment_contrast = 1.12
+			env.environment.adjustment_saturation = 0.95
+		else:
+			# FM3's look: the baked world shader already produces the game's (LDR, gamma-space) colour; a linear tone
+			# mapper passes it to the screen unchanged.
+			env.environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+			env.environment.tonemap_exposure = 1.0
 	root.add_child(env)
 	if lit:
 		# Reflections of the real scene (FM3 renders a dynamic environment map for its car paint and glass): one probe
@@ -196,7 +206,7 @@ func _init() -> void:
 		sun.global_transform = (glights[0] as Node3D).global_transform if (glights[0] as Node3D).is_inside_tree() else (glights[0] as Node3D).transform
 		(glights[0] as Node3D).visible = false
 		print("world_view: sun from the glTF")
-	sun.light_energy = 1.45 if lit else 1.0
+	sun.light_energy = (1.45 if filmic else 1.3) if lit else 1.0  # (linear tone mapping: calibrated on the grid's cars)
 	sun.light_color = Color(1.0, 0.97, 0.92)
 	sun.shadow_enabled = (lit or grey_shadow) and not no_shadows
 	print("world_view: sun forward ", -sun.global_transform.basis.z if sun.is_inside_tree() else -sun.transform.basis.z, " shadows ", sun.shadow_enabled)

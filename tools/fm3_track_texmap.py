@@ -50,7 +50,7 @@ def build(track_dir, capmap_dir):
     for r in recs:
         by_ib[r['ib']].append(r)
     fits = defaultdict(list)
-    lm_by_mesh = {}
+    lm_by_mesh, tex_by_mesh = {}, {}
     for path in glob.glob(os.path.join(track_dir, '*.rmb.bin')):
         data = open(path, 'rb').read()
         for me in fm3_track.parse(data)['meshes']:
@@ -89,11 +89,14 @@ def build(track_dir, capmap_dir):
                         rec.update(lightmap=r['lightmap'], lm_chan=lb[0], lm_a=lb[1], lm_b=lb[2], lm_err=lb[3])
                 rec['mesh'] = (os.path.basename(path), me['index_offset'])
                 lm_by_mesh[rec['mesh']] = {k: rec[k] for k in ('lightmap', 'lm_chan', 'lm_a', 'lm_b', 'lm_err') if k in rec}
+                if rec['mesh'] not in tex_by_mesh or rec['err'] < tex_by_mesh[rec['mesh']]['err']:
+                    tex_by_mesh[rec['mesh']] = rec
                 fits[me['material']].append(rec)
     out = {}
     for mat, lst in fits.items():
         lst.sort(key=lambda r: r['err'])
         out[mat] = dict(lst[0], n=len(lst))
+    build.tex_by_mesh = tex_by_mesh
     return out, lm_by_mesh
 
 
@@ -108,4 +111,5 @@ if __name__ == '__main__':
     for m, r in list(res.items())[:12]:
         print(' ', m, r['chan'], np.round(r['a'], 3).tolist(), None if r['b'] is None else np.round(r['b'], 3).tolist(), 'err %.4f' % r['err'], '| lm', r.get('lm_chan'), None if 'lm_a' not in r else np.round(r['lm_a'], 3).tolist(), None if 'lm_err' not in r else round(r['lm_err'], 4))
     if len(sys.argv) > 3:
-        json.dump({'materials': res, 'lightmaps': {f'{k[0]}@{k[1]}': v for k, v in lms.items()}}, open(sys.argv[3], 'w'), indent=1)
+        json.dump({'materials': res, 'lightmaps': {f'{k[0]}@{k[1]}': v for k, v in lms.items()},
+                   'meshes': {f'{k[0]}@{k[1]}': v for k, v in build.tex_by_mesh.items()}}, open(sys.argv[3], 'w'), indent=1)

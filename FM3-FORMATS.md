@@ -40,6 +40,18 @@ web search were not reachable).
   (16-40), vertices (f32[3] world-space position + packed attributes), material name, parameters, u32 prim (3 =
   strip), u32 index count, u32 index size, u16 indices (`tools/fm3_track.py`). Track pieces are world-space (identity
   header matrix); shared props (barriers, flags, plants) are in model space and placed elsewhere.
+- **Verified (FM3), the full model file:** sections as ForzaStudio-EVO describes, and **each section's vertex block is
+  shared by all its subsections** (one per material: u32 1, u32 2, name, u32 LOD, u32 index type, **u32 material index**,
+  u32 1, u32 0 x4, f32 1.0 x4, f32[2] UV offset, f32[2] UV tile, u32 3, i32 index count, i32 index size, indices,
+  u32 flag). After the last section, the **material table**: u32 x4, u32 count, then per material: u32 3, u32 shader
+  index (into the file's `shaders\track\*.fx` list), u32 0, u32 1, u32 0, u32 1, u32 n + n vec4 parameters (the first
+  is the colour: the pit lane's `Asphalt_Orange` is (0.655, 0.353, 0)), u32 1, u32 slot count + slots. Slots index the
+  model's `.pvs` texture list (-1 none, -2 unused): **slot 0 = base texture, slot 7 = lightmap** (277 captured textures
+  confirmed). 1,901 of Ladera's 1,914 files parse this way.
+- **Vertex strides, extra:** stride 28 carries UV1 (the lightmap coordinate, decoded like UV0) at byte 24, in some
+  sections at byte 20 (the one within 0..1); found by fitting captured lightmap UVs. Meshes without UV1 use UV0 for
+  their lightmap. The sky dome (`<track>out.sky.rmb.bin`, stride 16) is position + u16 UV pair; FM3 centres it on the
+  camera, lowered by TrackSettings.xml's `SkyboxHeightOffset` (Ladera -1150).
 - **ForzaStudio-EVO (matches our files: u32 version 4 = FM3, 6 = FM4; section count u32 at 0x74):** per section: u32 1;
   three float3 blocks each followed by f32 0; u32 1; name (i32 length + ASCII; text before the first `_` = type);
   u32 2; u32 vertex count; u32 stride; vertices; u32 1; u32 subsection count. Per subsection: u32 1, u32 2; name; u32 LOD;
@@ -75,7 +87,15 @@ web search were not reachable).
   id, UV = (UV1, or UV0) * scale + offset, with the mesh's UV tile and offset applied first. Instanced models take the
   lightmap from each instance's own entry instead (often the next table entry). 46 + 48 of 50 + 51 captured meshes
   follow this.
-- Prop placement from the instances: positions do not yet line up with the captured world placements (frame unsolved).
+- **Instance placement (verified):** world = F (R^T p + pos) with F = diag(1, 1, -1), p the model-file vertex, R the
+  instance's 3x3 (half floats), pos its position; instances at the origin carry R = F (identity). All 144 captured
+  placements of instanced props match within 2 cm. Instance sets differ per layout (ribbon): Ladera's Ribbon_00..09 have
+  `.pvs` files (10..19, the reverse layouts, only cameras), and the grid capture's props are explained by Ribbon_04/05.
+  Model files without instances are world-space track pieces, drawn in every layout. Instance LOD distances: 80/160/240
+  m for barriers, -1 (always) for vegetation.
+- TrackSettings.xml (per track) holds the fog (near 80, far 1600, colour), ambient and SH lighting, desaturation and the
+  sky offset; the frame's pixel-shader constants carry the same values (c247 ambient (0.14, 0.14, 0.18), c248 sun
+  (1.58, 1.57, 1.5), c242 fog colour).
 - **FM4 v27 (fm4_pvs.py `read_fm4`), to adapt:** header (u32, u32), u16 ribbon, u16 a2, then cells, textures, shaders,
   instances, models, always, models_a, models_b, dynamic, prefix, two u8, names, cell lists. `vec` = u32 count + items;
   string = u32 length + bytes. Texture record 28 bytes (u32, u32, f32 x4, u32). **Instance (68 bytes):** u16 model, u32

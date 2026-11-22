@@ -209,7 +209,8 @@ def write_material_map(cap, objs, mats, out_dir):
     recs, written = [], set()
 
     def save(tex, key):
-        name = f'{key[:32]}.png'
+        # (the key's tail names the profile rule and colour: composites of one texture must not share a file)
+        name = f'{key[:32]}.png' if len(key) <= 32 else f'{key[:24]}{hashlib.md5(key.encode()).hexdigest()[:8]}.png'
         if name not in written:
             fr.write_png(os.path.join(out_dir, name), tex['w'], tex['h'], tex['bytes'][:tex['w'] * tex['h'] * 4])
             written.add(name)
@@ -227,7 +228,7 @@ def write_material_map(cap, objs, mats, out_dir):
         vi = [v for v in vindex if v is not None]
         rec = {'seq': d['seq'], 'ib': idx.hex(), 'vb_head': cap.data.get((1, vb[6], vb[7]), {}).get('bytes', b'')[:48].hex(),
                'vindex': vi, 'base': save(m['image'], m['key']), 'uv': np.asarray(m['uv'], float).round(6).tolist(),
-               'factor': m['factor'], 'blend': m['blend']}
+               'factor': m['factor'], 'blend': m['blend'], 'W': np.asarray(W, float).round(6).tolist()}
         lm = m.get('lightmap')
         if lm is not None:
             rec['lightmap'] = save(lm[1], 'lm' + lm[2])
@@ -384,6 +385,12 @@ def materials(cap, path, objs):
                 pin[reg] = np.stack([np.full(nv, UNKNOWN_FILL) if v is None or v.n is None else
                                      np.broadcast_to(np.asarray(v.n, dtype=np.float64), (nv,)) for v in comps], axis=1)
         consts = {i: f32(regs[0x4400 + i]) for i in range(1024) if 0x4400 + i in regs}
+        if os.environ.get('FIR_DUMP_CONSTS') and str(d['seq']) in os.environ['FIR_DUMP_CONSTS'].split(','):
+            # debug: FIR_DUMP_CONSTS=seq,seq,... prints the draw's pixel shader constants (c<N> = x y z w)
+            for c_ in sorted({i // 4 for i in consts}):
+                vals = [consts.get(c_ * 4 + k) for k in range(4)]
+                if any(v not in (None, 0.0) for v in vals):
+                    print(f'  consts seq {d["seq"]} c{c_} =', [round(v, 4) if v is not None else None for v in vals])
         bools = {0x4900 + i: regs.get(0x4900 + i, 0) for i in range(8)}
         loops = {i: regs.get(0x4908 + i, 0) for i in range(32)}
         texs = {t[0]: t for t in d['texs']}
@@ -490,11 +497,19 @@ def materials(cap, path, objs):
                 elif 'alpha_texture' in rule:
                     a_ = img[:, :, rule.get('alpha_channel', 3)]
                     img = np.concatenate([np.broadcast_to(colour, img.shape[:2] + (3,)), a_[:, :, None]], axis=2)
+                elif rule.get('texture_mode') == 'alpha_scale':
+                    (ci, ck), (cj, cl) = rule['alpha_scale']
+                    al = img[:, :, 3:4]
+                    k = al * consts.get(ci * 4 + ck, 0.0) + consts.get(cj * 4 + cl, 1.0)
+                    img = np.concatenate([img[:, :, :3] * colour * al * k, np.ones_like(al)], axis=2)
                 elif rule.get('texture_mode') == 'over_alpha':
                     al = img[:, :, 3:4]
                     img = np.concatenate([colour * (1 - al) + img[:, :, :3] * al, np.ones_like(al)], axis=2)
                 else:  # multiply
                     img = np.concatenate([img[:, :, :3] * colour, np.ones(img.shape[:2] + (1,))], axis=2)
+                if 'sheen' in rule:  # (coloured paint only: scaled by the colour's saturation; white paint gets none)
+                    sat = float((colour.max() - colour.min()) / max(colour.max(), 1e-6))
+                    img = np.concatenate([img[:, :, :3] + np.array(rule['sheen']) * sat, img[:, :, 3:]], axis=2)
                 mat['image'] = {'w': tex['w'], 'h': tex['h'], 'bytes': (np.clip(img, 0, 1) * 255 + 0.5).astype(np.uint8).tobytes()}
                 if rule.get('texture_mode') == 'over_alpha' and 'roughness' in rule:
                     # Paint is glossy, the livery's near-black parts (rubber strips, trim, badges) matte:
