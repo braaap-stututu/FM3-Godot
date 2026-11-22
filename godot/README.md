@@ -26,10 +26,10 @@ For each N: warm up, then measure fps, p99 frame time, Godot's render CPU and GP
 over the three views), draw calls and objects drawn.
 
 **Run on the triple rig** (a borderless window at 0,0 spanning 7680×1440; add `--fullscreen` for
-exclusive fullscreen on the Eyefinity display):
+exclusive fullscreen on the Eyefinity display), from the Godot folder:
 
 ```powershell
-& "G:\claude code projects\Godot\Godot_v4.7.2-stable_win64.exe" --path "G:\claude code projects\Godot\frame-ir\godot" -- --out=g1_results.json
+& ".\Godot_v4.7.2-stable_win64.exe" --path ".\frame-ir\godot" -- --out=g1_results.json
 ```
 
 Options after `--` (all optional):

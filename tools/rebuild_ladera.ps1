@@ -10,7 +10,7 @@
 # Outputs (git-ignored, game-derived): frame-ir\out\world\grid.gltf (+ grid_tex), out\world\capmap,
 #   out\world\ladera.gltf (+ ladera.bin, ladera_tex) for fly-track.cmd; with -Compare also ladera.png and cmp.png.
 param(
-    [string]$Fm3 = 'G:\claude code projects\FM3-ReGPU recomp',
+    [string]$Fm3 = (Join-Path (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))) 'FM3-ReGPU recomp'),
     [switch]$Compare
 )
 $ErrorActionPreference = 'Stop'

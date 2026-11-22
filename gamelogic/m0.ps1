@@ -1,5 +1,5 @@
 # M0 runs on FM3's frozen grid (renderer replacement project). Dot-source, then: Invoke-M0Run 'R2' @{ ... }
-. 'G:\claude code projects\FM3-ReGPU recomp\tools\perf_suite.ps1' -Run 'm0'
+. "$PSScriptRoot\..\..\..\FM3-ReGPU recomp\tools\perf_suite.ps1" -Run 'm0'
 
 $script:M0Triple = @{ FM3_TRIPLE = '1'; FM3_VR = 'off'; FM3_RESOLUTION = '7680x1440' }
 

@@ -23,7 +23,12 @@ window glass with the game's environment cube, and the grid cars rebuilt from th
 own screenshot of the same grid frame the mean pixel difference is **20.3** (per channel, 0-255; it was 70 at the
 start); much of the rest is the HUD. Fly through it with `fly-track.cmd`.
 
-## 2. Folder layout (keep these paths on the new PC, or adjust the few constants listed in section 4)
+## 2. Folder layout
+
+The root was `G:\claude code projects\` on the first PC. On the second PC (from 2026-11-22) G: is taken by another
+partition, so the root there is **`C:\claude code projects\handoff-2026-11-22\`** (holding `Godot\` and
+`FM3-ReGPU recomp\` side by side). The scripts find each other relative to their own folders (section 4), so any root
+works as long as the two folders stay side by side. The table uses the first PC's root.
 
 | Path | What |
 |---|---|
@@ -53,13 +58,19 @@ start); much of the rest is the HUD. Fly through it with `fly-track.cmd`.
 5. Check: `powershell -ExecutionPolicy Bypass -File frame-ir\tools\rebuild_ladera.ps1 -Compare` should end with
    `compare: mean |diff| r 20.3 g 19.4 b 18.1`. Then `frame-ir\fly-track.cmd`.
 
-## 4. Paths that are hard-coded (change them if the drive differs)
+## 4. Paths (relative since 2026-11-22)
 
-- `frame-ir\tools\rebuild_ladera.ps1`: `-Fm3` parameter (default `G:\claude code projects\FM3-ReGPU recomp`); everything
-  else is relative to the Godot folder.
-- `frame-ir\tools\fm3unzip\build.cmd`: `FM3=` (the FM3 repo, for its zip/LZX sources and `tools\vcenv.cmd`).
+No script hard-codes the drive any more: each finds the FM3 repo as `FM3-ReGPU recomp` beside the `Godot` folder.
+- `frame-ir\tools\rebuild_ladera.ps1`: `-Fm3` defaults to `<Godot folder>\..\FM3-ReGPU recomp`; everything else is
+  relative to the Godot folder.
+- `frame-ir\tools\fm3unzip\build.cmd`, `gamelogic\*.ps1`, `m0\results-2026-11-22\m0.ps1`: same rule.
 - `frame-ir\fly.cmd`, `fly-track.cmd`: relative (`%~dp0`).
-- FM3 repo scripts (`play.cmd`, ...) are relative to their own folder.
+- FM3 repo scripts (`play.cmd`, `tools\fm3ctl.ps1`, `fm3_route.ps1`, `tour.ps1`, `tools\analysis\*`, ...) are relative
+  to their own folder.
+- Still absolute: FM3's CMake build folders (`build\rel\CMakeCache.txt` was configured on `G:`). Running the prebuilt
+  `fm3.exe` is fine; **rebuilding FM3 elsewhere needs a fresh configure** of `build\rel` (see the FM3 repo's
+  README/CLAUDE.md), and the FM3 docs' `G:/claude code projects/tools/...` (RGA, Radeon Developer Tools) were not
+  copied to the second PC.
 
 ## 5. The pipeline, step by step (what `rebuild_ladera.ps1` runs)
 

@@ -30,8 +30,8 @@ garbage. It is for measuring only.
 In the ReGPU checkout FM3 builds against (`thirdparty/ReGPU`, or the ReGPU-V workspace):
 
 ```powershell
-git -C thirdparty\ReGPU apply --check "G:\claude code projects\Godot\frame-ir\regpu\regpu-m0-switches.patch"
-git -C thirdparty\ReGPU apply "G:\claude code projects\Godot\frame-ir\regpu\regpu-m0-switches.patch"
+git -C thirdparty\ReGPU apply --check "..\..\..\Godot\frame-ir\regpu\regpu-m0-switches.patch"
+git -C thirdparty\ReGPU apply "..\..\..\Godot\frame-ir\regpu\regpu-m0-switches.patch"
 ```
 
 then rebuild FM3 as usual. To keep it, commit it on a branch of the ReGPU fork. It follows ReGPU's rules (a named
