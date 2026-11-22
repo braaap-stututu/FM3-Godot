@@ -85,13 +85,14 @@ class TFetch(Exception):
     """Pixel mode: the first 2D/3D/cube texture fetch was reached (slot, coordinates, dimension in .args)."""
 
 
-def run(code_words, consts, bools, fetch, n_verts, loop_consts=None, vertex_index=None, pixel_inputs=None):
+def run(code_words, consts, bools, fetch, n_verts, loop_consts=None, vertex_index=None, pixel_inputs=None, sample=None):
     """fetch(fetch_fields, index) -> (n_verts, 4) array of the fetched components. Returns (clip rows: list of 4 V,
     Machine); the Machine's .exports holds every export register written (interpolators 0-15, oPos 62).
 
     Pixel mode (pixel_inputs = {register: (n_verts, 4) array}, the interpolators as the vertex shader wrote them, one
-    value per vertex): the pixel shader runs per vertex and run returns its non-1D texture fetches in order, each
-    (slot, dimension, (n_verts, 3) coordinates or None when they depend on an earlier fetch)."""
+    value per vertex): the pixel shader runs per vertex and run returns the Machine, with .tfetches (its non-1D texture
+    fetches in order, each (slot, dimension, (n_verts, 3) coordinates or None)) and .color (oC0 per vertex, (n_verts, 4)).
+    With sample(slot, dim, coords) the fetched texels are known, so .color is the shader's output at each vertex."""
     words, cfs = parse(code_words, full=True)
     loop_consts = loop_consts or {}
     m = Machine(n_verts)
@@ -241,7 +242,30 @@ def run(code_words, consts, bools, fetch, n_verts, loop_consts=None, vertex_inde
                         m.tfetches.append((bits(w[0], 20, 5), dim, np.stack(
                             [np.broadcast_to(np.asarray(c if c is not None else 0.0, dtype=np.float64), (n_verts,)) for c in coords],
                             axis=1) if known else None))
-                    m.regs[bits(w[0], 12, 6)] = [V(None, None)] * 4  # the fetched texel: unknown here
+                    # The fetched texel: sample(slot, dim, coords or None) -> (n, 4) values (a decoded texture, or a
+                    # stand-in for a render target); without a sampler it stays unknown.
+                    texel = None
+                    if sample is not None:
+                        cc = None
+                        if all(c is not None for c in coords[:2]):
+                            cc = np.stack([np.broadcast_to(np.asarray(c if c is not None else 0.0, dtype=np.float64), (n_verts,))
+                                           for c in coords], axis=1)
+                        texel = sample(bits(w[0], 20, 5), dim, cc)
+                    dest = bits(w[0], 12, 6)
+                    old = m.reg(dest)
+                    dswz = bits(w[1], 0, 12)
+                    new = []
+                    for c in range(4):
+                        sel = (dswz >> (3 * c)) & 7
+                        if sel == 7:
+                            new.append(old[c])
+                        elif sel == 4 or sel == 6:
+                            new.append(num(0.0))
+                        elif sel == 5:
+                            new.append(num(1.0))
+                        else:
+                            new.append(V(None, None) if texel is None else m.fresh(('t', i, c), texel[:, sel]))
+                    m.regs[dest] = new
                     continue
                 if opc != 0:
                     raise Fail('texture fetch in the vertex shader')
@@ -475,7 +499,8 @@ def run(code_words, consts, bools, fetch, n_verts, loop_consts=None, vertex_inde
                         r[c] = sres
                 m.regs[a['sdest']] = r
     if pixel_inputs is not None:
-        return m.tfetches
+        m.color = export_array(m, 0, n_verts)  # oC0
+        return m
     rows = [out.get(c) for c in range(4)]
     if any(r is None or r.n is None for r in rows):
         raise Fail('oPos not computed')

@@ -96,14 +96,17 @@ def main():
           f"{len(scene)} placed")
     mats = []
     shape = Counter()
+    world_only = []  # draws without a 3-atom map: exported in world space from their clip positions
     for p in scene:
         mi = p[4]
         if mi is None:
             shape['no linear map'] += 1
+            world_only.append(p)
             continue
         atoms, m = mi
         if len(atoms) != 3:
             shape[f'{len(atoms)} atoms'] += 1
+            world_only.append(p)
             continue
         M = np.array([[r[0], r[1], r[2], r[3]] for r in m], dtype=np.float64)
         mats.append((p, atoms, M))
@@ -154,6 +157,27 @@ def main():
     for k, v in verdict.most_common():
         print(f'  object-to-world: {k}: {v}')
     objs = drop_reflections(objs)
+    # Draws whose last linear map is not over an object position (skinned, morphed, or decompressed through several
+    # registers): each vertex's world position from its clip position through the camera (x, y and w rows), W = I.
+    A3 = np.stack([VP[0], VP[1], VP[3]])
+    A3i = np.linalg.inv(A3[:, :3])
+    n_world = n_own = 0
+    for p in world_only:
+        pv, vindex = p[3], p[6]
+        if any(v is None for v in vindex) or any(c is None for c in pv):
+            continue
+        C = np.array(pv, dtype=np.float64)
+        if not np.all(np.isfinite(C)):
+            continue
+        Pw = (A3i @ (C[:, [0, 1, 3]] - A3[:, 3]).T).T
+        z_pred = Pw @ VP[2, :3] + VP[2, 3]
+        if np.abs(z_pred - C[:, 2]).max() > 1e-3 * max(1.0, np.abs(C[:, 2]).max()):
+            n_own += 1  # own depth (sky): not world geometry
+            continue
+        WORLD_POS[id(p)] = Pw
+        objs.append((p, 'world', np.eye(4)))
+        n_world += 1
+    print(f'  exported in world space from clip positions: {n_world} draws ({n_own} with their own depth left out)')
     print(f'  draws writing their own depth (z row not the camera one; left out): {depth_own}')
     if '--groups' in sys.argv:  # seq lists per group, for fir_frame.py --seqs
         base = sys.argv[sys.argv.index('--groups') + 1]
@@ -209,6 +233,34 @@ def drop_reflections(objs):
     return [o for o in objs if id(o) not in drop]
 
 
+WORLD_POS = {}  # id(placed record) -> world positions, for draws exported in world space
+STAND_IN = 0.5  # the value a render-target texel reads as in the per-vertex pixel shader run
+RULES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'profiles', 'fm3', 'materials.json')
+RULES = {k: v for k, v in json.load(open(RULES_PATH)).items() if not k.startswith('_')} if os.path.exists(RULES_PATH) else {}
+
+
+def alpha_mode(regs):
+    """The draw's coverage from its render state: 'BLEND' (source-alpha blending), 'MASK' (alpha test or alpha to
+    coverage), else False. RB_COLORCONTROL 0x2202: bits 0-2 alpha function (7 always), bit 3 alpha test, bit 4 alpha to
+    coverage; RB_BLENDCONTROL0 0x2201: colour source factor in bits 0-4 (4 src alpha)."""
+    cc, bc = regs.get(0x2202, 0), regs.get(0x2201, 0x10001)
+    if (bc & 0x1F) == 4:
+        return 'BLEND'
+    if ((cc >> 3) & 1 and (cc & 7) != 7) or (cc >> 4) & 1:
+        return 'MASK'
+    return False
+
+
+def looks_like_normal_map(tex):
+    """Tangent-space normal maps: blue-dominant around (128, 128, 255), or two-channel ones (DXT5nm style: R = B,
+    G well above them)."""
+    a = np.frombuffer(tex['bytes'][:tex['w'] * tex['h'] * 4], np.uint8).reshape(-1, 4)[::97].astype(np.float64)
+    r, g, b, _ = a.mean(0)
+    if b > 200 and abs(r - 128) < 30 and abs(g - 128) < 30:
+        return True
+    return abs(r - b) < 10 and g - r > 25
+
+
 def materials(cap, path, objs):
     """Per draw: the base texture and its UVs. The pixel shader runs per vertex on the interpolators the vertex
     shader wrote (fir_vs pixel mode) up to its first 2D texture fetch: that fetch's slot is the base texture, its
@@ -218,6 +270,7 @@ def materials(cap, path, objs):
     from fir_xenos import Fail
     ps_code = load_vs_code(path, pixel=True)
     out, why = {}, Counter()
+    tex_cache = {}
     for p, atoms, W in objs:
         d, regs, g, per_vert, mi, atom_vals, vindex, gid, exports, nv = p
         code = ps_code.get(d['ps'])
@@ -232,35 +285,113 @@ def materials(cap, path, objs):
         consts = {i: f32(regs[0x4400 + i]) for i in range(1024) if 0x4400 + i in regs}
         bools = {0x4900 + i: regs.get(0x4900 + i, 0) for i in range(8)}
         loops = {i: regs.get(0x4908 + i, 0) for i in range(32)}
+        texs = {t[0]: t for t in d['texs']}
+
+        def sample(slot, dim, coords, texs=texs):
+            """Nearest-texel sampling of decoded 2D textures (wrap); stand-ins for render targets and the rest."""
+            t = texs.get(slot)
+            tex = cap.data.get((3, t[8], t[9])) if t else None
+            if dim == 1 and tex and coords is not None and tex['w'] and len(tex['bytes']) >= tex['w'] * tex['h'] * 4:
+                img = tex_cache.get(id(tex))
+                if img is None:
+                    img = tex_cache[id(tex)] = np.frombuffer(tex['bytes'][:tex['w'] * tex['h'] * 4], np.uint8).reshape(
+                        tex['h'], tex['w'], 4).astype(np.float64) / 255.0
+                x = np.floor(np.nan_to_num(coords[:, 0]) * tex['w']).astype(np.int64) % tex['w']
+                y = np.floor(np.nan_to_num(coords[:, 1]) * tex['h']).astype(np.int64) % tex['h']
+                return img[y, x]
+            fmt = (t[3] & 0x3F) if t else -1
+            # Render targets have no data here: a shadow map (formats 25, 36) reads far (lit), anything else neutral.
+            v = 1.0 if fmt in (25, 36) else STAND_IN
+            return np.full((nv, 4), v)
+
         try:
             with np.errstate(all='ignore'):
-                res = fir_vs.run(code, consts, bools, None, nv, loops, pixel_inputs=pin)
+                mach = fir_vs.run(code, consts, bools, None, nv, loops, pixel_inputs=pin, sample=sample)
         except Fail as e:
             why['pixel shader: ' + str(e)] += 1
             continue
+        res = mach.tfetches
+        color = mach.color
         if not res:
             why['no texture fetch'] += 1
             continue
-        # The base texture: the first 2D fetch whose texture came from memory (decoded by the tap). Render targets the
-        # game made earlier in the frame (shadow maps, reflections) are not decoded and are skipped.
+        fetch_at = {slot: coords for slot, dim, coords in res if dim == 1 and coords is not None}
+
+        def decoded(slot):
+            t = texs.get(slot)
+            tex = cap.data.get((3, t[8], t[9])) if t else None
+            if tex and tex['w'] and len(tex['bytes']) >= tex['w'] * tex['h'] * 4:
+                return t, tex
+            return None, None
+
+        rule = RULES.get(f"{d['ps']:016x}")
+        if rule and rule.get('drop'):
+            out[id(p)] = {'drop': True}
+            why['rule: ' + rule['name'] + ' (left out)'] += 1
+            continue
+        if rule:
+            # A profile rule (profiles/fm3/materials.json): albedo colour, texture and coverage by role.
+            colour = np.array(rule.get('color', [1.0, 1.0, 1.0]), dtype=np.float64)
+            if 'color_const' in rule:
+                colour = np.array([consts.get(rule['color_const'] * 4 + k, 0.0) for k in range(3)])
+            slot = rule.get('texture', rule.get('alpha_texture'))
+            t, tex = decoded(slot) if slot is not None else (None, None)
+            if slot is not None and (tex is None or slot not in fetch_at):
+                why['rule: texture missing'] += 1
+                t = tex = None
+            mat = {'uv': fetch_at[slot][:, :2].astype(np.float32) if tex else None, 'factor': [1.0, 1.0, 1.0, 1.0],
+                   'blend': 'alpha_texture' in rule, 'image': None, 'key': None, 'color': color, 'unlit': rule.get('unlit', False)}
+            if tex is None:
+                mat['factor'] = colour.tolist() + [float(rule.get('alpha', 1.0))]
+                mat['blend'] = mat['blend'] or 'alpha' in rule
+            else:
+                img = np.frombuffer(tex['bytes'][:tex['w'] * tex['h'] * 4], np.uint8).reshape(tex['h'], tex['w'], 4).astype(np.float64) / 255
+                if 'alpha_texture' in rule:
+                    a_ = img[:, :, rule.get('alpha_channel', 3)]
+                    img = np.concatenate([np.broadcast_to(colour, img.shape[:2] + (3,)), a_[:, :, None]], axis=2)
+                elif rule.get('texture_mode') == 'over_alpha':
+                    al = img[:, :, 3:4]
+                    img = np.concatenate([colour * (1 - al) + img[:, :, :3] * al, np.ones_like(al)], axis=2)
+                else:  # multiply
+                    img = np.concatenate([img[:, :, :3] * colour, np.ones(img.shape[:2] + (1,))], axis=2)
+                mat['image'] = {'w': tex['w'], 'h': tex['h'], 'bytes': (np.clip(img, 0, 1) * 255 + 0.5).astype(np.uint8).tobytes()}
+                mat['key'] = f"{t[9]:016x}{t[8]:016x}_{rule['name'].replace(' ', '_')}_{''.join(f'{int(v * 255):02x}' for v in colour)}"
+            out[id(p)] = mat
+            why['rule: ' + rule['name']] += 1
+            continue
+        # The base texture: the first 2D fetch whose texture came from memory (decoded by the tap) and does not look like
+        # a normal map. Render targets the game made earlier in the frame (shadow maps, reflections) are not decoded.
         pick = None
         for slot, dim, coords in res:
             if dim != 1 or coords is None:
                 continue
-            t = next((t for t in d['texs'] if t[0] == slot), None)
-            tex = cap.data.get((3, t[8], t[9])) if t else None
-            if tex and tex['w'] and len(tex['bytes']) >= tex['w'] * tex['h'] * 4:
+            t, tex = decoded(slot)
+            if tex is not None and not looks_like_normal_map(tex):
                 pick = (slot, coords, t, tex)
                 break
         if pick is None:
             why['no decoded 2D texture'] += 1
             continue
         slot, coords, t, tex = pick
-        out[id(p)] = (coords[:, :2].astype(np.float32), tex, f'{t[9]:016x}{t[8]:016x}')
+        out[id(p)] = {'uv': coords[:, :2].astype(np.float32), 'image': tex, 'key': f'{t[9]:016x}{t[8]:016x}',
+                      'factor': [1.0, 1.0, 1.0, 1.0], 'blend': alpha_mode(regs), 'color': color}
         why['textured'] += 1
     for k, v in why.most_common():
         print(f'  materials: {k}: {v}')
     return out
+
+
+def smooth_normals(P, tris):
+    """Area-weighted vertex normals (float32, unit length; up for unused vertices)."""
+    p = P.astype(np.float64)
+    fn = np.cross(p[tris[:, 1]] - p[tris[:, 0]], p[tris[:, 2]] - p[tris[:, 0]])
+    n = np.zeros_like(p)
+    for k in range(3):
+        np.add.at(n, tris[:, k], fn)
+    ln = np.linalg.norm(n, axis=1)
+    n[ln < 1e-12] = (0.0, 1.0, 0.0)
+    ln[ln < 1e-12] = 1.0
+    return (n / ln[:, None]).astype(np.float32)
 
 
 def write_gltf(out, objs, cam, mats=None):
@@ -278,15 +409,22 @@ def write_gltf(out, objs, cam, mats=None):
     images, textures, materials_, mat_ids = [], [], [], {}
     tex_dir = os.path.splitext(out)[0] + '_tex'
 
-    def material_index(tex, key):
+    def material_index(mat):
+        key = (mat['key'] or 'none') + str(mat['factor']) + str(mat['blend']) + str(mat.get('unlit'))
         if key not in mat_ids:
-            os.makedirs(tex_dir, exist_ok=True)
-            name = f'{key[:16]}_{tex["w"]}x{tex["h"]}.png'
-            fr.write_png(os.path.join(tex_dir, name), tex['w'], tex['h'], tex['bytes'][:tex['w'] * tex['h'] * 4])
-            images.append({'uri': os.path.basename(tex_dir) + '/' + name})
-            textures.append({'source': len(images) - 1, 'sampler': 0})
-            materials_.append({'pbrMetallicRoughness': {'baseColorTexture': {'index': len(textures) - 1}, 'metallicFactor': 0.0,
-                                                        'roughnessFactor': 1.0}, 'doubleSided': True})
+            pbr = {'baseColorFactor': mat['factor'], 'metallicFactor': 0.0, 'roughnessFactor': 1.0}
+            if mat['image'] is not None:
+                tex = mat['image']
+                os.makedirs(tex_dir, exist_ok=True)
+                name = f'{mat["key"][:24]}_{len(images)}.png'
+                fr.write_png(os.path.join(tex_dir, name), tex['w'], tex['h'], tex['bytes'][:tex['w'] * tex['h'] * 4])
+                images.append({'uri': os.path.basename(tex_dir) + '/' + name})
+                textures.append({'source': len(images) - 1, 'sampler': 0})
+                pbr['baseColorTexture'] = {'index': len(textures) - 1}
+            mode = mat['blend'] if isinstance(mat['blend'], str) else ('BLEND' if mat['blend'] else None)
+            materials_.append({'pbrMetallicRoughness': pbr, 'doubleSided': True,
+                               **({'alphaMode': mode} if mode else {}), **({'alphaCutoff': 0.5} if mode == 'MASK' else {}),
+                               **({'extensions': {'KHR_materials_unlit': {}}} if mat.get('unlit') else {})})
             mat_ids[key] = len(materials_) - 1
         return mat_ids[key]
 
@@ -302,7 +440,10 @@ def write_gltf(out, objs, cam, mats=None):
         d, regs, g, per_vert, mi, atom_vals, vindex, gid = p[:8]
         if any(v is None for v in vindex):
             continue
-        cols = [np.broadcast_to(np.asarray(atom_vals[a], dtype=np.float64), (len(vindex),)) for a in atoms]
+        if atoms == 'world':
+            cols = [WORLD_POS[id(p)][:, k] for k in range(3)]
+        else:
+            cols = [np.broadcast_to(np.asarray(atom_vals[a], dtype=np.float64), (len(vindex),)) for a in atoms]
         # Node matrices keep a positive determinant (Godot's glTF import loses a mirror in a node matrix): world =
         # S W P = (S W F) (F P), with F mirroring X when that makes det(S W F) positive. A mirror in F flips the winding.
         Wg = S @ W
@@ -318,18 +459,25 @@ def write_gltf(out, objs, cam, mats=None):
         if not np.all(np.isfinite(P)) or not len(tris):
             continue
         mat = (mats or {}).get(id(p))
-        uv = mat[0] if mat is not None and np.all(np.isfinite(mat[0])) else None
-        h = hashlib.blake2b(P.tobytes() + tris.tobytes() + (uv.tobytes() if uv is not None else b'') +
-                            (mat[2].encode() if uv is not None else b''), digest_size=12).hexdigest()
+        if mat is not None and mat.get('drop'):
+            continue
+        uv = mat['uv'] if mat is not None and mat['uv'] is not None and np.all(np.isfinite(mat['uv'])) else None
+        mkey = (mat['key'] or '') + str(mat['factor']) if mat is not None else ''
+        h = hashlib.blake2b(P.tobytes() + tris.tobytes() + (uv.tobytes() if uv is not None else b'') + mkey.encode(),
+                            digest_size=12).hexdigest()
         if h not in mesh_ids:
             pv = add_view(P.tobytes(), 34962)
             accessors.append({'bufferView': pv, 'componentType': 5126, 'count': len(P), 'type': 'VEC3',
                               'min': P.min(axis=0).tolist(), 'max': P.max(axis=0).tolist()})
             prim = {'attributes': {'POSITION': len(accessors) - 1}}
-            if uv is not None:
-                accessors.append({'bufferView': add_view(uv.tobytes(), 34962), 'componentType': 5126, 'count': len(uv), 'type': 'VEC2'})
-                prim['attributes']['TEXCOORD_0'] = len(accessors) - 1
-                prim['material'] = material_index(mat[1], mat[2])
+            N = smooth_normals(P, tris)
+            accessors.append({'bufferView': add_view(N.tobytes(), 34962), 'componentType': 5126, 'count': len(N), 'type': 'VEC3'})
+            prim['attributes']['NORMAL'] = len(accessors) - 1
+            if mat is not None and (uv is not None or mat['image'] is None):
+                if uv is not None and mat['image'] is not None:
+                    accessors.append({'bufferView': add_view(uv.tobytes(), 34962), 'componentType': 5126, 'count': len(uv), 'type': 'VEC2'})
+                    prim['attributes']['TEXCOORD_0'] = len(accessors) - 1
+                prim['material'] = material_index(mat)
             iv = add_view(tris.ravel().tobytes(), 34963)
             accessors.append({'bufferView': iv, 'componentType': 5125, 'count': int(tris.size), 'type': 'SCALAR'})
             prim['indices'] = len(accessors) - 1
@@ -362,8 +510,9 @@ def write_gltf(out, objs, cam, mats=None):
             'cameras': [{'type': 'perspective', 'perspective': {'yfov': math.radians(cam['yfov_deg']), 'aspectRatio': cam['aspect'],
                                                                 'znear': max(cam['near'], 0.01)}}],
             'accessors': accessors, 'bufferViews': views,
-            **({'images': images, 'textures': textures, 'materials': materials_, 'samplers': [{'wrapS': 10497, 'wrapT': 10497}]}
-               if images else {}),
+            **({'materials': materials_} if materials_ else {}),
+            **({'extensionsUsed': ['KHR_materials_unlit']} if any('extensions' in m for m in materials_) else {}),
+            **({'images': images, 'textures': textures, 'samplers': [{'wrapS': 10497, 'wrapT': 10497}]} if images else {}),
             'buffers': [{'byteLength': len(blob), 'uri': os.path.basename(os.path.splitext(out)[0]) + '.bin'}]}
     with open(os.path.splitext(out)[0] + '.bin', 'wb') as f:
         f.write(blob)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """fir_disasm.py: disassemble a captured vertex shader (control flow, fetches, ALU) in fir_xenos' decoding.
 
-    python -I fir_disasm.py capture.fir <vs hash hex>
+    python -I fir_disasm.py capture.fir <shader hash hex> [--pixel]
 """
 import os
 import sys
@@ -44,6 +44,11 @@ def disasm(code_words):
             i = addr + k
             w = words[i * 3:i * 3 + 3]
             if (seq >> (2 * k)) & 1:
+                if bits(w[0], 0, 5) == 1:
+                    out.append(f'  {i:3d} tfetch r{bits(w[0], 12, 6)}.{bits(w[1], 0, 12):03x} <- t{bits(w[0], 20, 5)} '
+                               f'{("1D", "2D", "3D", "cube")[bits(w[2], 14, 2)]} at r{bits(w[0], 5, 6)}.'
+                               + ''.join('xyzw'[(bits(w[0], 26, 6) >> (2 * k)) & 3] for k in range(3)))
+                    continue
                 out.append(f'  {i:3d} vfetch r{bits(w[0], 12, 6)}.{bits(w[1], 0, 12):03x} <- r{bits(w[0], 5, 6)}.{"xyzw"[bits(w[0], 30, 2)]} '
                            f'const {bits(w[0], 20, 5) * 3 + bits(w[0], 25, 2)} fmt {bits(w[1], 16, 6)} stride {bits(w[2], 0, 8)} '
                            f'off {bits(w[2], 8, 23)}{" mini" if bits(w[1], 30, 1) else ""}{" signed" if bits(w[1], 12, 1) else ""}'
@@ -62,7 +67,7 @@ def main():
     if len(sys.argv) < 3:
         print(__doc__)
         return 2
-    code = load_vs_code(sys.argv[1])
+    code = load_vs_code(sys.argv[1], pixel='--pixel' in sys.argv)
     print('\n'.join(disasm(code[int(sys.argv[2], 16)])))
     return 0
 

@@ -1,0 +1,68 @@
+{
+  "_doc": "FM3 material rules by pixel shader hash, for tools/fir_world.py (a first slice of the FM3 profile's material archetypes, SCENE_API.md). color_const: the PS constant (cN, pixel-shader numbering) holding the albedo colour. texture: the slot of the albedo texture; texture_mode 'over_alpha' composites it over the colour by its alpha (liveries over paint), 'multiply' multiplies. alpha_texture/alpha_channel: the slot and channel giving coverage (decals). color: a fixed albedo. alpha: a constant coverage (glass). drop: leave the draw out (effects that only read render targets made during the frame). unlit: the sky and other emissive surfaces (glTF KHR_materials_unlit).",
+  "e41e183a423e6f1b": {
+    "name": "car paint",
+    "color_const": 118,
+    "texture": 0,
+    "texture_mode": "over_alpha"
+  },
+  "9e50ba148b27a974": {
+    "name": "track line paint (decal)",
+    "color_const": 2,
+    "alpha_texture": 1,
+    "alpha_channel": 3
+  },
+  "fd6b3d2ab76c24bb": {
+    "name": "track asphalt",
+    "texture": 1,
+    "color": [
+      0.55,
+      0.55,
+      0.55
+    ],
+    "texture_mode": "multiply"
+  },
+  "b117fbafcc1fa980": {
+    "name": "car glass",
+    "color": [
+      0.02,
+      0.025,
+      0.03
+    ],
+    "alpha": 0.55
+  },
+  "ac3b9d6ac2e2f356": {
+    "name": "car shadow blob (runtime texture)",
+    "drop": true
+  },
+  "a08c4bcf99090273": {
+    "name": "car glass (lower panel)",
+    "color": [
+      0.02,
+      0.025,
+      0.03
+    ],
+    "alpha": 0.6
+  },
+  "3050cdbb19769757": {
+    "name": "terrain rock/dirt blend",
+    "texture": 0,
+    "color": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "texture_mode": "multiply"
+  },
+  "d6ec9487b6e41a2f": {
+    "name": "sky dome",
+    "texture": 0,
+    "color": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "texture_mode": "multiply",
+    "unlit": true
+  }
+}

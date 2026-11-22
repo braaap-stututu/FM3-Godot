@@ -12,6 +12,9 @@ func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	var gltf_path := ""
 	var size := Vector2i(1280, 720)
+	var lit := false  # --lit: materials shaded, a sun with shadows and sky ambient (--sun elevation,azimuth in degrees)
+	var sun_elev := 50.0
+	var sun_azim := 30.0
 	var textured := false  # --textured: the glTF's own materials, unshaded (no normals yet); else one grey lit material
 	var i := 0
 	while i < args.size():
@@ -24,6 +27,10 @@ func _init() -> void:
 				var p := args[i + 1].split("x"); size = Vector2i(int(p[0]), int(p[1])); i += 1
 			"--textured":
 				textured = true
+			"--lit":
+				textured = true; lit = true
+			"--sun":
+				var q := args[i + 1].split(","); sun_elev = float(q[0]); sun_azim = float(q[1]); i += 1
 		i += 1
 	DisplayServer.window_set_size(size)
 	root.size = size
@@ -53,10 +60,11 @@ func _init() -> void:
 		for s in mi.mesh.get_surface_count():
 			var m := mi.mesh.surface_get_material(s) as StandardMaterial3D
 			if m == null:
-				mi.set_surface_override_material(s, grey_unshaded)
+				mi.set_surface_override_material(s, mat if lit else grey_unshaded)
 				continue
 			m = m.duplicate()
-			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			if m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:  # (the glTF's unlit materials stay unlit)
+				m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL if lit else BaseMaterial3D.SHADING_MODE_UNSHADED
 			m.cull_mode = BaseMaterial3D.CULL_DISABLED
 			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 			mi.set_surface_override_material(s, m)
@@ -74,10 +82,18 @@ func _init() -> void:
 	env.environment.background_mode = Environment.BG_COLOR
 	env.environment.background_color = Color(0.45, 0.6, 0.8)
 	env.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.environment.ambient_light_color = Color(0.5, 0.5, 0.5)
+	env.environment.ambient_light_color = Color(0.7, 0.72, 0.78) if lit else Color(0.5, 0.5, 0.5)
+	env.environment.ambient_light_energy = 0.6 if lit else 1.0
+	if lit:
+		env.environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+		env.environment.tonemap_exposure = 1.1
 	root.add_child(env)
 	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-50, 30, 0)
+	sun.rotation_degrees = Vector3(-sun_elev, sun_azim, 0)
+	sun.light_energy = 1.35 if lit else 1.0
+	sun.light_color = Color(1.0, 0.93, 0.82)
+	sun.shadow_enabled = lit
+	sun.directional_shadow_max_distance = 250.0
 	root.add_child(sun)
 	print("world_view: camera ", cam.global_transform if cam.is_inside_tree() else cam.transform, " parent ", cam.get_parent().name)
 	print("world_view: %d mesh instances, camera fov %.2f near %.3f" % [meshes, cam.fov, cam.near])
