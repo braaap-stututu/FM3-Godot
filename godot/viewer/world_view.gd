@@ -82,6 +82,8 @@ func _init() -> void:
 			if m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:  # (the glTF's unlit materials stay unlit)
 				m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL if lit else BaseMaterial3D.SHADING_MODE_UNSHADED
 			m.cull_mode = BaseMaterial3D.CULL_DISABLED
+			if lit and m.roughness >= 0.9:
+				m.metallic_specular = 0.15  # matte surfaces: little sky reflection at grazing angles (FM3's look)
 			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 			mi.set_surface_override_material(s, m)
 	var cams := scene.find_children("*", "Camera3D", true, false)
@@ -98,16 +100,37 @@ func _init() -> void:
 	env.environment.background_mode = Environment.BG_COLOR
 	env.environment.background_color = Color(0.45, 0.6, 0.8)
 	env.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.environment.ambient_light_color = Color(0.7, 0.72, 0.78) if lit else Color(0.5, 0.5, 0.5)
-	env.environment.ambient_light_energy = 0.6 if lit else 1.0
+	env.environment.ambient_light_color = Color(0.5, 0.5, 0.5)
 	if lit:
+		# A procedural sky for ambient light and reflections (the visible sky is FM3's own dome mesh).
+		var sky := Sky.new()
+		var psky := ProceduralSkyMaterial.new()
+		psky.sky_top_color = Color(0.32, 0.5, 0.78)
+		psky.sky_horizon_color = Color(0.72, 0.8, 0.88)
+		psky.ground_bottom_color = Color(0.25, 0.24, 0.22)
+		psky.ground_horizon_color = Color(0.6, 0.62, 0.64)
+		sky.sky_material = psky
+		env.environment.sky = sky
+		env.environment.background_mode = Environment.BG_SKY
+		env.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		env.environment.ambient_light_color = Color(0.72, 0.73, 0.75)
+		env.environment.ambient_light_energy = 0.85
+		env.environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 		env.environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-		env.environment.tonemap_exposure = 1.1
+		env.environment.tonemap_exposure = 1.2
+		env.environment.adjustment_enabled = true
+		env.environment.adjustment_contrast = 1.12
+		env.environment.adjustment_saturation = 0.95
 	root.add_child(env)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-sun_elev, sun_azim, 0)
-	sun.light_energy = 1.35 if lit else 1.0
-	sun.light_color = Color(1.0, 0.93, 0.82)
+	var glights := scene.find_children("*", "DirectionalLight3D", true, false)
+	if not glights.is_empty():  # the capture's sun (fir_world.py writes FM3's sun direction)
+		sun.global_transform = (glights[0] as Node3D).global_transform if (glights[0] as Node3D).is_inside_tree() else (glights[0] as Node3D).transform
+		(glights[0] as Node3D).visible = false
+		print("world_view: sun from the glTF")
+	sun.light_energy = 1.45 if lit else 1.0
+	sun.light_color = Color(1.0, 0.97, 0.92)
 	sun.shadow_enabled = lit and not no_shadows
 	sun.directional_shadow_max_distance = 250.0
 	root.add_child(sun)

@@ -196,7 +196,7 @@ def main():
     if '--gltf' in sys.argv:
         out = sys.argv[sys.argv.index('--gltf') + 1]
         mats = materials(cap, path, objs)
-        write_gltf(out, objs, cam, mats, merge='--merge' in sys.argv)
+        write_gltf(out, objs, cam, mats, merge='--merge' in sys.argv, sun=sun_direction(objs))
     return 0
 
 
@@ -236,19 +236,56 @@ def drop_reflections(objs):
 WORLD_POS = {}  # id(placed record) -> world positions, for draws exported in world space
 STAND_IN = 0.5  # the value a render-target texel reads as in the per-vertex pixel shader run
 RULES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'profiles', 'fm3', 'materials.json')
-RULES = {k: v for k, v in json.load(open(RULES_PATH)).items() if not k.startswith('_')} if os.path.exists(RULES_PATH) else {}
+_RAW = json.load(open(RULES_PATH)) if os.path.exists(RULES_PATH) else {}
+RULES = {k: v for k, v in _RAW.items() if not k.startswith('_')}
+LIGHTMAP_SLOT = _RAW.get('_lightmap_slot')
+SUN_CONSTS = _RAW.get('_sun_const', [])
 
 
-def alpha_mode(regs):
-    """The draw's coverage from its render state: 'BLEND' (source-alpha blending), 'MASK' (alpha test or alpha to
-    coverage), else False. RB_COLORCONTROL 0x2202: bits 0-2 alpha function (7 always), bit 3 alpha test, bit 4 alpha to
-    coverage; RB_BLENDCONTROL0 0x2201: colour source factor in bits 0-4 (4 src alpha)."""
+def alpha_mode(regs, ps_code=None):
+    """The draw's coverage from its render state and pixel shader: 'BLEND' (source-alpha blending), 'MASK' (alpha
+    test, alpha to coverage, or a kill in the pixel shader), else False. RB_COLORCONTROL 0x2202: bits 0-2 alpha function
+    (7 always), bit 3 alpha test, bit 4 alpha to coverage. RB_BLENDCONTROL0 0x2201: colour source factor bits 0-4,
+    destination bits 8-12 (Xenos factors: 0 zero, 1 one, 6 source alpha, 7 one minus source alpha)."""
     cc, bc = regs.get(0x2202, 0), regs.get(0x2201, 0x10001)
-    if (bc & 0x1F) == 4:
+    src, dst = bc & 0x1F, (bc >> 8) & 0x1F
+    if src == 6 or dst == 7:
         return 'BLEND'
     if ((cc >> 3) & 1 and (cc & 7) != 7) or (cc >> 4) & 1:
         return 'MASK'
+    if ps_code is not None and shader_kills(ps_code):
+        return 'MASK'
     return False
+
+
+_KILLS = {}
+
+
+def shader_kills(code):
+    """Whether a pixel shader has a kill instruction (vector kill_* 24-27, scalar kills_* 35-39)."""
+    key = id(code)
+    if key not in _KILLS:
+        from fir_xenos import bits, decode_alu, parse
+        words, cfs = parse(code, full=True)
+        found = False
+        for lo, hi in cfs:
+            if (hi >> 12) & 15 not in (1, 2, 3, 4, 5, 6, 13, 14):
+                continue
+            addr, count, seq = lo & 0xFFF, (lo >> 12) & 7, (lo >> 16) & 0xFFF
+            for k in range(count):
+                if (seq >> (2 * k)) & 1:
+                    continue
+                a = decode_alu(words[(addr + k) * 3:(addr + k) * 3 + 3])
+                if 24 <= a['vop'] <= 27 or 35 <= a['sop'] <= 39:
+                    found = True
+        _KILLS[key] = found
+    return _KILLS[key]
+
+
+def alpha_share(tex):
+    """The share of texels with alpha below one half."""
+    a = np.frombuffer(tex['bytes'][:tex['w'] * tex['h'] * 4], np.uint8).reshape(-1, 4)[::31, 3]
+    return float((a < 128).mean())
 
 
 def looks_like_normal_map(tex):
@@ -312,8 +349,16 @@ def materials(cap, path, objs):
             continue
         res = mach.tfetches
         color = mach.color
-        if not res:
-            why['no texture fetch'] += 1
+        if not res and not RULES.get(f"{d['ps']:016x}"):
+            # No texture at all: the colour is the shader's arithmetic. Its output at the vertices (median, clamped) is
+            # the best estimate of the surface colour (it includes FM3's lighting, roughly neutral at noon).
+            if color is not None and np.isfinite(color[:, :3]).all():
+                c = np.clip(np.median(color[:, :3], axis=0), 0.0, 1.0)
+                out[id(p)] = {'uv': None, 'image': None, 'key': None, 'factor': c.tolist() + [1.0], 'blend': False,
+                              'color': color, 'lightmap': None}
+                why['no texture fetch: colour from the shader output'] += 1
+            else:
+                why['no texture fetch'] += 1
             continue
         fetch_at = {slot: coords for slot, dim, coords in res if dim == 1 and coords is not None}
 
@@ -324,6 +369,11 @@ def materials(cap, path, objs):
                 return t, tex
             return None, None
 
+        lightmap = None
+        if LIGHTMAP_SLOT is not None and LIGHTMAP_SLOT in fetch_at:
+            lt, ltex = decoded(LIGHTMAP_SLOT)
+            if ltex is not None:
+                lightmap = (fetch_at[LIGHTMAP_SLOT][:, :2].astype(np.float32), ltex, f'{lt[9]:016x}{lt[8]:016x}')
         rule = RULES.get(f"{d['ps']:016x}")
         if rule and rule.get('drop'):
             out[id(p)] = {'drop': True}
@@ -340,13 +390,19 @@ def materials(cap, path, objs):
                 why['rule: texture missing'] += 1
                 t = tex = None
             mat = {'uv': fetch_at[slot][:, :2].astype(np.float32) if tex else None, 'factor': [1.0, 1.0, 1.0, 1.0],
-                   'blend': 'alpha_texture' in rule, 'image': None, 'key': None, 'color': color, 'unlit': rule.get('unlit', False)}
+                   'blend': 'alpha_texture' in rule, 'image': None, 'key': None, 'color': color, 'unlit': rule.get('unlit', False),
+                   'roughness': rule.get('roughness', 1.0), 'metallic': rule.get('metallic', 0.0)}
             if tex is None:
                 mat['factor'] = colour.tolist() + [float(rule.get('alpha', 1.0))]
                 mat['blend'] = mat['blend'] or 'alpha' in rule
             else:
                 img = np.frombuffer(tex['bytes'][:tex['w'] * tex['h'] * 4], np.uint8).reshape(tex['h'], tex['w'], 4).astype(np.float64) / 255
-                if 'alpha_texture' in rule:
+                if 'alpha_texture' in rule and 'under' in rule:
+                    a_ = img[:, :, rule.get('alpha_channel', 3)][:, :, None]
+                    base_c = np.array(rule['under'], dtype=np.float64)
+                    img = np.concatenate([base_c * (1 - a_) + colour * a_, np.ones_like(a_)], axis=2)
+                    mat['blend'] = False
+                elif 'alpha_texture' in rule:
                     a_ = img[:, :, rule.get('alpha_channel', 3)]
                     img = np.concatenate([np.broadcast_to(colour, img.shape[:2] + (3,)), a_[:, :, None]], axis=2)
                 elif rule.get('texture_mode') == 'over_alpha':
@@ -356,25 +412,46 @@ def materials(cap, path, objs):
                     img = np.concatenate([img[:, :, :3] * colour, np.ones(img.shape[:2] + (1,))], axis=2)
                 mat['image'] = {'w': tex['w'], 'h': tex['h'], 'bytes': (np.clip(img, 0, 1) * 255 + 0.5).astype(np.uint8).tobytes()}
                 mat['key'] = f"{t[9]:016x}{t[8]:016x}_{rule['name'].replace(' ', '_')}_{''.join(f'{int(v * 255):02x}' for v in colour)}"
+            mat['lightmap'] = lightmap
             out[id(p)] = mat
             why['rule: ' + rule['name']] += 1
             continue
         # The base texture: the first 2D fetch whose texture came from memory (decoded by the tap) and does not look like
-        # a normal map. Render targets the game made earlier in the frame (shadow maps, reflections) are not decoded.
-        pick = None
+        # a normal map. Render targets the game made earlier in the frame (shadow maps, reflections) are not decoded. For
+        # a cut-out or blended draw, a texture whose alpha actually has a pattern wins (fences, foliage, trusses).
+        mode = alpha_mode(regs, code)
+        cands = []
         for slot, dim, coords in res:
             if dim != 1 or coords is None:
                 continue
             t, tex = decoded(slot)
             if tex is not None and not looks_like_normal_map(tex):
-                pick = (slot, coords, t, tex)
-                break
+                cands.append((slot, coords, t, tex))
+        pick = cands[0] if cands else None
+        if mode and cands:
+            with_alpha = [c for c in cands if 0.05 < alpha_share(c[3]) < 0.995]
+            if with_alpha:
+                pick = with_alpha[0]
+        if pick is None and not res:
+            # No texture at all: the colour is the shader's arithmetic. Its output at the vertices (median, clamped) is
+            # the best estimate of the surface colour (it includes FM3's lighting, roughly neutral at noon).
+            if color is not None and np.isfinite(color[:, :3]).all():
+                c = np.clip(np.median(color[:, :3], axis=0), 0.0, 1.0)
+                out[id(p)] = {'uv': None, 'image': None, 'key': None, 'factor': c.tolist() + [1.0], 'blend': False,
+                              'color': color, 'lightmap': None}
+                why['no texture fetch: colour from the shader output'] += 1
+                continue
         if pick is None:
+            if mode and res:
+                out[id(p)] = {'drop': True}  # a blended or cut-out effect whose textures are not available
+                why['blended/cut-out with no usable texture (left out)'] += 1
+                continue
             why['no decoded 2D texture'] += 1
             continue
         slot, coords, t, tex = pick
         out[id(p)] = {'uv': coords[:, :2].astype(np.float32), 'image': tex, 'key': f'{t[9]:016x}{t[8]:016x}',
-                      'factor': [1.0, 1.0, 1.0, 1.0], 'blend': alpha_mode(regs), 'color': color}
+                      'factor': [1.0, 1.0, 1.0, 1.0], 'blend': mode, 'color': color,
+                      'lightmap': lightmap if lightmap is not None and slot != LIGHTMAP_SLOT else None}
         why['textured'] += 1
     for k, v in why.most_common():
         print(f'  materials: {k}: {v}')
@@ -394,7 +471,26 @@ def smooth_normals(P, tris):
     return (n / ln[:, None]).astype(np.float32)
 
 
-def write_gltf(out, objs, cam, mats=None, merge=False):
+def sun_direction(objs):
+    """The direction to the sun in the capture's world: the most common unit vector among the profile's sun constants."""
+    from fir_frame import f32
+    votes, vec = Counter(), {}
+    for p, atoms, W in objs:
+        regs = p[1]
+        for c in SUN_CONSTS:
+            v = np.array([f32(regs.get(0x4400 + c * 4 + k, 0)) for k in range(3)])
+            if 0.98 < np.linalg.norm(v) < 1.02:
+                k = tuple(np.round(v, 3))
+                votes[k] += 1
+                vec[k] = v
+    if not votes:
+        return None
+    k, n = votes.most_common(1)[0]
+    print(f'  sun: direction {list(k)} ({n} votes; elevation {np.degrees(np.arcsin(k[1])):.1f} deg)')
+    return vec[k] / np.linalg.norm(vec[k])
+
+
+def write_gltf(out, objs, cam, mats=None, merge=False, sun=None):
     # FM3's scene target reaches the screen rotated 180 deg: clip x is screen-left and clip y screen-down.
     right, up, fwd = -cam['right'], -cam['up'], cam['forward']
     S = np.eye(4)
@@ -407,23 +503,28 @@ def write_gltf(out, objs, cam, mats=None, merge=False):
     offset = 0
     checks = []
     groups = {}  # merge mode: material index -> [(world positions, normals, uvs, triangles)]
-    images, textures, materials_, mat_ids = [], [], [], {}
+    images, textures, materials_, mat_ids, img_ids = [], [], [], {}, {}
     tex_dir = os.path.splitext(out)[0] + '_tex'
 
-    def material_index(mat):
-        key = (mat['key'] or 'none') + str(mat['factor']) + str(mat['blend']) + str(mat.get('unlit'))
+    def image_index(tex, key):
+        if key not in img_ids:
+            os.makedirs(tex_dir, exist_ok=True)
+            name = f'{key[:24]}_{len(images)}.png'
+            fr.write_png(os.path.join(tex_dir, name), tex['w'], tex['h'], tex['bytes'][:tex['w'] * tex['h'] * 4])
+            images.append({'uri': os.path.basename(tex_dir) + '/' + name})
+            textures.append({'source': len(images) - 1, 'sampler': 0})
+            img_ids[key] = len(textures) - 1
+        return img_ids[key]
+
+    def material_index(mat, lm=None):
+        key = (mat['key'] or 'none') + str(mat['factor']) + str(mat['blend']) + str(mat.get('unlit')) + (lm[2] if lm else '') + str(mat.get('roughness'))
         if key not in mat_ids:
-            pbr = {'baseColorFactor': mat['factor'], 'metallicFactor': 0.0, 'roughnessFactor': 1.0}
+            pbr = {'baseColorFactor': mat['factor'], 'metallicFactor': mat.get('metallic', 0.0), 'roughnessFactor': mat.get('roughness', 1.0)}
             if mat['image'] is not None:
-                tex = mat['image']
-                os.makedirs(tex_dir, exist_ok=True)
-                name = f'{mat["key"][:24]}_{len(images)}.png'
-                fr.write_png(os.path.join(tex_dir, name), tex['w'], tex['h'], tex['bytes'][:tex['w'] * tex['h'] * 4])
-                images.append({'uri': os.path.basename(tex_dir) + '/' + name})
-                textures.append({'source': len(images) - 1, 'sampler': 0})
-                pbr['baseColorTexture'] = {'index': len(textures) - 1}
+                pbr['baseColorTexture'] = {'index': image_index(mat['image'], mat['key'])}
+            occ = {'occlusionTexture': {'index': image_index(lm[1], 'lm' + lm[2]), 'texCoord': 1}} if lm else {}
             mode = mat['blend'] if isinstance(mat['blend'], str) else ('BLEND' if mat['blend'] else None)
-            materials_.append({'pbrMetallicRoughness': pbr, 'doubleSided': True,
+            materials_.append({'pbrMetallicRoughness': pbr, 'doubleSided': True, **occ,
                                **({'alphaMode': mode} if mode else {}), **({'alphaCutoff': 0.5} if mode == 'MASK' else {}),
                                **({'extensions': {'KHR_materials_unlit': {}}} if mat.get('unlit') else {})})
             mat_ids[key] = len(materials_) - 1
@@ -464,16 +565,20 @@ def write_gltf(out, objs, cam, mats=None, merge=False):
             continue
         if merge:
             uvm = mat['uv'] if mat is not None and mat['uv'] is not None and mat['image'] is not None and np.all(np.isfinite(mat['uv'])) else None
-            mi_ = material_index(mat) if mat is not None and (uvm is not None or mat['image'] is None) else -1
+            lmm = mat.get('lightmap') if mat is not None else None
+            if lmm is not None and not np.all(np.isfinite(lmm[0])):
+                lmm = None
+            mi_ = material_index(mat, lmm) if mat is not None and (uvm is not None or mat['image'] is None) else -1
             Pw = (Wg[:3, :3] @ P.astype(np.float64).T).T + Wg[:3, 3]
             Nw = smooth_normals(P, tris).astype(np.float64) @ np.linalg.inv(Wg[:3, :3])
             Nw /= np.maximum(np.linalg.norm(Nw, axis=1, keepdims=True), 1e-12)
             groups.setdefault(mi_, []).append((Pw.astype(np.float32), Nw.astype(np.float32),
-                                               uvm if uvm is not None else np.zeros((len(P), 2), np.float32), tris))
+                                               uvm if uvm is not None else np.zeros((len(P), 2), np.float32), tris,
+                                               lmm[0] if lmm is not None else np.zeros((len(P), 2), np.float32)))
             checks.append((per_vert, np.eye(4), Pw.astype(np.float32)))
             continue
         uv = mat['uv'] if mat is not None and mat['uv'] is not None and np.all(np.isfinite(mat['uv'])) else None
-        mkey = (mat['key'] or '') + str(mat['factor']) if mat is not None else ''
+        mkey = (mat['key'] or '') + str(mat['factor']) + (mat['lightmap'][2] if mat.get('lightmap') else '') if mat is not None else ''
         h = hashlib.blake2b(P.tobytes() + tris.tobytes() + (uv.tobytes() if uv is not None else b'') + mkey.encode(),
                             digest_size=12).hexdigest()
         if h not in mesh_ids:
@@ -488,7 +593,13 @@ def write_gltf(out, objs, cam, mats=None, merge=False):
                 if uv is not None and mat['image'] is not None:
                     accessors.append({'bufferView': add_view(uv.tobytes(), 34962), 'componentType': 5126, 'count': len(uv), 'type': 'VEC2'})
                     prim['attributes']['TEXCOORD_0'] = len(accessors) - 1
-                prim['material'] = material_index(mat)
+                lm = mat.get('lightmap')
+                if lm is not None and np.all(np.isfinite(lm[0])):
+                    accessors.append({'bufferView': add_view(lm[0].tobytes(), 34962), 'componentType': 5126, 'count': len(lm[0]), 'type': 'VEC2'})
+                    prim['attributes']['TEXCOORD_1'] = len(accessors) - 1
+                else:
+                    lm = None
+                prim['material'] = material_index(mat, lm)
             iv = add_view(tris.ravel().tobytes(), 34963)
             accessors.append({'bufferView': iv, 'componentType': 5125, 'count': int(tris.size), 'type': 'SCALAR'})
             prim['indices'] = len(accessors) - 1
@@ -515,6 +626,10 @@ def write_gltf(out, objs, cam, mats=None, merge=False):
             if 'baseColorTexture' in materials_[mi_]['pbrMetallicRoughness']:
                 accessors.append({'bufferView': add_view(Um.tobytes(), 34962), 'componentType': 5126, 'count': len(Um), 'type': 'VEC2'})
                 prim['attributes']['TEXCOORD_0'] = len(accessors) - 1
+            if 'occlusionTexture' in materials_[mi_]:
+                L2 = np.ascontiguousarray(np.concatenate([q[4] for q in parts]))
+                accessors.append({'bufferView': add_view(L2.tobytes(), 34962), 'componentType': 5126, 'count': len(L2), 'type': 'VEC2'})
+                prim['attributes']['TEXCOORD_1'] = len(accessors) - 1
             prim['material'] = mi_
         accessors.append({'bufferView': add_view(Tm.ravel().tobytes(), 34963), 'componentType': 5125, 'count': int(Tm.size), 'type': 'SCALAR'})
         prim['indices'] = len(accessors) - 1
@@ -523,6 +638,15 @@ def write_gltf(out, objs, cam, mats=None, merge=False):
     C = np.eye(4)
     C[:3, 0], C[:3, 1], C[:3, 2], C[:3, 3] = right, up, -fwd, pos
     nodes.append({'camera': 0, 'matrix': C.T.ravel().tolist(), 'name': 'capture_camera'})
+    if sun is not None:
+        # A glTF directional light shines along its node's -Z: +Z points at the sun.
+        z = s3 @ sun
+        x = np.cross([0.0, 1.0, 0.0], z)
+        x /= np.linalg.norm(x)
+        y = np.cross(z, x)
+        L = np.eye(4)
+        L[:3, 0], L[:3, 1], L[:3, 2] = x, y, z
+        nodes.append({'extensions': {'KHR_lights_punctual': {'light': 0}}, 'matrix': L.T.ravel().tolist(), 'name': 'sun'})
     # Self-check: each node's first vertex through the glTF camera against the capture's clip position (scene rotated 180 deg).
     V = np.linalg.inv(C)
     fy = 1 / math.tan(math.radians(cam['yfov_deg']) / 2)
@@ -546,14 +670,17 @@ def write_gltf(out, objs, cam, mats=None, merge=False):
                                                                 'znear': max(cam['near'], 0.01)}}],
             'accessors': accessors, 'bufferViews': views,
             **({'materials': materials_} if materials_ else {}),
-            **({'extensionsUsed': ['KHR_materials_unlit']} if any('extensions' in m for m in materials_) else {}),
+            'extensionsUsed': (['KHR_materials_unlit'] if any('extensions' in m for m in materials_) else []) +
+                              (['KHR_lights_punctual'] if sun is not None else []),
+            **({'extensions': {'KHR_lights_punctual': {'lights': [{'type': 'directional', 'color': [1.0, 0.95, 0.86], 'intensity': 3.0, 'name': 'sun'}]}}}
+               if sun is not None else {}),
             **({'images': images, 'textures': textures, 'samplers': [{'wrapS': 10497, 'wrapT': 10497}]} if images else {}),
             'buffers': [{'byteLength': len(blob), 'uri': os.path.basename(os.path.splitext(out)[0]) + '.bin'}]}
     with open(os.path.splitext(out)[0] + '.bin', 'wb') as f:
         f.write(blob)
     with open(out, 'w') as f:
         json.dump(gltf, f)
-    print(f'glTF written: {out} ({len(meshes)} meshes, {len(nodes) - 1} placed draws, {len(materials_)} textured materials, {len(blob) / 1e6:.1f} MB)')
+    print(f'glTF written: {out} ({len(meshes)} meshes, {len(nodes) - 1} placed draws, {len(materials_)} materials, {len(blob) / 1e6:.1f} MB)')
 
 
 if __name__ == '__main__':

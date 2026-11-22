@@ -1,24 +1,30 @@
 {
-  "_doc": "FM3 material rules by pixel shader hash, for tools/fir_world.py (a first slice of the FM3 profile's material archetypes, SCENE_API.md). color_const: the PS constant (cN, pixel-shader numbering) holding the albedo colour. texture: the slot of the albedo texture; texture_mode 'over_alpha' composites it over the colour by its alpha (liveries over paint), 'multiply' multiplies. alpha_texture/alpha_channel: the slot and channel giving coverage (decals). color: a fixed albedo. alpha: a constant coverage (glass). drop: leave the draw out (effects that only read render targets made during the frame). unlit: the sky and other emissive surfaces (glTF KHR_materials_unlit).",
+  "_doc": "FM3 material rules by pixel shader hash, for tools/fir_world.py (a first slice of the FM3 profile's material archetypes, SCENE_API.md). color_const: the PS constant (cN, pixel-shader numbering) holding the albedo colour. texture: the slot of the albedo texture; texture_mode 'over_alpha' composites it over the colour by its alpha (liveries over paint), 'multiply' multiplies. alpha_texture/alpha_channel: the slot and channel giving coverage (decals). color: a fixed albedo. alpha: a constant coverage (glass). drop: leave the draw out (effects that only read render targets made during the frame). unlit: the sky and other emissive surfaces (glTF KHR_materials_unlit). under: with alpha_texture, the colour beneath the paint (the draw is the surface itself, opaque). _lightmap_slot: the slot FM3 world shaders keep their baked lightmap in (exported as the occlusion texture on a second UV set). _sun_const: PS constants holding the direction to the sun. roughness/metallic: PBR values for the material (default 1/0).",
   "e41e183a423e6f1b": {
     "name": "car paint",
     "color_const": 118,
     "texture": 0,
-    "texture_mode": "over_alpha"
+    "texture_mode": "over_alpha",
+    "roughness": 0.4
   },
   "9e50ba148b27a974": {
-    "name": "track line paint (decal)",
+    "name": "track line paint (the surface: paint over asphalt)",
     "color_const": 2,
     "alpha_texture": 1,
-    "alpha_channel": 3
+    "alpha_channel": 3,
+    "under": [
+      0.28,
+      0.28,
+      0.28
+    ]
   },
   "fd6b3d2ab76c24bb": {
     "name": "track asphalt",
     "texture": 1,
     "color": [
-      0.55,
-      0.55,
-      0.55
+      0.6,
+      0.6,
+      0.6
     ],
     "texture_mode": "multiply"
   },
@@ -29,7 +35,8 @@
       0.025,
       0.03
     ],
-    "alpha": 0.55
+    "alpha": 0.82,
+    "roughness": 0.05
   },
   "ac3b9d6ac2e2f356": {
     "name": "car shadow blob (runtime texture)",
@@ -42,7 +49,8 @@
       0.025,
       0.03
     ],
-    "alpha": 0.6
+    "alpha": 0.85,
+    "roughness": 0.05
   },
   "3050cdbb19769757": {
     "name": "terrain rock/dirt blend",
@@ -64,5 +72,30 @@
     ],
     "texture_mode": "multiply",
     "unlit": true
+  },
+  "_lightmap_slot": 7,
+  "_sun_const": [
+    250,
+    136
+  ],
+  "f7841c0a8245eabf": {
+    "name": "car light lens (clean texture, not the damage one)",
+    "texture": 14,
+    "color": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "texture_mode": "multiply"
+  },
+  "7f4b46775654ee5b": {
+    "name": "car light lens 2 (clean texture)",
+    "texture": 14,
+    "color": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "texture_mode": "multiply"
   }
 }
