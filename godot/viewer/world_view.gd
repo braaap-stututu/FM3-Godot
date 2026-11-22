@@ -298,6 +298,8 @@ func _blend_material(m: BaseMaterial3D, f: Dictionary, gltf_path: String) -> Sha
 			var fl := OS.get_environment("FM3_ENV_FLIP").split_floats(",")
 			sm.set_shader_parameter("env_flip", Vector3(fl[0], fl[1], fl[2]))
 		sm.set_shader_parameter("debug_env_only", OS.get_environment("FM3_ENV_ONLY") != "")
+		if OS.get_environment("FM3_GLASS_PART") != "":
+			sm.set_shader_parameter("debug_part", int(OS.get_environment("FM3_GLASS_PART")))
 	sm.set_shader_parameter("albedo_tex", _load_tex(gltf_path, tex[0]))
 	sm.set_shader_parameter("tex1", _load_tex(gltf_path, tex[1]))
 	if tex.size() > 2:

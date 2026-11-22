@@ -10,10 +10,13 @@ uniform sampler2D light_tex : filter_linear_mipmap, repeat_enable, hint_default_
 uniform samplerCube env_cube : filter_linear_mipmap;
 uniform bool has_env = false;
 uniform float base_keep = 0.0;  // where reflective: how much of the lit base remains
-uniform float env_gain = 0.75;  // (calibrated on the captured office glass)
+uniform float env_gain = 1.0;
+uniform float body_level = 0.13;
+uniform float refl_f0 = 0.15;  // (0.15 fits the captured office glass better than 0.25)
 uniform float use_fresnel = 0.0;
 uniform vec3 env_flip = vec3(-1.0, 1.0, 1.0);  // (this scene's x is the game's mirrored)
 uniform bool debug_env_only = false;
+uniform int debug_part = 0;  // 1 lit base, 2 tinted environment, 3 reflection amount k (for fitting)
 uniform vec3 env_fallback = vec3(0.45, 0.52, 0.56);
 uniform bool has_lightmap = true;
 uniform vec2 scale0 = vec2(1.0);
@@ -32,13 +35,20 @@ vec3 to_linear(vec3 c) {
 void fragment() {
 	vec4 t = texture(albedo_tex, UV * scale0);
 	vec3 light = has_lightmap ? mix(ambient, sun, texture(light_tex, UV2).rgb) : vec3(unlit_level);
-	float k = clamp(t.a * tint0.x, 0.0, 1.0);
+	float k = clamp(t.a * max(tint0.x, 0.75), 0.0, 1.0);  // (glass panes opaque-ish even where P[0].x is low)
 	vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
 	// (this scene's x is the game's mirrored: the cube is looked up with x flipped)
 	vec3 env = has_env ? texture(env_cube, r * env_flip).rgb : env_fallback;
-	float fres = 0.35 + 0.65 * pow(1.0 - clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0), 3.0);
-	ALBEDO = to_linear(t.rgb * light * mix(1.0, base_keep, k) + env * tint1 * k * env_gain * mix(1.0, fres, use_fresnel));
+	// Glass = a dark body (the unlit interior seen through it) plus a Fresnel reflection of the environment cube, both
+	// tinted; fitted to the game's office windows in the captured frame (body 0.105 / 0.13 / 0.13 for tint (0.5, 1, 1)).
+	float cosv = clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0);
+	float schlick = refl_f0 + (1.0 - refl_f0) * pow(1.0 - cosv, 5.0);
+	vec3 glass = body_level * mix(vec3(1.0), tint1, 0.4) + env * tint1 * schlick * env_gain;
+	ALBEDO = to_linear(mix(t.rgb * light, glass, k));
 	if (debug_env_only) { ALBEDO = to_linear(env); }
+	if (debug_part == 1) { ALBEDO = to_linear(t.rgb * light); }
+	if (debug_part == 2) { ALBEDO = to_linear(env * tint1); }
+	if (debug_part == 3) { ALBEDO = to_linear(vec3(k)); }
 }
 
 void light() {
