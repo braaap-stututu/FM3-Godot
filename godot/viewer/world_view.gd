@@ -1,0 +1,80 @@
+extends SceneTree
+# Loads a fir_world.py glTF at run time, looks through its capture_camera and saves one picture.
+#   Godot_v4.7.2-stable_win64_console.exe --path frame-ir/godot -s res://viewer/world_view.gd -- --gltf <file> --out <png> [--size 1280x720]
+
+var _out := ""
+var _frames := 0
+var _scene: Node
+var _cam: Camera3D
+
+
+func _init() -> void:
+	var args := OS.get_cmdline_user_args()
+	var gltf_path := ""
+	var size := Vector2i(1280, 720)
+	var i := 0
+	while i < args.size():
+		match args[i]:
+			"--gltf":
+				gltf_path = args[i + 1]; i += 1
+			"--out":
+				_out = args[i + 1]; i += 1
+			"--size":
+				var p := args[i + 1].split("x"); size = Vector2i(int(p[0]), int(p[1])); i += 1
+		i += 1
+	DisplayServer.window_set_size(size)
+	root.size = size
+	var doc := GLTFDocument.new()
+	var state := GLTFState.new()
+	if doc.append_from_file(gltf_path, state) != OK:
+		push_error("cannot read " + gltf_path)
+		quit(1)
+		return
+	var scene := doc.generate_scene(state)
+	root.add_child(scene)
+	_scene = scene
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.75, 0.75, 0.72)
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var meshes := 0
+	for n in scene.find_children("*", "MeshInstance3D", true, false):
+		(n as MeshInstance3D).material_override = mat
+		meshes += 1
+	var cams := scene.find_children("*", "Camera3D", true, false)
+	if cams.is_empty():
+		push_error("no camera in the glTF")
+		quit(1)
+		return
+	var cam := cams[0] as Camera3D
+	cam.keep_aspect = Camera3D.KEEP_HEIGHT
+	cam.current = true
+	_cam = cam
+	var env := WorldEnvironment.new()
+	env.environment = Environment.new()
+	env.environment.background_mode = Environment.BG_COLOR
+	env.environment.background_color = Color(0.45, 0.6, 0.8)
+	env.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.environment.ambient_light_color = Color(0.5, 0.5, 0.5)
+	root.add_child(env)
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-50, 30, 0)
+	root.add_child(sun)
+	print("world_view: camera ", cam.global_transform if cam.is_inside_tree() else cam.transform, " parent ", cam.get_parent().name)
+	print("world_view: %d mesh instances, camera fov %.2f near %.3f" % [meshes, cam.fov, cam.near])
+
+
+func _process(_delta: float) -> bool:
+	_frames += 1
+	if _frames == 2:
+		var first := _scene.find_child("draw723", true, false) as Node3D
+		if first:
+			var mi := first as MeshInstance3D
+			var v0: Vector3 = mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX][0] if mi and mi.mesh else Vector3.ZERO
+			print("world_view: draw723 ", first.global_transform, " v0 ", v0, " world ", first.global_transform * v0, " screen ", _cam.unproject_position(first.global_transform * v0))
+		print("world_view: camera ", _cam.global_transform)
+	if _frames == 5:
+		var img := root.get_texture().get_image()
+		img.save_png(_out)
+		print("world_view: saved ", _out)
+		quit(0)
+	return false

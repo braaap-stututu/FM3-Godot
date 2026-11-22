@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """fir_frame.py: rebuild a captured frame's main view offline and check it against a screenshot.
 
-    python -I fir_frame.py capture.fir [--frame N] [--shot screenshot.png --out overlay.png] [--matrices out.json] [--flip-scene]
+    python -I fir_frame.py capture.fir [--frame N] [--shot screenshot.png --out overlay.png] [--matrices out.json] [--flip-scene] [--all]
 
 For every draw: positions decoded (fir_geometry), the vertex shader evaluated symbolically (fir_xenos) to the draw's
 object-to-clip transform, positions projected through the guest viewport registers. Reports how many draws get a
@@ -25,7 +25,10 @@ import numpy as np  # noqa: E402
 
 def make_fetch(cap, d, vidx):
     """A fetch function for fir_vs.run: the draw's vertex buffers, decoded per source vertex."""
-    def fetch(fld):
+    cache = {}
+
+    def fetch(fld, idx):
+        """idx: per-vertex fetch index (the vertex index for a plain fetch, a computed one for e.g. bone matrices)."""
         vb = next((b for b in d['bufs'] if b[0] == 1 and b[1] == fld['const']), None)
         if vb is None:
             return None
@@ -33,11 +36,14 @@ def make_fetch(cap, d, vidx):
         ndw = len(data) // 4
         if not ndw:
             return None
-        words = struct.unpack_from(f'<{ndw}I', data)
+        key = (vb[6], vb[7])
+        if key not in cache:
+            cache[key] = struct.unpack_from(f'<{ndw}I', data)
+        words = cache[key]
         swap, stride, off, scale = vb[4], fld['stride'], fld['offset'], 2.0 ** fld['exp']
-        out = np.zeros((len(vidx), 4))
-        for j, v in enumerate(vidx):
-            base = v * stride + off
+        out = np.zeros((len(idx), 4))
+        for j, v in enumerate(idx):
+            base = int(v) * stride + off
             w = [swap32(words[base + k], swap) if 0 <= base + k < ndw else 0 for k in range(4)]
             p = unpack(w, fld['format'], fld['signed'], fld['norm'])
             if p is None:
@@ -123,18 +129,9 @@ def read_png(path):
     return w, h, out
 
 
-def main():
-    if len(sys.argv) < 2:
-        print(__doc__)
-        return 2
-    path = sys.argv[1]
-    cap = fr.Capture(path)
-    load_shader_layouts(cap, path)
-    code = load_vs_code(path)
-    frame = cap.frames[0]
-    if '--frame' in sys.argv:
-        want = int(sys.argv[sys.argv.index('--frame') + 1])
-        frame = next(f for f in cap.frames if f['index'] == want)
+def place(cap, path, code, frame, keep_atoms=False):
+    """Runs every draw's vertex shader. Returns (draws, placed, why, kinds); placed: (draw, regs, geometry, clip per
+    geometry vertex, matrix info[, atoms, vindex])."""
     regs_at = frame_regs_per_draw(cap, path, frame['index'])
     conv = Converter(cap)
     draws = cap.draws(frame)
@@ -157,7 +154,8 @@ def main():
             why['transform: shader code missing'] += 1
             continue
         try:
-            rows, mach = fir_vs.run(code[d['vs']], consts, bools, make_fetch(cap, d, vidx), len(vidx))
+            rows, mach = fir_vs.run(code[d['vs']], consts, bools, make_fetch(cap, d, vidx), len(vidx), vertex_index=np.array(vidx, dtype=np.float64), loop_consts=
+                                   {i: regs.get(0x4908 + i, 0) for i in range(32)})
         except Fail as e:
             why['transform: ' + str(e)] += 1
             continue
@@ -172,7 +170,23 @@ def main():
         mi = fir_vs.matrix(rows)
         kind = 'no linear map' if mi is None else 'over the captured position' if all(k[0] == 'in' for k in mi[0]) else 'over computed values'
         kinds[kind] += 1
-        placed.append((d, regs, conv.geometry[gid], per_vert, mi))
+        placed.append((d, regs, conv.geometry[gid], per_vert, mi) + ((mach.atoms, list(conv.last_vindex), gid) if keep_atoms else ()))
+    return draws, placed, why, kinds
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__)
+        return 2
+    path = sys.argv[1]
+    cap = fr.Capture(path)
+    load_shader_layouts(cap, path)
+    code = load_vs_code(path)
+    frame = cap.frames[0]
+    if '--frame' in sys.argv:
+        want = int(sys.argv[sys.argv.index('--frame') + 1])
+        frame = next(f for f in cap.frames if f['index'] == want)
+    draws, placed, why, kinds = place(cap, path, code, frame)
     n = len(draws)
     main_view = [p for p in placed if p[0]['flags'] & 4]
     print(f"frame {frame['index']}: {n} draws; clip positions for {len(placed)} ({100 * len(placed) / max(n, 1):.1f}%), "
@@ -206,7 +220,14 @@ def main():
         last_resolve = max(gaps)[1] if gaps else -1
         sw, sh, img = read_png(sys.argv[sys.argv.index('--shot') + 1])
         drawn = 0
-        for d, regs, g, pv, mi in main_view:
+        chosen = main_view
+        if '--all' in sys.argv:  # every placed draw drawn in the scene pass or after (not shadow or reflection passes)
+            prev = max((r for r in rs if r < last_resolve), default=-1)
+            chosen = [p for p in placed if p[0]['seq'] > prev]
+        if '--seqs' in sys.argv:
+            want = set(map(int, open(sys.argv[sys.argv.index('--seqs') + 1]).read().split()))
+            chosen = [p for p in placed if p[0]['seq'] in want]
+        for d, regs, g, pv, mi in chosen:
             xs, xo, ys, yo = (f32(regs.get(r, 0)) for r in VPORT[:4])
             # guest viewport -> screenshot: the guest renders at its own size; scale to the shot by the viewport extent
             gw, gh = abs(xs) * 2, abs(ys) * 2

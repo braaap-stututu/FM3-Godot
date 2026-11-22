@@ -20,8 +20,8 @@ def bits(v, lo, n):
     return (v >> lo) & ((1 << n) - 1)
 
 
-def parse(code_be_words):
-    """ucode::Parse for straight-line programs: host-order words and the CF list (stops at the end)."""
+def parse(code_be_words, full=False):
+    """ucode::Parse: host-order words and the CF list (stops at the first end unless full: then the whole CF area)."""
     words = list(code_be_words)  # the capture stores the microcode as ReGPU holds it: big-endian dwords
     words = [struct.unpack('>I', struct.pack('<I', w))[0] for w in words]
     cfs, cf_end, triple = [], len(words) // 3, 0
@@ -36,7 +36,7 @@ def parse(code_be_words):
                 cf_end = min(cf_end, lo & 0xFFF)
             if op in CF_END:
                 ended = True
-        if ended:
+        if ended and not full:
             break
         triple += 1
     return words, cfs
@@ -146,8 +146,8 @@ def evaluate(code_words, consts, bools, trace=None):
             raise Fail('loops, calls or jumps')
         if op not in CF_EXEC:
             continue
-        if op in (3, 4):  # cond exec on a bool constant
-            b = (lo >> 16) & 0xFF
+        if op in (3, 4, 13, 14):  # cond exec on a bool constant
+            b = (hi >> 2) & 0xFF
             word = bools.get(BOOL_CONSTANTS + (b >> 5), 0)
             if bool((word >> (b & 31)) & 1) != bool((hi >> 10) & 1):
                 continue

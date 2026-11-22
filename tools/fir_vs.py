@@ -18,6 +18,7 @@ import numpy as np
 from fir_xenos import BOOL_CONSTANTS, CF_END, CF_EXEC, Fail, bits, decode_alu, parse
 
 CONST = None  # the form key of the constant term
+SC_NEG = int(__import__('os').environ.get('FIR_SC_NEG', '0'))
 
 
 class V:
@@ -80,22 +81,36 @@ def _bin(a, b, fn):
         return fn(a.n, b.n)
 
 
-def run(code_words, consts, bools, fetch, n_verts):
+def run(code_words, consts, bools, fetch, n_verts, loop_consts=None, vertex_index=None):
     """fetch(fetch_fields) -> (n_verts, 4) array of the fetched components. Returns (clip rows: list of 4 V, Machine)."""
-    words, cfs = parse(code_words)
+    words, cfs = parse(code_words, full=True)
+    loop_consts = loop_consts or {}
     m = Machine(n_verts)
+    if vertex_index is not None:  # r0.x holds the vertex index when the shader starts
+        m.regs[0] = [m.fresh(('vi',), np.asarray(vertex_index, dtype=np.float64)), num(0.0), num(0.0), num(0.0)]
     ps = num(0.0)
     pred = None  # per-vertex predicate (bool array or bool)
     out = {}
     pos_fetch_done = False
     prev_full = None
 
+    carr = np.zeros(1024)
+    for k_, v_ in consts.items():
+        if 0 <= k_ < 1024:
+            carr[k_] = v_
+    state = {'a0': None, 'i': 0, 'aL': 0}
+
     def read(s):
         if s['const']:
             if s['rel']:
-                raise Fail('relative constant addressing')
-            base = s['reg'] * 4
-            comps = [num(consts.get(base + s['swz'][c], 0.0)) for c in range(4)]
+                a0 = state['a0'] if s['rel'] == 1 else state['aL']
+                if a0 is None:
+                    raise Fail('address register unknown')
+                idx = np.clip(s['reg'] + a0, 0, 255) * 4
+                comps = [m.fresh(('c', state['i'], s['reg'], c), carr[idx + s['swz'][c]]) for c in range(4)]
+            else:
+                base = s['reg'] * 4
+                comps = [num(consts.get(base + s['swz'][c], 0.0)) for c in range(4)]
         else:
             r = m.reg(s['reg'])
             comps = [r[s['swz'][c]] for c in range(4)]
@@ -113,17 +128,83 @@ def run(code_words, consts, bools, fetch, n_verts):
             return V(n, f)
         return m.fresh(key, n)
 
-    for lo, hi in cfs:
+    def bool_const(b):
+        return bool((bools.get(BOOL_CONSTANTS + (b >> 5), 0) >> (b & 31)) & 1)
+
+    def uniform_pred(cond):
+        if pred is None:
+            raise Fail('predicate unknown')
+        take = np.asarray(pred) == cond
+        if take.size and not (np.all(take) or not np.any(take)):
+            raise Fail('branch differs between vertices')
+        return bool(np.all(take))
+
+    def branch_cond(lo, hi):
+        if (lo >> 13) & 1:
+            return True
+        if (lo >> 14) & 1:
+            return uniform_pred(bool((hi >> 10) & 1))
+        return bool_const((hi >> 2) & 0xFF) == bool((hi >> 10) & 1)
+
+    def cf_order():
+        """The CF indices executed, in order: jumps, calls and loops followed as ReGPU's translation does."""
+        pc, loops, calls, steps = 0, [], [], 0
+        while 0 <= pc < len(cfs):
+            steps += 1
+            if steps > 20000:
+                raise Fail('control flow does not end')
+            lo, hi = cfs[pc]
+            op = (hi >> 12) & 0xF
+            target = lo & 0x1FFF
+            if op == 11:
+                pc = target if branch_cond(lo, hi) else pc + 1
+            elif op == 9:
+                if branch_cond(lo, hi) and len(calls) < 4:
+                    calls.append(pc + 1)
+                    pc = target
+                else:
+                    pc += 1
+            elif op == 10:
+                pc = calls.pop() if calls else pc + 1
+            elif op == 7:
+                lk = loop_consts.get((lo >> 16) & 0x1F, 0)
+                saved = state['aL']
+                if not (lo >> 13) & 1:
+                    state['aL'] = (lk >> 8) & 0xFF
+                if lk & 0xFF == 0:
+                    state['aL'] = saved
+                    pc = target
+                else:
+                    loops.append([lk & 0xFF, saved])
+                    pc += 1
+            elif op == 8:
+                lk = loop_consts.get((lo >> 16) & 0x1F, 0)
+                if not loops:
+                    raise Fail('loop_end without loop_start')
+                top = loops[-1]
+                top[0] -= 1
+                state['aL'] += ((lk >> 16) & 0xFF) - (256 if (lk >> 23) & 1 else 0)
+                brk = bool((lo >> 21) & 1) and uniform_pred(bool((hi >> 10) & 1))
+                if top[0] != 0 and not brk:
+                    pc = target
+                else:
+                    loops.pop()
+                    state['aL'] = top[1]
+                    pc += 1
+            else:
+                yield pc
+                if op in CF_END:
+                    return
+                pc += 1
+
+    for cf_index in cf_order():
+        lo, hi = cfs[cf_index]
         op = (hi >> 12) & 0xF
-        if op in (7, 8, 9, 10, 11):
-            raise Fail('loops, calls or jumps')
         if op not in CF_EXEC:
             continue
         clause_pred = None
-        if op in (3, 4):
-            b = (lo >> 16) & 0xFF
-            word = bools.get(BOOL_CONSTANTS + (b >> 5), 0)
-            if bool((word >> (b & 31)) & 1) != bool((hi >> 10) & 1):
+        if op in (3, 4, 13, 14):
+            if bool_const((hi >> 2) & 0xFF) != bool((hi >> 10) & 1):
                 continue
         elif op in (5, 6):
             clause_pred = bool((hi >> 10) & 1)
@@ -139,14 +220,19 @@ def run(code_words, consts, bools, fetch, n_verts):
                     raise Fail('texture fetch in the vertex shader')
                 fld = {'const': bits(w[0], 20, 5) * 3 + bits(w[0], 25, 2), 'signed': bool(bits(w[1], 12, 1)),
                        'norm': bits(w[1], 13, 1) == 0, 'format': bits(w[1], 16, 6), 'mini': bool(bits(w[1], 30, 1)),
-                       'exp': (bits(w[1], 24, 6) ^ 32) - 32, 'stride': bits(w[2], 0, 8), 'offset': bits(w[2], 8, 23)}
+                       'exp': (bits(w[1], 24, 6) ^ 32) - 32, 'stride': bits(w[2], 0, 8), 'offset': bits(w[2], 8, 23),
+                       'src': bits(w[0], 5, 6), 'src_swz': bits(w[0], 30, 2), 'round': bool(bits(w[1], 15, 1))}
                 if fld['mini']:
                     if prev_full is None:
                         raise Fail('mini fetch first')
                     fld['stride'] = prev_full['stride']
                 else:
                     prev_full = fld
-                data = fetch(fld)
+                iv = m.reg(fld['src'])[fld['src_swz']].n
+                if iv is None:
+                    raise Fail('fetch index unknown')
+                iv = np.broadcast_to(np.asarray(iv, dtype=np.float64), (n_verts,))
+                data = fetch(fld, np.floor(iv + 0.5) if fld['round'] else np.floor(iv))
                 dest = bits(w[0], 12, 6)
                 dswz = bits(w[1], 0, 12)
                 old = m.reg(dest)
@@ -173,6 +259,8 @@ def run(code_words, consts, bools, fetch, n_verts):
                 continue
             a = decode_alu(w)
             vop, sop = a['vop'], a['sop']
+            state['i'] = i
+            new_a0 = None
             A, B, C = (read(a['src'][j]) for j in range(3))
             res = [None] * 4
             for c in range(4):
@@ -231,8 +319,19 @@ def run(code_words, consts, bools, fetch, n_verts):
                     res = [finish(('v', i, 0), n)] * 4
                 elif vop == 28:  # dst
                     res = [num(1.0), finish(('v', i, 1), _bin(A[1], B[1], np.multiply)), A[2], B[3]]
-                elif vop == 29:
-                    raise Fail('address register (maxa)')
+                elif 20 <= vop <= 23:  # setp_*_push (ReGPU hlsl.cpp): p = src0.w == 0 && src1.w <op> 0
+                    if A[3].n is None or B[3].n is None or A[0].n is None or B[0].n is None:
+                        raise Fail('predicate push on unknown values')
+                    cmpf = {20: np.equal, 21: np.not_equal, 22: np.greater, 23: np.greater_equal}[vop]
+                    pred = np.logical_and(np.equal(A[3].n, 0.0), cmpf(B[3].n, 0.0))
+                    cc = np.logical_and(np.equal(A[0].n, 0.0), cmpf(B[0].n, 0.0))
+                    r = finish(('v', i, 0), np.where(cc, 0.0, np.asarray(A[0].n) + 1.0))
+                    res = [r] * 4
+                elif vop == 29:  # maxa: a0 from src0.w, rounded
+                    if A[3].n is None:
+                        raise Fail('address register unknown')
+                    new_a0 = np.clip(np.floor(np.asarray(A[3].n) + 0.5), -256, 255).astype(np.int64)
+                    res = [finish(('v', i, c), _bin(A[c], B[c], np.maximum)) for c in range(4)]
                 else:
                     res = [V(None, None)] * 4  # setp_*_push, kill_*, cube: no position meaning
             # Scalar half: src3's .w (sA) and .x (sB).
@@ -271,8 +370,12 @@ def run(code_words, consts, bools, fetch, n_verts):
                         if sop == 15:
                             n = np.where(np.isneginf(n), -3.4e38, n)
                     sres = finish(key, n)
-            elif sop in (23, 24):
-                raise Fail('address register (maxas)')
+            elif sop in (23, 24):  # maxas / maxasf: a0 from src3.w
+                if sA.n is None:
+                    raise Fail('address register unknown')
+                x = np.asarray(sA.n, dtype=np.float64)
+                new_a0 = np.clip(np.floor(x + 0.5) if sop == 23 else np.floor(x), -256, 255).astype(np.int64)
+                sres = finish(key, _bin(sA, sB, np.maximum))
             elif sop in (25, 26):
                 y = sB if sop == 25 else ps
                 sres = finish(key, _bin(sA, y, np.subtract), f_add(sA, y, -1.0))
@@ -288,9 +391,11 @@ def run(code_words, consts, bools, fetch, n_verts):
                 temp = (sop & 1) | (int(a['s3_temp']) << 1) | (raw_swz & 0x3C)
                 ca = num(consts.get(raw_reg * 4 + (((raw_swz >> 6) + 3) & 3), 0.0))
                 tb = m.reg(temp & 63)[raw_swz & 3]
-                if a['src'][2]['neg']:
-                    ca = num(-cval(ca))
-                    tb = V(None if tb.n is None else -tb.n, f_scale(tb, -1.0))
+                if a['src'][2]['neg']:  # FIR_SC_NEG as ReGPU's REGPU_SC_NEG: 0 both (default), 1 constant, 2 temp
+                    if SC_NEG != 2:
+                        ca = num(-cval(ca))
+                    if SC_NEG != 1:
+                        tb = V(None if tb.n is None else -tb.n, f_scale(tb, -1.0))
                 if sop <= 43:
                     sres = finish(key, _bin(ca, tb, np.multiply), f_scale(tb, cval(ca)))
                 else:
@@ -307,6 +412,8 @@ def run(code_words, consts, bools, fetch, n_verts):
                 if not np.all(take):
                     continue  # nothing written
             ps = sres
+            if new_a0 is not None:
+                state['a0'] = new_a0
             vm, sm = a['vmask'], a['smask']
             if a['export']:
                 if a['vdest'] == 62:
@@ -330,8 +437,6 @@ def run(code_words, consts, bools, fetch, n_verts):
                     if (sm >> c) & 1:
                         r[c] = sres
                 m.regs[a['sdest']] = r
-        if op in CF_END:
-            break
     rows = [out.get(c) for c in range(4)]
     if any(r is None or r.n is None for r in rows):
         raise Fail('oPos not computed')
