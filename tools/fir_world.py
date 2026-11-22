@@ -196,8 +196,46 @@ def main():
     if '--gltf' in sys.argv:
         out = sys.argv[sys.argv.index('--gltf') + 1]
         mats = materials(cap, path, objs)
+        if '--material-map' in sys.argv:
+            write_material_map(cap, objs, mats, sys.argv[sys.argv.index('--material-map') + 1])
         write_gltf(out, objs, cam, mats, merge='--merge' in sys.argv, sun=sun_direction(objs))
     return 0
+
+
+def write_material_map(cap, objs, mats, out_dir):
+    """Per captured draw: its index buffer, vertex indices, and the chosen base texture and lightmap with their UVs per
+    vertex (for tools/fm3_track_export.py, which maps them onto the track's own meshes). Textures go to out_dir as PNG."""
+    os.makedirs(out_dir, exist_ok=True)
+    recs, written = [], set()
+
+    def save(tex, key):
+        name = f'{key[:32]}.png'
+        if name not in written:
+            fr.write_png(os.path.join(out_dir, name), tex['w'], tex['h'], tex['bytes'][:tex['w'] * tex['h'] * 4])
+            written.add(name)
+        return name
+    for p, atoms, W in objs:
+        m = mats.get(id(p))
+        if not m or m.get('drop') or m.get('image') is None or m.get('uv') is None:
+            continue
+        d, vindex = p[0], p[6]
+        ib = next((b for b in d['bufs'] if b[0] == 0), None)
+        vb = next((b for b in d['bufs'] if b[0] == 1), None)
+        if ib is None or vb is None:
+            continue
+        idx = cap.data.get((0, ib[6], ib[7]), {}).get('bytes', b'')
+        vi = [v for v in vindex if v is not None]
+        rec = {'seq': d['seq'], 'ib': idx.hex(), 'vb_head': cap.data.get((1, vb[6], vb[7]), {}).get('bytes', b'')[:48].hex(),
+               'vindex': vi, 'base': save(m['image'], m['key']), 'uv': np.asarray(m['uv'], float).round(6).tolist(),
+               'factor': m['factor'], 'blend': m['blend']}
+        lm = m.get('lightmap')
+        if lm is not None:
+            rec['lightmap'] = save(lm[1], 'lm' + lm[2])
+            rec['lm_uv'] = np.asarray(lm[0], float).round(6).tolist()
+        recs.append(rec)
+    with open(os.path.join(out_dir, 'materials.json'), 'w') as f:
+        json.dump(recs, f)
+    print(f'  material map: {len(recs)} draws, {len(written)} textures -> {out_dir}')
 
 
 def drop_reflections(objs):

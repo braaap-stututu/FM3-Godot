@@ -44,25 +44,27 @@ def parse(data):
                 raw = data[vstart:vstart + cnt * stride]
                 pos = np.frombuffer(raw, dtype='>f4').reshape(cnt, stride // 4)[:, :3].astype(np.float64)
                 mesh = {'name': nm, 'stride': stride, 'positions': pos, 'raw': raw, 'material': None, 'prim': None, 'indices': None}
-                # material and index list follow
+                # Subsection (ForzaStudio-EVO ForzaTrackSubSection): u32 1, u32 2, material name, u32 LOD, u32 index
+                # type (6 strip, 4 list), u32, u32 1, u32 0 x4, f32 1.0 x4, f32[2] UV offset, f32[2] UV tile, u32 3,
+                # i32 index count, i32 index size, u32 flag.
                 after = vstart + cnt * stride
                 mat = next(((o, n) for o, n in names if o >= after), None)
                 if mat is not None:
-                    mesh['material'] = mat[1]
                     q = mat[0] + 4 + len(mat[1])
-                    # scan forward for (prim, count, size) with size 2 or 4 and a sane count
-                    for k in range(q, min(q + 400, len(data) - 12), 4):
-                        prim, icount, isize = struct.unpack_from('>III', data, k)
-                        if prim in (1, 2, 3, 4, 5, 6) and isize in (2, 4) and 3 <= icount < 2000000 and k + 12 + icount * isize <= len(data):
+                    if q + 4 * 21 <= len(data):
+                        lod, itype = struct.unpack_from('>II', data, q)
+                        uvo = struct.unpack_from('>2f', data, q + 4 * 12)
+                        uvt = struct.unpack_from('>2f', data, q + 4 * 14)
+                        three, icount, isize = struct.unpack_from('>Iii', data, q + 4 * 16)
+                        if three == 3 and isize in (2, 4) and 0 < icount < 4000000 and q + 4 * 19 + icount * isize <= len(data):
                             fmt = '>u2' if isize == 2 else '>u4'
-                            idx = np.frombuffer(data, dtype=fmt, count=icount, offset=k + 12).astype(np.int64)
-                            valid = idx[(idx != 0xFFFF) & (idx != 0xFFFFFFFF)]
-                            if len(valid) and valid.max() < cnt:
-                                mesh['prim'], mesh['indices'], mesh['index_offset'] = prim, idx, k + 12
-                                break
+                            idx = np.frombuffer(data, dtype=fmt, count=icount, offset=q + 4 * 19).astype(np.int64)
+                            mesh.update(material=mat[1], lod=lod, prim=itype, indices=idx, index_offset=q + 4 * 19,
+                                        uv_offset=uvo, uv_tile=uvt, index_size=isize)
+                decode_attributes(mesh)
                 model['meshes'].append(mesh)
                 # continue after this mesh's index list
-                end = mesh.get('index_offset', after) + (len(mesh['indices']) * (2 if mesh['prim'] else 0) if mesh['indices'] is not None else 0)
+                end = mesh.get('index_offset', after) + (len(mesh['indices']) * mesh.get('index_size', 2) if mesh['indices'] is not None else 0)
                 while i < len(names) and names[i][0] < end:
                     i += 1
                 continue
@@ -70,6 +72,43 @@ def parse(data):
             model['name'] = nm
         i += 1
     return model
+
+
+# Track vertex layouts by stride (ForzaStudio-EVO ForzaVertex.cs, Track): (normal offset, UV0 offset, UV1 offset).
+LAYOUTS = {12: (None, None, None), 16: (12, None, None), 20: (12, 16, None), 24: (12, 16, 20), 28: (12, 16, None),
+           32: (12, 16, 20), 36: (12, 20, 24), 40: (12, 16, 20)}
+
+
+def decode_attributes(mesh):
+    """Normals (packed u32, 10:10:10 signed normalised) and UV0/UV1 (u16 pairs / 65535, then * tile + offset)."""
+    stride, n = mesh['stride'], len(mesh['positions'])
+    lay = LAYOUTS.get(stride)
+    mesh['normals'] = mesh['uv0'] = mesh['uv1'] = None
+    if lay is None:
+        return
+    raw = np.frombuffer(mesh['raw'], dtype=np.uint8).reshape(n, stride)
+    no, u0, u1 = lay
+    if no is not None:
+        w = raw[:, no:no + 4].copy().view('>u4').ravel().astype(np.int64)
+
+        def s10(v):
+            v = v & 0x3FF
+            return np.where(v >= 512, v - 1024, v) / 511.0
+        mesh['normals'] = np.stack([s10(w), s10(w >> 10), s10(w >> 20)], axis=1)
+    off, tile = mesh.get('uv_offset', (0.0, 0.0)), mesh.get('uv_tile', (1.0, 1.0))
+    for key, o in (('uv0', u0), ('uv1', u1)):
+        if o is not None:
+            uv = raw[:, o:o + 4].copy().view('>u2').reshape(n, 2).astype(np.float64) / 65535.0
+            mesh[key] = uv * np.array(tile) + np.array(off)  # (no V flip: matches what FM3's shaders read)
+
+
+def triangles(mesh):
+    """Triangles for a mesh by its index type (6 strip with 0xFFFF restarts, 4 list)."""
+    idx = mesh['indices']
+    if mesh.get('prim') == 4:
+        n = len(idx) // 3 * 3
+        return [tuple(t) for t in idx[:n].reshape(-1, 3).tolist()]
+    return strip_to_triangles(idx)
 
 
 def strip_to_triangles(idx, restart=0xFFFF):
