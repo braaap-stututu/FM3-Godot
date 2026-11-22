@@ -81,11 +81,25 @@ def _bin(a, b, fn):
         return fn(a.n, b.n)
 
 
-def run(code_words, consts, bools, fetch, n_verts, loop_consts=None, vertex_index=None):
-    """fetch(fetch_fields) -> (n_verts, 4) array of the fetched components. Returns (clip rows: list of 4 V, Machine)."""
+class TFetch(Exception):
+    """Pixel mode: the first 2D/3D/cube texture fetch was reached (slot, coordinates, dimension in .args)."""
+
+
+def run(code_words, consts, bools, fetch, n_verts, loop_consts=None, vertex_index=None, pixel_inputs=None):
+    """fetch(fetch_fields, index) -> (n_verts, 4) array of the fetched components. Returns (clip rows: list of 4 V,
+    Machine); the Machine's .exports holds every export register written (interpolators 0-15, oPos 62).
+
+    Pixel mode (pixel_inputs = {register: (n_verts, 4) array}, the interpolators as the vertex shader wrote them, one
+    value per vertex): the pixel shader runs per vertex and run returns its non-1D texture fetches in order, each
+    (slot, dimension, (n_verts, 3) coordinates or None when they depend on an earlier fetch)."""
     words, cfs = parse(code_words, full=True)
     loop_consts = loop_consts or {}
     m = Machine(n_verts)
+    m.exports = {}
+    m.tfetches = []
+    if pixel_inputs:
+        for reg, arr in pixel_inputs.items():
+            m.regs[reg] = [m.fresh(('pin', reg, c), np.asarray(arr[:, c], dtype=np.float64)) for c in range(4)]
     if vertex_index is not None:  # r0.x holds the vertex index when the shader starts
         m.regs[0] = [m.fresh(('vi',), np.asarray(vertex_index, dtype=np.float64)), num(0.0), num(0.0), num(0.0)]
     ps = num(0.0)
@@ -216,6 +230,19 @@ def run(code_words, consts, bools, fetch, n_verts, loop_consts=None, vertex_inde
             w = words[i * 3:i * 3 + 3]
             if (seq >> (2 * k)) & 1:
                 opc = bits(w[0], 0, 5)
+                if opc != 0 and pixel_inputs is not None:
+                    if opc != 1:
+                        continue  # (gradient and LOD setters)
+                    dim, src, swz = bits(w[2], 14, 2), bits(w[0], 5, 6), bits(w[0], 26, 6)
+                    r = m.reg(src)
+                    coords = [r[(swz >> (2 * k)) & 3].n for k in range(3)]
+                    if dim != 0:
+                        known = all(c is not None for c in coords[:2])
+                        m.tfetches.append((bits(w[0], 20, 5), dim, np.stack(
+                            [np.broadcast_to(np.asarray(c if c is not None else 0.0, dtype=np.float64), (n_verts,)) for c in coords],
+                            axis=1) if known else None))
+                    m.regs[bits(w[0], 12, 6)] = [V(None, None)] * 4  # the fetched texel: unknown here
+                    continue
                 if opc != 0:
                     raise Fail('texture fetch in the vertex shader')
                 fld = {'const': bits(w[0], 20, 5) * 3 + bits(w[0], 25, 2), 'signed': bool(bits(w[1], 12, 1)),
@@ -405,9 +432,13 @@ def run(code_words, consts, bools, fetch, n_verts, loop_consts=None, vertex_inde
             cond = a['pred_cond'] if a['pred'] else clause_pred
             if a['pred'] or clause_pred is not None:
                 if pred is None:
+                    if pixel_inputs is not None:
+                        continue  # pixel mode: a predicated colour computation, not a texture coordinate
                     raise Fail('predicate unknown')
                 take = pred == cond
                 if np.ndim(take) and not (np.all(take) or not np.any(take)):
+                    if pixel_inputs is not None:
+                        continue
                     raise Fail('predicate differs between vertices')
                 if not np.all(take):
                     continue  # nothing written
@@ -416,6 +447,12 @@ def run(code_words, consts, bools, fetch, n_verts, loop_consts=None, vertex_inde
                 state['a0'] = new_a0
             vm, sm = a['vmask'], a['smask']
             if a['export']:
+                ex = m.exports.setdefault(a['vdest'], [None] * 4)
+                for c in range(4):
+                    if (vm >> c) & 1:
+                        ex[c] = res[c]
+                    if (sm >> c) & 1:
+                        ex[c] = sres
                 if a['vdest'] == 62:
                     for c in range(4):
                         if (vm >> c) & 1:
@@ -437,10 +474,21 @@ def run(code_words, consts, bools, fetch, n_verts, loop_consts=None, vertex_inde
                     if (sm >> c) & 1:
                         r[c] = sres
                 m.regs[a['sdest']] = r
+    if pixel_inputs is not None:
+        return m.tfetches
     rows = [out.get(c) for c in range(4)]
     if any(r is None or r.n is None for r in rows):
         raise Fail('oPos not computed')
     return rows, m
+
+
+def export_array(m, reg, n):
+    """An export register's per-vertex values as (n, 4) (unknown or unwritten components: 0)."""
+    ex = m.exports.get(reg)
+    if not ex:
+        return None
+    cols = [np.zeros(n) if v is None or v.n is None else np.broadcast_to(np.asarray(v.n, dtype=np.float64), (n,)) for v in ex]
+    return np.stack(cols, axis=1)
 
 
 def clip_positions(rows, n):

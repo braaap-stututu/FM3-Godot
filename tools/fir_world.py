@@ -171,7 +171,8 @@ def main():
         objs = [o for o in objs if o[0][0]['seq'] in want]
     if '--gltf' in sys.argv:
         out = sys.argv[sys.argv.index('--gltf') + 1]
-        write_gltf(out, objs, cam)
+        mats = materials(cap, path, objs)
+        write_gltf(out, objs, cam, mats)
     return 0
 
 
@@ -208,7 +209,61 @@ def drop_reflections(objs):
     return [o for o in objs if id(o) not in drop]
 
 
-def write_gltf(out, objs, cam):
+def materials(cap, path, objs):
+    """Per draw: the base texture and its UVs. The pixel shader runs per vertex on the interpolators the vertex
+    shader wrote (fir_vs pixel mode) up to its first 2D texture fetch: that fetch's slot is the base texture, its
+    coordinates the UVs. Returns {id(placed record): (uv (n, 2), texture data dict, hash key)}."""
+    from fir_frame import f32
+    import fir_vs
+    from fir_xenos import Fail
+    ps_code = load_vs_code(path, pixel=True)
+    out, why = {}, Counter()
+    for p, atoms, W in objs:
+        d, regs, g, per_vert, mi, atom_vals, vindex, gid, exports, nv = p
+        code = ps_code.get(d['ps'])
+        if code is None:
+            why['pixel shader missing'] += 1
+            continue
+        pin = {}
+        for reg, comps in exports.items():
+            if reg < 16:
+                pin[reg] = np.stack([np.zeros(nv) if v is None or v.n is None else
+                                     np.broadcast_to(np.asarray(v.n, dtype=np.float64), (nv,)) for v in comps], axis=1)
+        consts = {i: f32(regs[0x4400 + i]) for i in range(1024) if 0x4400 + i in regs}
+        bools = {0x4900 + i: regs.get(0x4900 + i, 0) for i in range(8)}
+        loops = {i: regs.get(0x4908 + i, 0) for i in range(32)}
+        try:
+            with np.errstate(all='ignore'):
+                res = fir_vs.run(code, consts, bools, None, nv, loops, pixel_inputs=pin)
+        except Fail as e:
+            why['pixel shader: ' + str(e)] += 1
+            continue
+        if not res:
+            why['no texture fetch'] += 1
+            continue
+        # The base texture: the first 2D fetch whose texture came from memory (decoded by the tap). Render targets the
+        # game made earlier in the frame (shadow maps, reflections) are not decoded and are skipped.
+        pick = None
+        for slot, dim, coords in res:
+            if dim != 1 or coords is None:
+                continue
+            t = next((t for t in d['texs'] if t[0] == slot), None)
+            tex = cap.data.get((3, t[8], t[9])) if t else None
+            if tex and tex['w'] and len(tex['bytes']) >= tex['w'] * tex['h'] * 4:
+                pick = (slot, coords, t, tex)
+                break
+        if pick is None:
+            why['no decoded 2D texture'] += 1
+            continue
+        slot, coords, t, tex = pick
+        out[id(p)] = (coords[:, :2].astype(np.float32), tex, f'{t[9]:016x}{t[8]:016x}')
+        why['textured'] += 1
+    for k, v in why.most_common():
+        print(f'  materials: {k}: {v}')
+    return out
+
+
+def write_gltf(out, objs, cam, mats=None):
     # FM3's scene target reaches the screen rotated 180 deg: clip x is screen-left and clip y screen-down.
     right, up, fwd = -cam['right'], -cam['up'], cam['forward']
     S = np.eye(4)
@@ -220,6 +275,20 @@ def write_gltf(out, objs, cam):
     mesh_ids = {}
     offset = 0
     checks = []
+    images, textures, materials_, mat_ids = [], [], [], {}
+    tex_dir = os.path.splitext(out)[0] + '_tex'
+
+    def material_index(tex, key):
+        if key not in mat_ids:
+            os.makedirs(tex_dir, exist_ok=True)
+            name = f'{key[:16]}_{tex["w"]}x{tex["h"]}.png'
+            fr.write_png(os.path.join(tex_dir, name), tex['w'], tex['h'], tex['bytes'][:tex['w'] * tex['h'] * 4])
+            images.append({'uri': os.path.basename(tex_dir) + '/' + name})
+            textures.append({'source': len(images) - 1, 'sampler': 0})
+            materials_.append({'pbrMetallicRoughness': {'baseColorTexture': {'index': len(textures) - 1}, 'metallicFactor': 0.0,
+                                                        'roughnessFactor': 1.0}, 'doubleSided': True})
+            mat_ids[key] = len(materials_) - 1
+        return mat_ids[key]
 
     def add_view(data, target):
         nonlocal offset
@@ -230,7 +299,7 @@ def write_gltf(out, objs, cam):
         return len(views) - 1
 
     for p, atoms, W in objs:
-        d, regs, g, per_vert, mi, atom_vals, vindex, gid = p
+        d, regs, g, per_vert, mi, atom_vals, vindex, gid = p[:8]
         if any(v is None for v in vindex):
             continue
         cols = [np.broadcast_to(np.asarray(atom_vals[a], dtype=np.float64), (len(vindex),)) for a in atoms]
@@ -248,14 +317,23 @@ def write_gltf(out, objs, cam):
         Wg = Wg @ F
         if not np.all(np.isfinite(P)) or not len(tris):
             continue
-        h = hashlib.blake2b(P.tobytes() + tris.tobytes(), digest_size=12).hexdigest()
+        mat = (mats or {}).get(id(p))
+        uv = mat[0] if mat is not None and np.all(np.isfinite(mat[0])) else None
+        h = hashlib.blake2b(P.tobytes() + tris.tobytes() + (uv.tobytes() if uv is not None else b'') +
+                            (mat[2].encode() if uv is not None else b''), digest_size=12).hexdigest()
         if h not in mesh_ids:
             pv = add_view(P.tobytes(), 34962)
             accessors.append({'bufferView': pv, 'componentType': 5126, 'count': len(P), 'type': 'VEC3',
                               'min': P.min(axis=0).tolist(), 'max': P.max(axis=0).tolist()})
+            prim = {'attributes': {'POSITION': len(accessors) - 1}}
+            if uv is not None:
+                accessors.append({'bufferView': add_view(uv.tobytes(), 34962), 'componentType': 5126, 'count': len(uv), 'type': 'VEC2'})
+                prim['attributes']['TEXCOORD_0'] = len(accessors) - 1
+                prim['material'] = material_index(mat[1], mat[2])
             iv = add_view(tris.ravel().tobytes(), 34963)
             accessors.append({'bufferView': iv, 'componentType': 5125, 'count': int(tris.size), 'type': 'SCALAR'})
-            meshes.append({'primitives': [{'attributes': {'POSITION': len(accessors) - 2}, 'indices': len(accessors) - 1}]})
+            prim['indices'] = len(accessors) - 1
+            meshes.append({'primitives': [prim]})
             mesh_ids[h] = len(meshes) - 1
         checks.append((per_vert, Wg, P))
         nodes.append({'mesh': mesh_ids[h], 'matrix': Wg.T.ravel().tolist(), 'name': f"draw{d['seq']}"})
@@ -284,12 +362,14 @@ def write_gltf(out, objs, cam):
             'cameras': [{'type': 'perspective', 'perspective': {'yfov': math.radians(cam['yfov_deg']), 'aspectRatio': cam['aspect'],
                                                                 'znear': max(cam['near'], 0.01)}}],
             'accessors': accessors, 'bufferViews': views,
+            **({'images': images, 'textures': textures, 'materials': materials_, 'samplers': [{'wrapS': 10497, 'wrapT': 10497}]}
+               if images else {}),
             'buffers': [{'byteLength': len(blob), 'uri': os.path.basename(os.path.splitext(out)[0]) + '.bin'}]}
     with open(os.path.splitext(out)[0] + '.bin', 'wb') as f:
         f.write(blob)
     with open(out, 'w') as f:
         json.dump(gltf, f)
-    print(f'glTF written: {out} ({len(meshes)} meshes, {len(nodes) - 1} placed draws, {len(blob) / 1e6:.1f} MB)')
+    print(f'glTF written: {out} ({len(meshes)} meshes, {len(nodes) - 1} placed draws, {len(materials_)} textured materials, {len(blob) / 1e6:.1f} MB)')
 
 
 if __name__ == '__main__':

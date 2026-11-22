@@ -1,6 +1,6 @@
 extends SceneTree
 # Loads a fir_world.py glTF at run time, looks through its capture_camera and saves one picture.
-#   Godot_v4.7.2-stable_win64_console.exe --path frame-ir/godot -s res://viewer/world_view.gd -- --gltf <file> --out <png> [--size 1280x720]
+#   Godot_v4.7.2-stable_win64.exe --path frame-ir/godot -s res://viewer/world_view.gd -- --gltf <file> --out <png> [--size 1280x720] [--textured]
 
 var _out := ""
 var _frames := 0
@@ -12,6 +12,7 @@ func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	var gltf_path := ""
 	var size := Vector2i(1280, 720)
+	var textured := false  # --textured: the glTF's own materials, unshaded (no normals yet); else one grey lit material
 	var i := 0
 	while i < args.size():
 		match args[i]:
@@ -21,6 +22,8 @@ func _init() -> void:
 				_out = args[i + 1]; i += 1
 			"--size":
 				var p := args[i + 1].split("x"); size = Vector2i(int(p[0]), int(p[1])); i += 1
+			"--textured":
+				textured = true
 		i += 1
 	DisplayServer.window_set_size(size)
 	root.size = size
@@ -37,9 +40,26 @@ func _init() -> void:
 	mat.albedo_color = Color(0.75, 0.75, 0.72)
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var meshes := 0
+	var grey_unshaded := StandardMaterial3D.new()
+	grey_unshaded.albedo_color = Color(0.5, 0.5, 0.5)
+	grey_unshaded.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	grey_unshaded.cull_mode = BaseMaterial3D.CULL_DISABLED
 	for n in scene.find_children("*", "MeshInstance3D", true, false):
-		(n as MeshInstance3D).material_override = mat
+		var mi := n as MeshInstance3D
 		meshes += 1
+		if not textured:
+			mi.material_override = mat
+			continue
+		for s in mi.mesh.get_surface_count():
+			var m := mi.mesh.surface_get_material(s) as StandardMaterial3D
+			if m == null:
+				mi.set_surface_override_material(s, grey_unshaded)
+				continue
+			m = m.duplicate()
+			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			m.cull_mode = BaseMaterial3D.CULL_DISABLED
+			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+			mi.set_surface_override_material(s, m)
 	var cams := scene.find_children("*", "Camera3D", true, false)
 	if cams.is_empty():
 		push_error("no camera in the glTF")

@@ -60,7 +60,8 @@ def f32(u):
     return struct.unpack('<f', struct.pack('<I', u & 0xFFFFFFFF))[0]
 
 
-def load_vs_code(path):
+def load_vs_code(path, pixel=False):
+    """Shader microcode by hash: vertex shaders (or pixel shaders with pixel=True)."""
     code = {}
     with open(path, 'rb') as f:
         buf = f.read()
@@ -77,9 +78,9 @@ def load_vs_code(path):
             rp += rsize
             if rtype == 0xF104:
                 (h,) = struct.unpack_from('<Q', body, 8)
-                (pixel,) = struct.unpack_from('<I', body, 16)
+                (pixel_flag,) = struct.unpack_from('<I', body, 16)
                 off, size = fr.BLOB.unpack_from(body, 64)
-                if not pixel:
+                if bool(pixel_flag) == bool(pixel):
                     code[h] = list(struct.unpack_from(f'<{size // 4}I', blob, off))
     return code
 
@@ -170,7 +171,7 @@ def place(cap, path, code, frame, keep_atoms=False):
         mi = fir_vs.matrix(rows)
         kind = 'no linear map' if mi is None else 'over the captured position' if all(k[0] == 'in' for k in mi[0]) else 'over computed values'
         kinds[kind] += 1
-        placed.append((d, regs, conv.geometry[gid], per_vert, mi) + ((mach.atoms, list(conv.last_vindex), gid) if keep_atoms else ()))
+        placed.append((d, regs, conv.geometry[gid], per_vert, mi) + ((mach.atoms, list(conv.last_vindex), gid, mach.exports, len(vidx)) if keep_atoms else ()))
     return draws, placed, why, kinds
 
 
