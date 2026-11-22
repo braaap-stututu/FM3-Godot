@@ -18,6 +18,7 @@ var _bench_t0 := 0
 var _screen_size := Vector2i(1280, 720)
 const TripleCameras = preload("res://triple_cameras.gd")
 const BAKED_SHADER = preload("res://viewer/fm3_baked.gdshader")
+const BLEND_SHADER = preload("res://viewer/fm3_blend.gdshader")
 
 
 func _init() -> void:
@@ -28,6 +29,8 @@ func _init() -> void:
 	var grey_shadow := false
 	var id_mode := false  # debug: every mesh instance a unique flat colour; writes <out>.ids.txt (index -> node name)  # debug: one grey lit material everywhere, sun shadows on
 	var lit := false  # --lit: materials shaded, a sun with shadows and sky ambient (--sun elevation,azimuth in degrees)
+	var look_from := ""  # --look-from x,y,z --look-at x,y,z: render from this camera instead of the glTF's
+	var look_at := ""
 	var filmic := false  # --filmic: Godot's filmic tone mapper and grade (the look before matching FM3's own)
 	var sun_elev := 50.0
 	var sun_azim := 30.0
@@ -47,6 +50,10 @@ func _init() -> void:
 				textured = true; lit = true
 			"--filmic":
 				filmic = true
+			"--look-from":
+				look_from = args[i + 1]; i += 1
+			"--look-at":
+				look_at = args[i + 1]; i += 1
 			"--fly":
 				_fly = true
 			"--id":
@@ -113,6 +120,13 @@ func _init() -> void:
 			if m == null:
 				mi.set_surface_override_material(s, mat if lit else grey_unshaded)
 				continue
+			var fm3_extras = m.get_meta("extras").get("fm3") if m.has_meta("extras") and m.get_meta("extras") is Dictionary else null
+			if lit and fm3_extras != null:
+				# FM3 multi-texture shader family (tools/fm3_families.py, fm3_blend.gdshader)
+				mi.set_surface_override_material(s, _blend_material(m, fm3_extras, gltf_path))
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				baked += 1
+				continue
 			m = m.duplicate()
 			if m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:  # (the glTF's unlit materials stay unlit)
 				m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL if lit else BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -154,6 +168,14 @@ func _init() -> void:
 	var cam := cams[0] as Camera3D
 	cam.keep_aspect = Camera3D.KEEP_HEIGHT
 	cam.far = maxf(cam.far, 100000.0)  # the sky dome is ~5 km out (FM3: infinite far plane)
+	if look_from != "" and look_at != "":
+		var f := look_from.split_floats(",")
+		var t := look_at.split_floats(",")
+		var xf := Transform3D(Basis(), Vector3(f[0], f[1], f[2])).looking_at(Vector3(t[0], t[1], t[2]), Vector3.UP)
+		if cam.is_inside_tree():
+			cam.global_transform = xf
+		else:
+			cam.transform = xf
 	cam.current = true
 	_cam = cam
 	var env := WorldEnvironment.new()
@@ -215,6 +237,57 @@ func _init() -> void:
 	print("world_view: camera ", cam.global_transform if cam.is_inside_tree() else cam.transform, " parent ", cam.get_parent().name)
 	print("world_view: %d surfaces lit by FM3's baked lightmaps (%d without an albedo texture)" % [baked, baked_no_tex])
 	print("world_view: %d mesh instances, camera fov %.2f near %.3f" % [meshes, cam.fov, cam.near])
+
+
+var _tex_cache := {}
+
+
+func _load_tex(gltf_path: String, rel: String) -> Texture2D:
+	var p := gltf_path.get_base_dir().path_join(rel)
+	if not _tex_cache.has(p):
+		var img := Image.load_from_file(p)
+		if img == null:
+			_tex_cache[p] = null
+		else:
+			img.generate_mipmaps()
+			_tex_cache[p] = ImageTexture.create_from_image(img)
+	return _tex_cache[p]
+
+
+func _blend_material(m: BaseMaterial3D, f: Dictionary, gltf_path: String) -> ShaderMaterial:
+	var sm := ShaderMaterial.new()
+	sm.shader = BLEND_SHADER
+	var tex: Array = f["tex"]
+	sm.set_shader_parameter("albedo_tex", _load_tex(gltf_path, tex[0]))
+	sm.set_shader_parameter("tex1", _load_tex(gltf_path, tex[1]))
+	if tex.size() > 2:
+		sm.set_shader_parameter("tex2", _load_tex(gltf_path, tex[2]))
+	if tex.size() > 3:
+		sm.set_shader_parameter("tex3", _load_tex(gltf_path, tex[3]))
+	var mode_name := String(f["mode"])
+	sm.set_shader_parameter("mode", {"blend": 1, "road": 2, "paint": 3, "edge": 4, "mix": 5}.get(mode_name, 1))
+	if f.has("scale2"):
+		sm.set_shader_parameter("scale2", Vector2(f["scale2"][0], f["scale2"][1]))
+	sm.set_shader_parameter("vclr", bool(f.get("vclr", false)))
+	sm.set_shader_parameter("scale0", Vector2(f["scale0"][0], f["scale0"][1]))
+	sm.set_shader_parameter("scale1", Vector2(f["scale1"][0], f["scale1"][1]))
+	sm.set_shader_parameter("tint0", Vector3(f["tint0"][0], f["tint0"][1], f["tint0"][2]))
+	sm.set_shader_parameter("tint1", Vector3(f["tint1"][0], f["tint1"][1], f["tint1"][2]))
+	if mode_name in ["road", "paint", "edge"]:
+		var g := _load_tex(gltf_path, tex[0])
+		if g != null:
+			var gi := g.get_image()
+			gi.resize(8, 8)
+			var sum := 0.0
+			for y in 8:
+				for x in 8:
+					var c := gi.get_pixel(x, y)
+					sum += (c.r + c.g + c.b) / 3.0
+			sm.set_shader_parameter("grain_mean", sum / 64.0)
+	sm.set_shader_parameter("has_lightmap", m.ao_enabled and m.ao_texture != null)
+	if m.ao_texture != null:
+		sm.set_shader_parameter("light_tex", m.ao_texture)
+	return sm
 
 
 func _fly_step(delta: float) -> void:

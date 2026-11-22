@@ -52,6 +52,22 @@ web search were not reachable).
   sections at byte 20 (the one within 0..1); found by fitting captured lightmap UVs. Meshes without UV1 use UV0 for
   their lightmap. The sky dome (`<track>out.sky.rmb.bin`, stride 16) is position + u16 UV pair; FM3 centres it on the
   camera, lowered by TrackSettings.xml's `SkyboxHeightOffset` (Ladera -1150).
+- **Shaders and their inputs (verified on the captured frame, `tools/fm3_shaders.py` + `fir_disasm.py --pixel`):** the
+  pixel shader's constants **c0..cN are the material's parameter vectors** (material table), hardware texture slot k
+  reads material slot k, slot 7 is the lightmap, c116 / c120-c123 hold each UV set's tile and offset, c247 / c248 the
+  ambient / sun colours, c242 the fog colour. Recipes per family in [`tools/fm3_families.py`](tools/fm3_families.py)
+  (terrain blend `lerp(t0 * tint, t1, mask.r)` with per-layer UV scales from the specular parameter vector; road
+  `marks * grain(world x, z)`; paint; road edge; two-scale mix). Road-edge, mountain-road and shoulder-grass recipes
+  are inferred from their textures (not in the captured frame).
+- **Where UV0 sits** depends on shader and stride: byte 16 for most; byte 12 for `tree_*` cards (stride 24); byte 20 for
+  the shoulder-grass `*_vclr_mix_3` (stride 28, byte 16 = vertex colour); terrain stride 28: UV0 16, second layer 20,
+  mask/lightmap 24; terrain stride 32 with vertex colour (ARGB at 20): 16, 24, 28; road edges (stride 36): UV0 16,
+  edge mask 20, lightmap 24. Stride 16 is position + UV (sky dome, the valley backdrop). Found by fitting captured UVs,
+  and for meshes the frame did not show, by the one pair with the track-wide density of 0.143 UV per metre.
+- **Textures without a `.bix`** (77 on Ladera, some full size, e.g. the grass tufts) are in the stx as `_0x<id>_s`
+  entries. **Lightmap atlases** are only the DXT1 `_a` entries; the one DXT5 `_a` (0x28f) is something else, and atlas
+  entries in its id range belong to the DXT1 atlas before it (the distant matte terrain).
+- Not geometry to draw as is: `flare_*` (the sun flare) and `LGHT_*` meshes (light volumes, no material).
 - **ForzaStudio-EVO (matches our files: u32 version 4 = FM3, 6 = FM4; section count u32 at 0x74):** per section: u32 1;
   three float3 blocks each followed by f32 0; u32 1; name (i32 length + ASCII; text before the first `_` = type);
   u32 2; u32 vertex count; u32 stride; vertices; u32 1; u32 subsection count. Per subsection: u32 1, u32 2; name; u32 LOD;

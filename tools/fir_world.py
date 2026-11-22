@@ -236,6 +236,31 @@ def write_material_map(cap, objs, mats, out_dir):
         recs.append(rec)
     with open(os.path.join(out_dir, 'materials.json'), 'w') as f:
         json.dump(recs, f)
+    # Every texture fetch of every draw (slot, per-vertex coordinates, texture), for working out FM3's multi-texture
+    # shaders against the track files (tools/fm3_shaders.py).
+    fl = []
+    for p, atoms, W in objs:
+        d, vindex = p[0], p[6]
+        if d['seq'] not in FETCH_LOG:
+            continue
+        ps, fetch_at, texs, consts = FETCH_LOG[d['seq']]
+        ib = next((b for b in d['bufs'] if b[0] == 0), None)
+        if ib is None:
+            continue
+        idx = cap.data.get((0, ib[6], ib[7]), {}).get('bytes', b'')
+        slots = {}
+        for slot, coords in fetch_at.items():
+            t = texs.get(slot)
+            tex = cap.data.get((3, t[8], t[9])) if t else None
+            name = None
+            if tex and tex['w'] and len(tex['bytes']) >= tex['w'] * tex['h'] * 4:
+                name = save(tex, f'{t[9]:016x}{t[8]:016x}')
+            slots[str(slot)] = {'uv': np.nan_to_num(np.asarray(coords[:, :2], float)).round(6).tolist(), 'tex': name}
+        fl.append({'seq': d['seq'], 'ps': ps, 'ib': idx.hex(), 'vindex': [v for v in vindex if v is not None], 'slots': slots,
+                   'consts': {str(k // 4): [consts.get(k // 4 * 4 + j, 0.0) for j in range(4)] for k in consts if k % 4 == 0 and k < 1024}})
+    with open(os.path.join(out_dir, 'fetches.json'), 'w') as f:
+        json.dump(fl, f)
+    print(f'  fetch log: {len(fl)} draws -> fetches.json')
     print(f'  material map: {len(recs)} draws, {len(written)} textures -> {out_dir}')
 
 
@@ -355,6 +380,9 @@ def looks_like_normal_map(tex):
     return abs(r - b) < 10 and g - r > 25
 
 
+FETCH_LOG = {}  # seq -> (pixel shader hash, {slot: per-vertex fetch coordinates}, texture records, PS constants)
+
+
 def materials(cap, path, objs):
     """Per draw: the base texture and its UVs. The pixel shader runs per vertex on the interpolators the vertex
     shader wrote (fir_vs pixel mode) up to its first 2D texture fetch: that fetch's slot is the base texture, its
@@ -432,6 +460,7 @@ def materials(cap, path, objs):
                 why['no texture fetch'] += 1
             continue
         fetch_at = {slot: coords for slot, dim, coords in res if dim == 1 and coords is not None}
+        FETCH_LOG[d['seq']] = (f"{d['ps']:016x}", fetch_at, texs, consts)
 
         def decoded(slot):
             t = texs.get(slot)

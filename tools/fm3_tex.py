@@ -194,8 +194,10 @@ def decode_stx(data, stx, ent):
 
 
 def stx_atlas_of(stx, piece_id):
-    """The lightmap atlas holding a .pvs atlas entry: the largest atlas id <= the entry's id."""
-    ids = sorted(stx['atlases'])
+    """The lightmap atlas holding a .pvs atlas entry: the largest atlas id <= the entry's id, among the DXT1 atlases
+    (Ladera's one DXT5 atlas, 0x28f, never matched a captured lightmap; entries in its id range belong to the DXT1 atlas
+    before it, as the capture shows for the distant matte terrain)."""
+    ids = sorted(a for a, e in stx['atlases'].items() if e['format'] == 18)
     best = None
     for a in ids:
         if a <= piece_id:

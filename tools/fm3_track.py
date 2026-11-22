@@ -181,8 +181,8 @@ def decode_attributes(mesh):
         return
     raw = np.frombuffer(mesh['raw'], dtype=np.uint8).reshape(n, stride)
     no, u0, u1 = lay
-    if stride == 16 and (mesh.get('name') or '').upper().startswith('SKY'):
-        no, u0 = None, 12  # sky dome: position + u16 UV pair (no normal)
+    if stride == 16:
+        no, u0 = None, 12  # position + u16 UV pair, no normal (the sky dome, the valley backdrop TERR_Valley_001)
     if no is not None:
         w = raw[:, no:no + 4].copy().view('>u4').ravel().astype(np.int64)
 
@@ -204,6 +204,21 @@ def decode_attributes(mesh):
         # stride 28: the lightmap UV (UV1, decoded like UV0, within 0..1) is at byte 24, in some sections at byte 20
         # (matched against captured lightmap coordinates)
         mesh['uv1'] = uv_at(20)
+
+
+def uv_pair(mesh, off):
+    """The u16 pair at byte offset off of every vertex, decoded with the mesh's UV tile and offset (n, 2)."""
+    n, stride = len(mesh['positions']), mesh['stride']
+    raw = np.frombuffer(mesh['raw'], dtype=np.uint8).reshape(n, stride)
+    uv = raw[:, off:off + 4].copy().view('>u2').reshape(n, 2).astype(np.float64) / 65535.0
+    return uv * np.array(mesh.get('uv_tile', (1.0, 1.0))) + np.array(mesh.get('uv_offset', (0.0, 0.0)))
+
+
+def vertex_colour(mesh, off=20):
+    """ARGB8 vertex colour at byte offset off as RGBA floats (n, 4)."""
+    n, stride = len(mesh['positions']), mesh['stride']
+    raw = np.frombuffer(mesh['raw'], dtype=np.uint8).reshape(n, stride)[:, off:off + 4].astype(np.float32) / 255.0
+    return raw[:, [1, 2, 3, 0]]
 
 
 def triangles(mesh):
