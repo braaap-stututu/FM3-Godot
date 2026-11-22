@@ -309,9 +309,16 @@ def materials(cap, path, objs):
     from fir_xenos import Fail
     ps_code = load_vs_code(path, pixel=True)
     out, why = {}, Counter()
+    rng = os.environ.get('FIR_WHY_RANGE')
+    rng = tuple(map(int, rng.split('-'))) if rng else None
+    per_draw = []
     tex_cache = {}
     for p, atoms, W in objs:
         d, regs, g, per_vert, mi, atom_vals, vindex, gid, exports, nv = p
+        if rng and per_draw and per_draw[-1][2] is None:
+            per_draw[-1][2] = dict(why)
+        if rng and rng[0] <= d['seq'] <= rng[1]:
+            per_draw.append([d['seq'], f"{d['ps']:016x}", None, dict(why)])
         code = ps_code.get(d['ps'])
         if code is None:
             why['pixel shader missing'] += 1
@@ -504,6 +511,31 @@ def materials(cap, path, objs):
                 continue
         if pick is None:
             if mode and res:
+                # Only runtime textures (environment / reflection maps): the colour is the shader's output at the
+                # vertices (e.g. FM3's glossy black trim); kept when it is mostly opaque, else left out.
+                dark = None
+                try:
+                    def sample_dark(slot, dim, coords):
+                        v = sample(slot, dim, coords)
+                        t_ = texs.get(slot)
+                        if not (t_ and (3, t_[8], t_[9]) in cap.data):
+                            v = np.full_like(v, 0.08)  # environment / reflection maps: dark (Godot's probe reflects)
+                            v[:, 3] = 1.0
+                        return v
+                    with np.errstate(all='ignore'):
+                        dark = fir_vs.run(code, consts, bools, None, nv, loops, pixel_inputs=pin, sample=sample_dark).color
+                except Fail:
+                    dark = None
+                if dark is not None and np.isfinite(dark).all(axis=1).mean() > 0.5 and color is not None:
+                    cc = np.nanmedian(dark, axis=0)
+                    cc[3] = np.nanmedian(color[:, 3])
+                    if DEBUG_SEQS and d['seq'] in DEBUG_SEQS:
+                        print('  dbg-colour', d['seq'], np.round(cc, 3))
+                    if cc[3] > 0.6:
+                        out[id(p)] = {'uv': None, 'image': None, 'key': None, 'factor': np.clip(cc[:3], 0, 1).tolist() + [1.0],
+                                      'blend': False, 'color': color, 'lightmap': None, 'roughness': 0.3}
+                        why['runtime textures only: colour from the shader output'] += 1
+                        continue
                 out[id(p)] = {'drop': True}  # a blended or cut-out effect whose textures are not available
                 why['blended/cut-out with no usable texture (left out)'] += 1
                 continue
@@ -514,6 +546,13 @@ def materials(cap, path, objs):
                       'factor': [1.0, 1.0, 1.0, 1.0], 'blend': mode, 'color': color,
                       'lightmap': lightmap if lightmap is not None and slot != LIGHTMAP_SLOT else None}
         why['textured'] += 1
+    if per_draw and per_draw[-1][2] is None:
+        per_draw[-1][2] = dict(why)
+    for seq, ps, after, before in per_draw:
+        diff = [k for k in after if after[k] != before.get(k, 0)] if after else ['?']
+        m = out.get(next((id(q[0]) for q in objs if q[0][0]['seq'] == seq), None))
+        desc = 'dropped' if m and m.get('drop') else (f"blend={m['blend']} tex={'y' if m.get('image') is not None else 'n'} factor={[round(x, 2) for x in m['factor']]}" if m else 'no material')
+        print(f'  why {seq} ps {ps}: {diff} -> {desc}')
     for k, v in why.most_common():
         print(f'  materials: {k}: {v}')
     return out
