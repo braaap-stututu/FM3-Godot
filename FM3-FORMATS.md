@@ -27,6 +27,13 @@ web search were not reachable).
 
 - **Verified (FM3):** material records `u32 2, u32 len, name, u32 1` before each mesh's data; index lists (u16, 0xFFFF restart) and
   vertex buffers are uploaded unchanged, so captured draws are found verbatim (`tools/fm3_assets.py`).
+- **Verified (FM3), the whole car** (`tools/fm3_car.py`): part sections (body, trunk, hooda, bumperRa..f, skirtLa..,
+  glassLM, wingrace, ...): a header u32 2, u32 0, u32 0, u32 2, f32[3] car-space offset, f32[3] bbox min, f32[3] bbox
+  max somewhere before the name (for glass panes thousands of bytes before, after their damage data), u32 name length,
+  name, u32 2, u32 vertex count, u32 stride (40), vertices, subsections (u32 2, material name, u32 LOD, u32 index type,
+  u32 material index, ..., UV offset/tile, u32 3, count, size, indices). Vertex: half4 position (car space = xyz * w +
+  part offset; the vertex shader's `mad r4 = r1.xyz * r1.w + c190`), half2 UV0 at byte 8, packed normal/tangent and
+  damage data after. Variants per part group (letters a-g, 'race'); the stock car uses one per group.
 - **FH1/FM4:** strings are `u32 length + bytes`; `array<T>` = `u32 version(1), u32 count, T...`; root u32 (5 car, 3 wheel,
   1 part); CMesh = material/technique name, u32 LOD, u32 primitive (6 strip / 4 list), u32 material index, unpacking
   data, index buffer (FM4 v3: count, format 2/4); VertexBuffer v3 = version, count, stride, flags (bit 0 key follows,

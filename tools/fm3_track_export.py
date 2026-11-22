@@ -32,6 +32,7 @@ import fm3_track  # noqa: E402
 import fm3_tex  # noqa: E402
 import fm3_pvs  # noqa: E402
 import fm3_families  # noqa: E402
+import fm3_car  # noqa: E402
 import fir_read as fr  # noqa: E402
 import re  # noqa: E402
 from fir_world import smooth_normals  # noqa: E402
@@ -61,6 +62,151 @@ def apply_uv(chan, a, b, me):
     if uv is None:
         return None
     return (uv * np.array(a) + np.array(b)).astype(np.float32)
+
+
+CARBIN_DIRS = []  # --carbins DIR[;DIR]: whole cars from their .carbin files instead of the captured draws
+
+
+CAR_FLAT = {k: v for k, v in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'profiles', 'fm3',
+                                                         'car_materials.json'))).items() if isinstance(v, dict) and not v.get('keep')}
+
+
+def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, nodes, materials_out):
+    """Every car of the capture rebuilt from its .carbin (fm3_car.py): the stock parts (the captured variants, mirrored
+    to the other side, else 'a'), placed by a rigid fit of the car's captured draws (carbin car space -> world), with
+    the materials the capture gave each material name (UV0 is the captured texture coordinate). Returns the car names
+    built (their captured body draws are then left out; wheels stay captured)."""
+    fl = os.path.join(capdir, 'fetches.json') if capdir else None
+    recs = dict(caps)
+    if fl and os.path.exists(fl):
+        for r in json.load(open(fl)):
+            recs.setdefault(r['seq'], r)
+
+    def world_of(n):
+        p = ref['meshes'][n['mesh']]['primitives'][0]
+        a = ref['accessors'][p['attributes']['POSITION']]
+        v = ref['bufferViews'][a['bufferView']]
+        P = np.frombuffer(rbin, np.float32, a['count'] * 3, v.get('byteOffset', 0) + a.get('byteOffset', 0)).reshape(-1, 3)
+        M = np.array(n.get('matrix', np.eye(4).ravel())).reshape(4, 4).T
+        return P.astype(np.float64) @ M[:3, :3].T + M[:3, 3], p.get('material')
+    per_car = {}
+    for n in ref['nodes']:
+        mo = re.match(r'draw(\d+) ([a-z0-9_]+)\.([a-z0-9_]+)$', n.get('name', ''))
+        if mo and 'mesh' in n:
+            per_car.setdefault(mo.group(2), []).append((int(mo.group(1)), mo.group(3), n))
+    built = set()
+    for car, draws in per_car.items():
+        path = next((os.path.join(d, car + '.carbin') for d in CARBIN_DIRS
+                     if os.path.exists(os.path.join(d, car + '.carbin'))), None)
+        if path is None:
+            continue
+        secs = fm3_car.parse(open(path, 'rb').read())
+        by_ib = {}
+        for si, sec in enumerate(secs):
+            for sub in sec['subs']:
+                by_ib.setdefault(sub['ib_hex'], (si, sub))
+        X, Y, captured, mat_of = [], [], set(), {}
+        for seq, matname, n in draws:
+            r = recs.get(seq)
+            hit = by_ib.get(r['ib']) if r else None
+            if hit is None:
+                continue
+            si, sub = hit
+            sec = secs[si]
+            W, mat = world_of(n)
+            vi = np.array(r['vindex'])
+            if sec['offset'] is None or len(vi) != len(W) or vi.max() >= len(sec['local']):
+                continue
+            captured.add(sec['name'])
+            if mat is not None:
+                mat_of.setdefault((sec['name'], sub['material']), mat)
+                votes = mat_of.setdefault(('*', sub['material']), {})
+                votes[mat] = votes.get(mat, 0) + len(vi)
+            if sec['name'].startswith(('headlight', 'trunk', 'hood', 'door')):
+                continue  # (movable parts: not used for the fit)
+            X.append(sec['local'][vi] + sec['offset'])
+            Y.append(W)
+        if not X:
+            continue
+        # robust: fit on the largest captured piece, keep the pieces it explains within 2 cm (some parts sit animated or
+        # damage-deformed in the frame), refit on those
+        good, err = [], 1.0
+        for seed in sorted(range(len(X)), key=lambda i: -len(X[i]))[:12]:  # the seed piece that explains most pieces
+            if len(X[seed]) < 4:
+                continue
+            R, t, e = fm3_car.kabsch(X[seed], Y[seed])
+            g_ = [i for i in range(len(X)) if np.abs(X[i] @ R.T + t - Y[i]).max() < 0.02]
+            if sum(len(X[i]) for i in g_) > sum(len(X[i]) for i in good):
+                good, err = g_, e
+        if not good:
+            print(f'  {car}: largest captured piece is not rigid in the carbin ({err:.3f} m), kept the captured draws')
+            continue
+        R, t, err = fm3_car.kabsch(np.concatenate([X[i] for i in good]), np.concatenate([Y[i] for i in good]))
+        if err > 0.05 or len(good) < max(3, len(X) // 3):
+            print(f'  {car}: carbin fit error {err:.3f} m, kept the captured draws')
+            continue
+        keep = fm3_car.stock_parts(secs, captured)
+        # the car's paint: the captured material with a metallic-roughness texture (fir_world writes one only for paint)
+        paint = None
+        for (sn, mn), v in mat_of.items():
+            if sn == '*':
+                for mi_, cnt_ in v.items():
+                    if 'metallicRoughnessTexture' in ref['materials'][mi_].get('pbrMetallicRoughness', {}):
+                        paint = mi_
+        groups = {}
+        for sec in secs:
+            if sec['name'] not in keep or sec['offset'] is None or sec['name'] == 'wheel':
+                continue
+            P = (sec['local'] + sec['offset']) @ R.T + t
+            for sub in sec['subs']:
+                tris = fm3_car.triangles(sub['indices'], sub['prim'])
+                if not len(tris) or tris.max() >= len(P):
+                    continue
+                m_ = mat_of.get((sec['name'], sub['material']))
+                if m_ is None and ('*', sub['material']) in mat_of:
+                    v_ = mat_of[('*', sub['material'])]
+                    m_ = max(v_, key=v_.get)  # the material most of this name's captured vertices had
+                if m_ is None and sub['material'] in ('body', 'body_2') and paint is not None:
+                    m_ = paint
+                if m_ is None and sub['material'] in CAR_FLAT:
+                    m_ = ('flat', sub['material'])
+                groups.setdefault((sub['material'], m_), []).append((P, tris, sec['uv0']))
+        mirrored = np.linalg.det(R) < 0
+        for (matname, matidx), parts in groups.items():
+            Pc = np.concatenate([q[0] for q in parts]).astype(np.float32)
+            Uc = np.concatenate([q[2] for q in parts]).astype(np.float32)
+            off, tl = 0, []
+            for q in parts:
+                tl.append((q[1][:, ::-1] if mirrored else q[1]) + off)
+                off += len(q[0])
+            T = np.concatenate(tl).astype(np.uint32)
+            N = smooth_normals(Pc, T)
+            prim = {'attributes': {}}
+            for attr, arr, typ in (('POSITION', Pc, 'VEC3'), ('NORMAL', N.astype(np.float32), 'VEC3'),
+                                   ('TEXCOORD_0', Uc, 'VEC2')):
+                acc = {'bufferView': add_view(np.ascontiguousarray(arr).tobytes(), 34962), 'componentType': 5126,
+                       'count': len(arr), 'type': typ}
+                if attr == 'POSITION':
+                    acc.update(min=Pc.min(0).tolist(), max=Pc.max(0).tolist())
+                accessors.append(acc)
+                prim['attributes'][attr] = len(accessors) - 1
+            accessors.append({'bufferView': add_view(T.tobytes(), 34963), 'componentType': 5125, 'count': int(T.size),
+                              'type': 'SCALAR'})
+            prim['indices'] = len(accessors) - 1
+            if isinstance(matidx, tuple):
+                r_ = CAR_FLAT[matidx[1]]
+                materials_out.append({'name': matidx[1], 'doubleSided': True, 'pbrMetallicRoughness': {
+                    'baseColorFactor': list(r_.get('color', [0.5, 0.5, 0.5])) + [float(r_.get('alpha', 1.0))],
+                    'metallicFactor': r_.get('metallic', 0.0), 'roughnessFactor': r_.get('roughness', 1.0)},
+                    **({'alphaMode': 'BLEND'} if r_.get('alpha', 1.0) < 1.0 else {})})
+                prim['material'] = len(materials_out) - 1
+            elif matidx is not None:
+                prim['material'] = copy_mat(matidx)
+            meshes.append({'name': f'{car}.{matname}', 'primitives': [prim]})
+            nodes.append({'mesh': len(meshes) - 1, 'name': f'carbin_{car}_{matname}_{len(meshes) - 1}'})
+        built.add(car)
+        print(f'  {car}: {len(keep)} parts from the carbin (fit {err * 1000:.1f} mm over {len(good)} of {len(X)} captured pieces)')
+    return built
 
 
 def import_dynamic(ref_path, capdir, src, add_view, accessors, materials, images, textures, meshes, nodes, tex_out):
@@ -112,7 +258,8 @@ def import_dynamic(ref_path, capdir, src, add_view, accessors, materials, images
             mat_map[i] = len(materials) - 1
         return mat_map[i]
 
-    count = 0
+    built = build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, nodes, materials) if CARBIN_DIRS else set()
+    count = len(built)
     for n in ref['nodes']:
         if 'mesh' not in n:
             continue
@@ -120,6 +267,8 @@ def import_dynamic(ref_path, capdir, src, add_view, accessors, materials, images
         if not mo:
             continue
         car = bool(mo.group(2).strip())
+        if car and mo.group(2).strip().split('.')[0] in built:
+            continue  # rebuilt whole from its .carbin
         rec = caps.get(int(mo.group(1)))
         if not car and (rec is None or blob.find(bytes.fromhex(rec['vb_head'])[:32]) >= 0):
             continue
@@ -482,6 +631,8 @@ def main():
                 img = img.copy()
                 img[..., 3] = 255
                 fr.write_png(os.path.join(tex_out, 'envcube_%d.png' % k), img.shape[1], img.shape[0], img.tobytes())
+    if '--carbins' in sys.argv:
+        CARBIN_DIRS.extend(sys.argv[sys.argv.index('--carbins') + 1].split(';'))
     if '--dynamic-from' in sys.argv:
         ndyn = import_dynamic(sys.argv[sys.argv.index('--dynamic-from') + 1], capdir, src, add_view, accessors, materials,
                               images, textures, meshes, nodes, tex_out)
