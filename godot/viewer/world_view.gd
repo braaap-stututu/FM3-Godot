@@ -249,11 +249,12 @@ func _init() -> void:
 			if mi.mesh.surface_get_format(s) & Mesh.ARRAY_FORMAT_COLOR:
 				m.vertex_color_use_as_albedo = true  # (the cockpit's baked brightness, fm3_track_export.py)
 			if m.resource_name.contains("gauge") and m.albedo_texture != null:
-				# cockpit gauges glow (the game's gauge_emissive technique, GaugeEmissiveScale in shadersettings.xml)
-				m.emission_enabled = true
-				m.emission_texture = m.albedo_texture
-				m.emission = Color(1, 1, 1)
-				m.emission_energy_multiplier = 0.6
+				# cockpit gauges: lit markings (the texture's alpha) on a dark face (fm3_gauge.gdshader)
+				var gm := ShaderMaterial.new()
+				gm.shader = load("res://viewer/fm3_gauge.gdshader")
+				gm.set_shader_parameter("tex", m.albedo_texture)
+				mi.set_surface_override_material(s, gm)
+				continue
 			mi.set_surface_override_material(s, m)
 	if id_mode:
 		var fa := FileAccess.open(_out + ".ids.txt", FileAccess.WRITE)
@@ -834,8 +835,12 @@ func _show_drawn(now: float) -> void:
 		else:
 			# (the body stays as a shadow caster only: its roof and doors still shade the cabin, as in the game)
 			var own: int = part[6]
+			# Meshes that cast no shadow (glass, the exterior model's own low-detail interior and dash) are hidden outright:
+			# as SHADOWS_ONLY they would stay drawn, the outside view's dash over the cockpit's.
 			if own != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
 				gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY if mine else own
+			elif int(part[3]) < 0:
+				gi.visible = not mine
 	for part in _car_parts:
 		var wk: int = part[3]
 		if int(part[4]) >= 0:

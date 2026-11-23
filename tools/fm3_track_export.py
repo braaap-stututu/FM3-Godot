@@ -99,9 +99,11 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
         return P.astype(np.float64) @ M[:3, :3].T + M[:3, 3], p.get('material')
     xds_tex, xds_mat = {}, {}
 
-    def xds_texture(zdir, stem):
-        """glTF texture index of <zdir>/<stem>.xds decoded to a PNG in tex_out (once), or None."""
-        key = (zdir, stem)
+    def xds_texture(zdir, stem, opaque=False):
+        """glTF texture index of <zdir>/<stem>.xds decoded to a PNG in tex_out (once), or None. opaque: alpha set to
+        255 (a '_rgb' copy, for materials that use the colour where the alpha is 0: Godot's import fills fully
+        transparent pixels with their neighbours' colour, the cockpit gauges' dark faces came out white)."""
+        key = (zdir, stem, opaque)
         if key not in xds_tex:
             src = os.path.join(zdir, stem + '.xds')
             img = fm3_tex.load_xds(src) if os.path.exists(src) else None
@@ -109,17 +111,20 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                 xds_tex[key] = None
             else:
                 os.makedirs(tex_out, exist_ok=True)
-                name = f'car_{os.path.basename(zdir)}_{stem}.png'
+                name = f'car_{os.path.basename(zdir)}_{stem}{"_rgb" if opaque else ""}.png'
+                if opaque:
+                    img = img.copy()
+                    img[..., 3] = 255
                 fr.write_png(os.path.join(tex_out, name), img.shape[1], img.shape[0], np.ascontiguousarray(img).tobytes())
                 images.append({'uri': os.path.basename(tex_out) + '/' + name})
                 textures.append({'source': len(images) - 1, 'sampler': 0})
                 xds_tex[key] = len(textures) - 1
         return xds_tex[key]
 
-    def xds_material(zdir, stem, mname, cutout=False):
-        key = (zdir, stem, mname, cutout)
+    def xds_material(zdir, stem, mname, cutout=False, opaque=False):
+        key = (zdir, stem, mname, cutout, opaque)
         if key not in xds_mat:
-            ti = xds_texture(zdir, stem)
+            ti = xds_texture(zdir, stem, opaque)
             if ti is None:
                 xds_mat[key] = None
             else:
@@ -363,7 +368,8 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                         m_ = ('flat', 'window')  # (the game's mirrors are render targets: dark reflective glass here)
                     else:
                         m_ = xds_material(zdir, 'nodamage_lod0' if outside else 'interior_lod0', 'cockpit_' + mname,
-                                          cutout=mname in ('emblem', 'badge'))
+                                          cutout=mname in ('emblem', 'badge'),
+                                          opaque='gauge' in mname)  # (dark faces, white markings, alpha 0)
                     # baked brightness (vertex byte 20) as a vertex colour: 107 = open sky (the hood's highest); linear
                     lit = None
                     if sec.get('light') is not None and not mname.startswith('gauge'):  # (gauges glow: GaugeEmissiveScale)
