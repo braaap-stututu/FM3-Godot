@@ -29,7 +29,7 @@ uniform float spec_gain = 1.4;  // the sun's highlight
 uniform float spec_power = 75.0;
 uniform float fresnel_power = 4.0;
 
-varying vec3 base_g;
+#include "res://viewer/fm3_livecube.gdshaderinc"
 
 vec3 to_linear(vec3 c) {
 	c = max(c, vec3(0.0));
@@ -49,7 +49,7 @@ void light() {
 		float up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y * 0.5 + 0.5;
 		DIFFUSE_LIGHT += to_linear(mix(ambient_ground, ambient, up) + sun * ndl * sh);
 		vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
-		vec3 env = has_env ? texture(env_cube, r * env_flip).rgb : env_fallback;
+		vec3 env = has_live ? live_cube(r) : (has_env ? texture(env_cube, r * env_flip).rgb : env_fallback);
 		float cosv = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 		float fres = refl_f0 + (1.0 - refl_f0) * pow(1.0 - cosv, fresnel_power);
 		float spec = pow(max(dot(reflect(-LIGHT, NORMAL), VIEW), 0.0), spec_power) * sh;

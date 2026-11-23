@@ -969,7 +969,10 @@ def write_gltf(out, objs, cam, mats=None, merge=False, sun=None):
     nodes.append({'camera': 0, 'matrix': C.T.ravel().tolist(), 'name': 'capture_camera'})
     if sun is not None:
         # A glTF directional light shines along its node's -Z: +Z points at the sun.
-        z = s3 @ sun
+        # The sun constants are in the game's own world space (the paint shader's c136 is the same vector), which maps
+        # to this glTF by the z mirror F = diag(1, 1, -1) (fitted with the live camera and the car matrices, 2026-11-23),
+        # not by the capture world's mirror s3: with s3 the shadows fell backwards (behind the cars, not ahead-left).
+        z = np.diag([1.0, 1.0, -1.0]) @ sun
         x = np.cross([0.0, 1.0, 0.0], z)
         x /= np.linalg.norm(x)
         y = np.cross(z, x)

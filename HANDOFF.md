@@ -170,10 +170,20 @@ stream, the car matrix, the checks, smoothness, test scripts in `tools\live\`, w
 The items below (the offline scene) still apply.
 
 1. Cars (2026-11-23 the user asked to "fix the cars completely"; done: all eight from their carbin, paint and glass
-   shaders, live wheel matrices). Left: wheel motion blur at speed (the game swaps in its `blur_*` wheel meshes; the
-   viewer keeps the grid's sharp spokes, so the spin is not checkable by eye yet), the shadow blob (too big, behind the
-   car instead of beside it), a faint stripe on the Eclipse's doors (normals?), reflections of the live surroundings
-   (the game renders a cube per frame; the viewer uses the layout's static cube), the C4's highlights too strong.
+   shaders, live wheel matrices; then the same day: wheel motion blur, shadows, live reflections, see below). Left: a
+   faint stripe on the Eclipse's doors (normals?), the C4's highlights too strong, far cars' glass reflecting the
+   player car's cube (one cube for all cars; the game has one per car?), cars not reflected in each other (layer 2 is
+   left out of the cube). Not cars: the race's traffic cones (placed by the race, not in the .pvs) are missing, and the
+   game's full-screen motion blur at speed.
+   - Shadows fell backwards: fir_world.py converted the sun with the capture's x mirror; the sun constants are in the
+     game's world (= the paint shader's c136), mapped by F = diag(1,1,-1) like the car matrices. Fixed in the export.
+   - Wheel motion blur: the captured `blur_*` wheel meshes are hidden at rest and fade in between 4 and 14 m/s (the car's
+     speed from its streamed positions), the sharp ones fade out (GeometryInstance3D.transparency). A frozen game reads
+     as speed 0: check it with `tools\live\live_compare.ps1 -NoFreeze`.
+   - Live reflections: `--live-cube N` (default 128 px a face, 0 = the static cube): six cameras at the player car render
+     viewports every frame (as the game renders its car cube every frame), looked up by the car shaders
+     (`fm3_livecube.gdshaderinc`); car meshes on render layer 2, which the cube leaves out. Paint per-pixel diff 18.0 ->
+     16.0 on the grid, live race at 12 s 28.2 -> 24.7; glass reflection refitted to 3.5.
 2. (done 2026-11-23: car paint reflections, see item 1.)
 3. Road-edge and shoulder-grass recipes are inferred (no captured example); the lake has no animated normals;
    chain-link fences' UVs; props only for Ribbon_04 (other layouts: pick another `.pvs`).

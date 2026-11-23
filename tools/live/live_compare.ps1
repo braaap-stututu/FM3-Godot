@@ -7,7 +7,9 @@
 #
 # -Steps name:seconds,...: let the race run that long, freeze (FM3_FREEZE_TIME), compare. -Cameras N: on the grid, press
 # RB N times (the next camera view each) and compare each view. Output: frame-ir\out\live\compare\<name>-{game,godot,cmp}.png
-param([switch]$AiPlayer, [string]$Steps = '', [int]$Cameras = 0)
+# -NoFreeze: take each step's pictures while the race runs (the game's and Godot's then differ by milliseconds; for
+# what freezing hides, e.g. the wheels' motion blur, which the viewer takes from the cars' speed).
+param([switch]$AiPlayer, [string]$Steps = '', [int]$Cameras = 0, [switch]$NoFreeze)
 $ErrorActionPreference = 'Stop'
 $g = (Resolve-Path "$PSScriptRoot\..\..\..").Path
 $r = (Resolve-Path "$g\..\FM3-ReGPU recomp").Path
@@ -57,9 +59,13 @@ try {
         $name, $sec = $s -split ':'
         Fm3 'env FM3_FREEZE_TIME 0' | Out-Null
         Start-Sleep ([int]$sec)
-        Fm3 'env FM3_FREEZE_TIME 1' | Out-Null
-        Start-Sleep 2
-        Compare-View $name
+        if ($NoFreeze) {
+            Compare-View $name
+        } else {
+            Fm3 'env FM3_FREEZE_TIME 1' | Out-Null
+            Start-Sleep 2
+            Compare-View $name
+        }
     }
     Select-String -Path $glog -Pattern 'live (car|director)' | ForEach-Object { $_.Line }
 } finally {

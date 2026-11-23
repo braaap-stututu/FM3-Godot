@@ -15,10 +15,13 @@ uniform vec3 env_flip = vec3(-1.0, 1.0, 1.0);
 // game reflecting a cube of its live surroundings, this the static one).
 uniform float opacity = 0.95;  // how little of what is behind shows through
 uniform float body_level = 0.04;  // the dark body's brightness (gamma)
-uniform float refl_gain = 2.5;
+uniform float refl_gain = 3.5;  // (with the live reflection cube, whose surroundings are darker than the static cube's sky;
+                                // 2.5 fitted the static cube)
 uniform float refl_f0 = 0.0;  // (head-on the game's windows are dark: the CR-X's rear glass)
 uniform float spec_gain = 2.0;
 uniform float spec_power = 120.0;
+
+#include "res://viewer/fm3_livecube.gdshaderinc"
 
 vec3 to_linear(vec3 c) {
 	c = max(c, vec3(0.0));
@@ -27,7 +30,7 @@ vec3 to_linear(vec3 c) {
 
 void fragment() {
 	vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
-	vec3 env = has_env ? texture(env_cube, r * env_flip).rgb : env_fallback;
+	vec3 env = has_live ? live_cube(r) : (has_env ? texture(env_cube, r * env_flip).rgb : env_fallback);
 	float cosv = clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0);
 	float fres = refl_f0 + (1.0 - refl_f0) * pow(1.0 - cosv, 5.0);
 	vec3 tint = albedo_color.rgb / max(max(albedo_color.r, max(albedo_color.g, albedo_color.b)), 1e-3);

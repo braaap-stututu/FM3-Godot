@@ -42,6 +42,8 @@ var _live_has_drawn := false  # "FM3V" (the drawn camera) seen: the main view fo
 var _live_frames := []  # the game's last drawn frames: {t (game clock, s), cam, fov, cars: {car: matrix}}
 var _car_inv := {}  # car -> its matrix at attach time, inverted
 var _wheels := {}  # car -> its latest four wheel matrices (glTF space)
+var _car_prev := {}  # car -> [position (game space), game time]: for its speed
+var _car_speed := {}  # car -> speed, m/s (smoothed)
 var _wheel_inv := {}  # car -> its four wheel matrices at attach time, inverted
 var _clock_off := INF  # Godot clock minus game clock (smallest seen)
 var _frame_dt := 1.0 / 120.0  # the game's frame interval (smoothed)
@@ -102,6 +104,8 @@ func _init() -> void:
 				_live_port = int(args[i + 1]); i += 1
 			"--live-raw":
 				_live_raw = true
+			"--live-cube":  # the live reflection cube's face size in pixels (0 = the layout's static cube)
+				_live_cube_size = int(args[i + 1]); i += 1
 			"--live-smooth":  # average the shown motion over this many game frames (0 = off)
 				_live_smooth = float(args[i + 1]); i += 1
 			"--fps":  # cap the viewer's frame rate (vsync stays on)
@@ -155,6 +159,7 @@ func _init() -> void:
 	grey_unshaded.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	grey_unshaded.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var id_lines := PackedStringArray()
+	var car_centres := []
 	for n in scene.find_children("*", "MeshInstance3D", true, false):
 		var mi := n as MeshInstance3D
 		meshes += 1
@@ -167,6 +172,13 @@ func _init() -> void:
 			mi.material_override = im
 			id_lines.append("%d %s" % [k, mi.get_parent().name if mi.name.begins_with("Mesh") or mi.name == "" else mi.name])
 			continue
+		# A wheel's motion-blur meshes (the game's blur_rim / blur_lip ...): faded in with the car's speed when live, so
+		# hidden at rest (the grid).
+		if _is_blur_wheel(mi):
+			mi.transparency = 1.0
+		if _is_car_mesh(mi):
+			mi.layers = 2  # (left out of the live reflection cube)
+			car_centres.append(mi.global_transform * mi.get_aabb().get_center() if mi.is_inside_tree() else mi.transform * mi.get_aabb().get_center())
 		# The sky dome (unlit) surrounds everything: as a shadow caster it would shade the whole scene.
 		for s0 in mi.mesh.get_surface_count():
 			var m0 := mi.mesh.surface_get_material(s0) as BaseMaterial3D
@@ -314,6 +326,17 @@ func _init() -> void:
 	print("world_view: camera ", cam.global_transform if cam.is_inside_tree() else cam.transform, " parent ", cam.get_parent().name)
 	print("world_view: %d surfaces lit by FM3's baked lightmaps (%d without an albedo texture)" % [baked, baked_no_tex])
 	print("world_view: %d mesh instances, camera fov %.2f near %.3f" % [meshes, cam.fov, cam.near])
+	if lit and _live_cube_size > 0 and not _car_mats.is_empty():
+		# at the player car: the car meshes' centre nearest the camera, 0.8 m up (live: it follows that car)
+		var co: Vector3 = cam.global_transform.origin if cam.is_inside_tree() else cam.transform.origin
+		var best := co
+		var best_d := INF
+		for c in car_centres:
+			var d := (c as Vector3).distance_to(co)
+			if d < best_d:
+				best_d = d
+				best = c
+		_make_live_cube(best + Vector3(0, 0.8, 0))
 	if _live_port > 0:
 		_udp = PacketPeerUDP.new()
 		var err := _udp.bind(_live_port, "127.0.0.1")
@@ -353,6 +376,7 @@ func _env_cube(gltf_path: String, tex_dir: String) -> Cubemap:
 func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: String, names: Array) -> ShaderMaterial:
 	var sm := ShaderMaterial.new()
 	sm.shader = shader
+	_car_mats.append(sm)
 	sm.set_shader_parameter("albedo_color", m.albedo_color)
 	sm.set_shader_parameter("metallic", m.metallic)
 	if m.albedo_texture != null:
@@ -372,6 +396,54 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 			var c := e.split_floats(",")
 			sm.set_shader_parameter(extra[1], Vector3(c[0], c[1], c[2]))
 	return sm
+
+
+# The live reflection cube (--live-cube N, default 128 px a face; 0 = the layout's static cube): six cameras at the
+# player car render the scene into viewports each frame, as the game renders its car reflection cube each frame; the
+# car paint and glass shaders look it up (fm3_livecube.gdshaderinc). Car meshes are on render layer 2, which the cube's
+# cameras leave out (a car would otherwise reflect its own cabin).
+const LIVE_DIRS = [Vector3.RIGHT, Vector3.LEFT, Vector3.UP, Vector3.DOWN, Vector3.BACK, Vector3.FORWARD]  # +x -x +y -y +z -z
+const LIVE_UPS = [Vector3.UP, Vector3.UP, Vector3.FORWARD, Vector3.BACK, Vector3.UP, Vector3.UP]  # (+y: up -z; -y: up +z)
+var _live_cube_size := 128
+var _live_cube_cams := []
+var _car_mats := []
+
+
+func _make_live_cube(at: Vector3) -> void:
+	var texs := []
+	for k in 6:
+		var vp := SubViewport.new()
+		vp.size = Vector2i(_live_cube_size, _live_cube_size)
+		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		vp.positional_shadow_atlas_size = 0
+		vp.mesh_lod_threshold = 4.0  # (small faces: coarser LODs are fine)
+		var c := Camera3D.new()
+		c.fov = 90.0
+		c.keep_aspect = Camera3D.KEEP_HEIGHT
+		c.near = 0.05
+		c.far = 3000.0
+		c.cull_mask = 0xFFFFF & ~2  # (not layer 2: the cars)
+		vp.add_child(c)
+		root.add_child(vp)
+		_live_cube_cams.append(c)
+		texs.append(vp.get_texture())
+	_place_live_cube(at)
+	for sm in _car_mats:
+		(sm as ShaderMaterial).set_shader_parameter("has_live", true)
+		for k in 6:
+			(sm as ShaderMaterial).set_shader_parameter("live%d" % k, texs[k])
+	print("world_view: live reflection cube, %d px a face, at %s" % [_live_cube_size, at])
+
+
+func _place_live_cube(at: Vector3) -> void:
+	for k in _live_cube_cams.size():
+		var c: Camera3D = _live_cube_cams[k]
+		c.global_transform = Transform3D(Basis(), at).looking_at(at + LIVE_DIRS[k], LIVE_UPS[k])
+
+
+static func _is_car_mesh(mi: Node) -> bool:
+	var n := String(mi.name) + " " + String(mi.get_parent().name if mi.get_parent() else "")
+	return n.begins_with("carbin_") or n.to_lower().contains("wheel") or RegEx.create_from_string("draw\\d+_[a-z]+_[a-z0-9]+_\\d\\d").search(n) != null
 
 
 var _tex_cache := {}
@@ -494,6 +566,11 @@ static func car_transform(b: PackedByteArray, axes: PackedFloat32Array) -> Trans
 	return Transform3D(Basis(r[0], r[1], r[2]), r[3])
 
 
+static func _is_blur_wheel(mi: Node) -> bool:
+	var n := (String(mi.name) + " " + String(mi.get_parent().name if mi.get_parent() else "")).to_lower()
+	return n.contains("wheel") and n.contains("blur")
+
+
 # Wheel k of an FM3W datagram (its world matrix as drawn) in the glTF's world, mirrored like car_transform.
 static func wheel_transform(b: PackedByteArray, k: int, axes: PackedFloat32Array) -> Transform3D:
 	var s := Vector3(axes[0], axes[1], axes[2])
@@ -542,7 +619,7 @@ func _attach_cars() -> void:
 						if d < best_d:
 							best_d = d
 							wk = k
-				_car_parts.append([m, car, m.global_transform, wk])
+				_car_parts.append([m, car, m.global_transform, wk, (1 if _is_blur_wheel(m) else 0) if wk >= 0 else -1])
 				per_car[car] = per_car.get(car, 0) + 1
 				if wk >= 0:
 					per_wheel[car] = per_wheel.get(car, 0) + 1
@@ -633,6 +710,15 @@ func _live_step() -> void:
 			continue
 		if magic == "FM3K":
 			var car := int(b.decode_u32(12))
+			# The car's speed (m/s, smoothed) from its positions and the game's timestamps: the wheels' motion blur.
+			var pos := Vector3(b.decode_float(64), b.decode_float(68), b.decode_float(72))
+			var tk := b.decode_double(88)
+			if _car_prev.has(car):
+				var dtk := tk - float(_car_prev[car][1])
+				if dtk > 0.002 and dtk < 0.2:
+					_car_speed[car] = lerpf(float(_car_speed.get(car, 0.0)), pos.distance_to(_car_prev[car][0]) / dtk, 0.2)
+			if not _car_prev.has(car) or tk - float(_car_prev[car][1]) > 0.002:
+				_car_prev[car] = [pos, tk]
 			_cars[car] = b
 			if _car_first_ms == 0:
 				_car_first_ms = Time.get_ticks_msec()
@@ -716,10 +802,26 @@ func _show_drawn(now: float) -> void:
 	var wmoves: Dictionary = s.get("wmoves", {})
 	for part in _car_parts:
 		var wk: int = part[3]
+		if int(part[4]) >= 0:
+			# Wheel motion blur: the game's blurred wheel meshes fade in between 4 and 14 m/s (fully blurred at the 67 km/h
+			# of the captured race), the sharp rim and spokes out.
+			var blur := smoothstep(4.0, 14.0, float(_car_speed.get(part[1], 0.0)))
+			(part[0] as GeometryInstance3D).transparency = (1.0 - blur) if int(part[4]) == 1 else blur
 		if wk >= 0 and wmoves.has(part[1]):
 			(part[0] as Node3D).global_transform = (wmoves[part[1]][wk] as Transform3D) * (part[2] as Transform3D)
 		elif moves.has(part[1]):
 			(part[0] as Node3D).global_transform = (moves[part[1]] as Transform3D) * (part[2] as Transform3D)
+	if not _live_cube_cams.is_empty():
+		# the live reflection cube follows the player car (the car nearest the camera), 0.8 m above its origin
+		var pc := Vector3.ZERO
+		var pd := INF
+		for car in moves:
+			var o: Vector3 = (moves[car] as Transform3D) * ((_car_inv[car] as Transform3D).affine_inverse().origin)
+			if o.distance_to(cam.origin) < pd:
+				pd = o.distance_to(cam.origin)
+				pc = o
+		if pd < INF:
+			_place_live_cube(pc + Vector3(0, 0.8, 0))
 	if _live_log != null:
 		# What this viewer frame shows: the camera and the car nearest to it (the one it follows).
 		var best := -1
