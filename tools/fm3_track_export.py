@@ -351,7 +351,16 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                 if sec['name'].endswith(('race', '_mid', '_max')):
                     continue
                 needle = None
-                if sec['name'].endswith('_min'):
+                if sec['name'] == 'steering_wheel':
+                    needle = steering_turn((sec['local'] + sec['offset']) @ R.T + t,
+                                           [(q['local'] + q['offset']) @ R.T + t for q in csecs
+                                            if q['name'] in ('seatL', 'seatR')])
+                    if needle is not None:
+                        needle.update(gauge='steering', car=car)
+                        turns = car_attrib(os.path.join(zdir, 'carattribs.xml'), 'SteeringWheelAngleOverride')
+                        if turns:
+                            needle['game_deg'] = 360.0 * turns  # (the CR-X's 0.206 = 74 deg; its in-car pictures: ~73)
+                elif sec['name'].endswith('_min'):
                     gname = sec['name'][:-4]
                     mid, mx = byname.get(gname + '_mid'), byname.get(gname + '_max')
                     if mid is not None and mx is not None:
@@ -524,6 +533,15 @@ def import_dynamic(ref_path, capdir, src, add_view, accessors, materials, images
     return count
 
 
+def car_attrib(path, name):
+    """A float <name value="..."/> of carattribs.xml, or None."""
+    if not os.path.exists(path):
+        return None
+    import xml.etree.ElementTree as ET
+    e = ET.parse(path).getroot().find(name)
+    return float(e.get('value')) if e is not None and e.get('value') else None
+
+
 def gauge_ticks(path):
     """carattribs.xml's <Gauges>: {'speed' | 'tach' | 'fuel' | 'boost': [[param, value], ...]}; param 0..1 is the needle
     from its _min to its _max part, value in the game's units (speed m/s, tach rpm)."""
@@ -535,6 +553,21 @@ def gauge_ticks(path):
     for e in (list(g) if g is not None else []):
         out[e.tag.lower()] = [[float(k.get('Param')), float(k.get('Value'))] for k in e.findall('TickMark')]
     return out
+
+
+def steering_turn(P, seats):
+    """The cockpit steering wheel's turn: pivot = the middle of its bounds, axis = the normal of its plane (the
+    smallest spread of its vertices) pointing towards the nearer seat (the driver); turning right is clockwise seen from
+    there, a negative angle about this axis. None without seats."""
+    if len(P) < 8 or not seats:
+        return None
+    pivot = (P.min(0) + P.max(0)) / 2
+    _, _, Vt = np.linalg.svd(P - P.mean(0), full_matrices=False)
+    axis = Vt[2]
+    seat = min((q.mean(0) for q in seats), key=lambda c: float(np.linalg.norm(c - pivot)))
+    if float((seat - pivot) @ axis) < 0:
+        axis = -axis
+    return {'pivot': pivot.tolist(), 'axis': axis.tolist()}
 
 
 def needle_turn(a, m, b):

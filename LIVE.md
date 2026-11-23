@@ -15,7 +15,14 @@ Three stages, each usable on its own:
    `Fm3 "env FM3_LIVE 1"` after dot-sourcing `tools\fm3ctl.ps1`). The log says `live: camera stream to 127.0.0.1:7342`.
 3. `frame-ir\live.cmd` (from the Godot folder: `& '.\frame-ir\live.cmd'`). Tab = the next camera director (the
    player view, the rear-view mirror), Esc quits. Creating `out\world\live.png.shot` saves the next frame to
-   `out\world\live.png`.
+   `out\world\live.png`. **F7** cycles the cockpit steering wheel (2026-11-24; start with `--steering-wheel
+   game|input|off`):
+   - `game` (default): as FM3 turns it. Steering input × the car's `SteeringWheelAngleOverride` turns (CR-X 0.206 =
+     74°; its in-car pictures show ~73°); cars without one get 90°, a guess (the game's default is not measured).
+   - `input`: 1:1 with a real racing wheel. Steering input × half the wheel's lock (`wheel_lock` in FM3's settings,
+     streamed); with a pad, `--wheel-lock DEG` (default 900).
+   - `off`: no steering wheel.
+   The steering input comes in "FM3E" v2 (player 1's `lx` as the game reads it, from `ReadPad`).
 
 **Start the viewer while the game is at the capture's grid** (the test grid event, before the start): Godot attaches
 its car meshes to the streamed cars by where they are at that moment (below). Only the Ladera layout `Ribbon_04` has

@@ -51,6 +51,16 @@ var _frame_dt := 1.0 / 120.0  # the game's frame interval (smoothed)
 var _live_raw := false  # --live-raw: the newest frame, no interpolation
 var _live_last_now := 0.0
 var _engine_rpm := -1.0  # the player's engine speed ("FM3E"; -1 = none yet): the cockpit tach
+# The cockpit steering wheel (--steering-wheel game|input|off, F7 cycles them while running):
+#   game  = as FM3 turns it: player 1's steering input x the car's wheel angle (carattribs, STEER_GAME_DEG)
+#   input = 1:1 with a real racing wheel: the input x half its lock (wheel_lock, streamed; --wheel-lock DEG for a pad)
+#   off   = no steering wheel drawn
+const STEER_MODES := ["game", "input", "off"]
+var _steer_mode := "game"
+var _steer := 0.0  # player 1's steering input, -1..1 ("FM3E" v2)
+var _steer_lock := 0.0  # the racing wheel's lock in degrees as the game has it set (0 = no wheel)
+var _wheel_lock_arg := 900.0  # --wheel-lock: the lock "input" uses when the game reports no wheel
+var _f7 := false
 var _live_vtable := 0  # the game's active camera (its vtable, from the drawn-camera datagrams)
 var _live_smooth := 1.0  # --live-smooth W: the shown motion averaged over W game frames (0 = off: 8 ms less delay at 60)
 var _view_t := 0.0  # the viewer's steadied clock
@@ -112,6 +122,12 @@ func _init() -> void:
 				_live_port = int(args[i + 1]); i += 1
 			"--live-raw":
 				_live_raw = true
+			"--steering-wheel":  # game | input | off (F7 cycles)
+				_steer_mode = args[i + 1]; i += 1
+				if not STEER_MODES.has(_steer_mode):
+					push_error("--steering-wheel: game, input or off"); _steer_mode = "game"
+			"--wheel-lock":  # degrees of real-wheel travel for full steering, for "input" without a wheel in the game
+				_wheel_lock_arg = float(args[i + 1]); i += 1
 			"--live-cube":  # the live reflection cube's face size in pixels (0 = the layout's static cube)
 				_live_cube_size = int(args[i + 1]); i += 1
 			"--live-smooth":  # average the shown motion over this many game frames (0 = off)
@@ -609,6 +625,18 @@ static func wheel_transform(b: PackedByteArray, k: int, axes: PackedFloat32Array
 # (m/s, from its streamed matrices); tach: the player's engine speed ("FM3E"; idle until one comes); fuel: full.
 func needle_turn(n: Dictionary, car) -> Transform3D:
 	var gauge := String(n.get("gauge", ""))
+	if gauge == "steering":
+		# turning right = clockwise seen from the driver = negative about the axis (which points at the driver)
+		var deg := 0.0
+		if _steer_mode == "input":
+			deg = _steer * 0.5 * (_steer_lock if _steer_lock > 0.0 else _wheel_lock_arg)
+		elif _steer_mode == "game":
+			deg = _steer * float(n.get("game_deg", STEER_GAME_DEG))
+		var ax: Array = n["axis"]
+		var pv0: Array = n["pivot"]
+		var sb := Basis(Vector3(ax[0], ax[1], ax[2]).normalized(), -deg_to_rad(deg))
+		var sp := Vector3(pv0[0], pv0[1], pv0[2])
+		return Transform3D(sb, sp - sb * sp)
 	var param := 0.0
 	if gauge == "fuel":
 		param = 1.0
@@ -627,6 +655,10 @@ func needle_turn(n: Dictionary, car) -> Transform3D:
 
 
 const NEEDLE_IDLE_RPM := 900.0
+# FM3's own cockpit wheel at full steering input: carattribs.xml SteeringWheelAngleOverride in turns (the export's
+# game_deg; the CR-X's 0.206 = 74 deg matches its in-car pictures, ~73); cars without one (0) take the game's default,
+# not measured yet: this guess.
+const STEER_GAME_DEG := 90.0
 
 
 func needle_param(ticks: Array, value: float) -> float:
@@ -709,6 +741,11 @@ func _live_step() -> void:
 	if Input.is_key_pressed(KEY_ESCAPE):
 		quit(0)
 		return
+	var f7 := Input.is_key_pressed(KEY_F7)
+	if f7 and not _f7:
+		_steer_mode = STEER_MODES[(STEER_MODES.find(_steer_mode) + 1) % STEER_MODES.size()]
+		print("world_view: steering wheel: %s" % _steer_mode)
+	_f7 = f7
 	var tab := Input.is_key_pressed(KEY_TAB)
 	if tab and not _live_tab and _live_dirs.size() > 1:
 		_live_director = _live_dirs[(_live_dirs.find(_live_director) + 1) % _live_dirs.size()]
@@ -734,9 +771,13 @@ func _live_step() -> void:
 	var now := _view_t
 	while _udp.get_available_packet_count() > 0:
 		var b := _udp.get_packet()
-		if b.size() == 32 and b.slice(0, 4).get_string_from_ascii() == "FM3E" and b.decode_u32(4) == 1:
-			# The player's engine speed (rpm) and redline: only the player's cockpit is shown, so its tach takes this.
+		if b.slice(0, 4).get_string_from_ascii() == "FM3E" and b.size() >= 32:
+			# The player's engine speed (rpm) and redline: only the player's cockpit is shown, so its tach takes this;
+			# v2 also player 1's steering input and the racing wheel's lock (the cockpit steering wheel).
 			_engine_rpm = b.decode_float(12)
+			if b.decode_u32(4) >= 2 and b.size() >= 40:
+				_steer = clampf(b.decode_float(20), -1.0, 1.0)
+				_steer_lock = float(b.decode_u32(24))
 			continue
 		if b.size() == 280 and b.slice(0, 4).get_string_from_ascii() == "FM3W" and b.decode_u32(4) == 1:
 			# A car's four wheels as drawn (spin and steering), right after that car's datagram.
@@ -883,7 +924,7 @@ func _show_drawn(now: float) -> void:
 		var mine: bool = int(part[1]) == player and in_car
 		var gi := part[0] as GeometryInstance3D
 		if bool(part[5]):
-			gi.visible = mine
+			gi.visible = mine and not (_steer_mode == "off" and part[7] != null and part[7].get("gauge") == "steering")
 		else:
 			# (the body stays as a shadow caster only: its roof and doors still shade the cabin, as in the game)
 			var own: int = part[6]
