@@ -39,8 +39,13 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
 - **Phase 4 done for the in-car view:** `cockpit_<car>_...` nodes from `<car>_cockpit.carbin`, shown for the player
   car when the game's camera is the driver / cockpit one, with the exterior's no-shadow meshes (its own low-detail
   dash) hidden. Gauges on an opaque copy of `interior_lod0` (dark faces, white markings: alpha 0 there, which Godot's
-  import would overwrite), unlit. CR-X in-car compare 37.8, dash crop 23.7: the cluster matches. Not done: needles
-  turning with rpm / speed (the game streams neither yet), driver's hands / arms, mirror render targets.
+  import would overwrite), unlit. CR-X in-car compare 37.8, dash crop 23.7: the cluster matches. **Needles turn**
+  (commit 42d5212): each `<gauge>_min/_mid/_max` triple is one rigid rotation (export: `<out>_needles.json`, with
+  carattribs.xml's TickMarks, param 0..1 <-> value: speed m/s, tach rpm); speed from the car's streamed speed (AI
+  race: game ~88 km/h, Godot ~85), fuel full. **Next: rpm** in the stream (find it in the car object, add it to
+  FM3K; FM3-ReGPU `live_camera.cpp`), then the tach follows (`needle_turn` in world_view.gd, NEEDLE_IDLE_RPM
+  now). Not done: steering wheel turning (carattribs SteeringWheelAngleOverride), driver's hands / arms, mirror
+  render targets.
 
 **Revised order from here:** phase 1 (structural reader) first, with LOD0 bodies and the file's normals as its first
 use (finding 1-2, and a likely cause of the paint's stripe on the Eclipse); then phase 0's fxobj and shadersettings
