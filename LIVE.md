@@ -69,8 +69,33 @@ with `Fm3 "env FM3_FREEZE_TIME 1"` for each pair of pictures. All 8 cars attache
 Pictures: produced by scratch scripts (game shot via `Save-Fm3Shot`, Godot via the `.shot` trigger); rerun the same
 way to compare.
 
+## Smoothness (2026-11-23: "the cars/camera is stuttering a lot")
+
+Two causes, both measured and fixed:
+
+1. **Camera and cars from different game steps.** The hand-off camera ("FM3C") comes from the logic thread at 360 Hz;
+   a car's matrix changes only once per drawn frame (the game drew 88-123 fps here). Taking the newest of each, the
+   car-to-camera offset jumped 6 cm per packet (p95 14 cm): the cars shook against the camera.
+   Fix: the car loop's render object (r10) holds the view matrix the frame is drawn with at +0x0 (found with
+   `FM3_LIVE_CAM_SCAN=1`); the game sends it as "FM3V" before that frame's cars, and the main view follows only those.
+   Offset change against the followed car: **0.06 cm per packet (p95 0.13)**. (`tools/live_record.py` measures this.)
+2. **Two frame rates.** The viewer (83-116 fps beside the game on the RX 6650 XT) and the game (84-123 fps; both share
+   the GPU) never line up, so the newest frame showed some game frames twice and skipped others. Fix: `world_view.gd`
+   buffers the drawn frames with the game's timestamps (host clock mapped by the smallest latency seen), shows the
+   moment 1.5 game frames ago (about 18-20 ms here) and blends camera, field of view and each car between the two
+   frames around it. `--live-raw` shows the newest frame as before.
+
+Measured with `world_view.gd --live-log <csv>` (per viewer frame: time, shown camera, followed car) and
+`tools/live_smoothness.py`, the same AI race:
+
+| | frozen viewer frames | speed jitter median / p95 |
+|---|---|---|
+| `--live-raw` (newest frame) | 33.0% | 129% / 317% |
+| interpolated (default) | 0.8% | 7.7% / 35% |
+
 ## Next for stage A
 
+1. Smoothness left: the speed jitter's p95 (35%), likely the game's own uneven frame times; and the 18-20 ms delay.
 1. Wheels: spin and steering (the car object's wheel matrices at +0x90.., four placed and their spun/steered copies).
 2. The crowd and people: animated in the game, static captured silhouettes here.
 3. The player car's interior parts (gauges, driver) for the in-car views.

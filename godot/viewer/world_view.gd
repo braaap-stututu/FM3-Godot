@@ -38,6 +38,14 @@ var _cars := {}  # car object address -> latest datagram
 var _car_first_ms := 0
 var _car_attached := false
 var _car_parts := []  # [node, car, offset]
+var _live_has_drawn := false  # "FM3V" (the drawn camera) seen: the main view follows only those
+var _live_frames := []  # the game's last drawn frames: {t (game clock, s), cam, fov, cars: {car: matrix}}
+var _car_inv := {}  # car -> its matrix at attach time, inverted
+var _clock_off := INF  # Godot clock minus game clock (smallest seen)
+var _frame_dt := 1.0 / 120.0  # the game's frame interval (smoothed)
+var _live_raw := false  # --live-raw: the newest frame, no interpolation
+var _live_last_now := 0.0
+var _live_log: FileAccess  # --live-log <csv>: per viewer frame, time and the shown camera and followed car positions
 const TripleCameras = preload("res://triple_cameras.gd")
 const BAKED_SHADER = preload("res://viewer/fm3_baked.gdshader")
 const BAKED_BLEND_SHADER = preload("res://viewer/fm3_baked_blend.gdshader")
@@ -82,6 +90,10 @@ func _init() -> void:
 				_fly = true
 			"--live":
 				_live_port = int(args[i + 1]); i += 1
+			"--live-raw":
+				_live_raw = true
+			"--live-log":
+				_live_log = FileAccess.open(args[i + 1], FileAccess.WRITE); i += 1
 			"--live-director":
 				_live_director = args[i + 1].hex_to_int(); i += 1
 			"--live-axes":
@@ -437,7 +449,7 @@ static func car_transform(b: PackedByteArray, axes: PackedFloat32Array) -> Trans
 
 func _attach_cars() -> void:
 	_car_attached = true
-	var inv := {}
+	var inv := _car_inv
 	for car in _cars:
 		inv[car] = car_transform(_cars[car], _live_axes).affine_inverse()
 	var per_car := {}
@@ -456,7 +468,7 @@ func _attach_cars() -> void:
 					inside = false
 					break
 			if inside:
-				_car_parts.append([m, car, inv[car] * m.global_transform])
+				_car_parts.append([m, car, m.global_transform])  # (placed at D * this, D = A(t) * A(0)^-1)
 				per_car[car] = per_car.get(car, 0) + 1
 				break
 	for car in _cars:
@@ -482,7 +494,7 @@ func _live_step() -> void:
 	var tab := Input.is_key_pressed(KEY_TAB)
 	if tab and not _live_tab and _live_dirs.size() > 1:
 		_live_director = _live_dirs[(_live_dirs.find(_live_director) + 1) % _live_dirs.size()]
-		print("world_view: live director %08X" % _live_director)
+		print("world_view: live director %08X%s" % [_live_director, " (the drawn camera)" if _live_director == _live_dirs[0] else ""])
 	_live_tab = tab
 	# A picture on request: create <out>.shot and the next frame is saved to <out> (the file is removed).
 	if _out != "" and FileAccess.file_exists(_out + ".shot"):
@@ -490,15 +502,35 @@ func _live_step() -> void:
 		root.get_texture().get_image().save_png(_out)
 		print("world_view: saved ", _out)
 	var latest := PackedByteArray()
+	var now := Time.get_ticks_usec() / 1e6
+	if _live_last_now > 0.0:
+		_clock_off += 0.001 * (now - _live_last_now)  # (lets the latency estimate rise again, 1 ms per second)
+	_live_last_now = now
 	while _udp.get_available_packet_count() > 0:
 		var b := _udp.get_packet()
 		if b.size() != 96 or b.decode_u32(4) != 1:
 			continue
 		var magic := b.slice(0, 4).get_string_from_ascii()
+		if magic == "FM3V":
+			# A drawn game frame begins: its camera, then (the datagrams after it) its cars. Timed by the game's clock.
+			var t := b.decode_double(88)
+			if not _live_frames.is_empty():
+				var dt := t - float(_live_frames[-1]["t"])
+				if dt > 0.0005 and dt < 0.1:
+					_frame_dt = lerpf(_frame_dt, dt, 0.1)
+			_clock_off = minf(_clock_off, now - t)
+			_live_frames.append({"t": t, "cam": live_transform(b, _live_axes), "fov": b.decode_float(80), "cars": {}})
+			if _live_frames.size() > 32:
+				_live_frames.pop_front()
+			_live_has_drawn = true
+			continue
 		if magic == "FM3K":
-			_cars[int(b.decode_u32(12))] = b
+			var car := int(b.decode_u32(12))
+			_cars[car] = b
 			if _car_first_ms == 0:
 				_car_first_ms = Time.get_ticks_msec()
+			if not _live_frames.is_empty():
+				_live_frames[-1]["cars"][car] = car_transform(b, _live_axes)
 			continue
 		if magic != "FM3C":
 			continue
@@ -513,21 +545,90 @@ func _live_step() -> void:
 			latest = b
 	if not _car_attached and _car_first_ms > 0 and Time.get_ticks_msec() - _car_first_ms > 500:
 		_attach_cars()
-	if _car_attached:
-		for part in _car_parts:
-			var b: PackedByteArray = _cars.get(part[1], PackedByteArray())
-			if not b.is_empty():
-				(part[0] as Node3D).global_transform = car_transform(b, _live_axes) * (part[2] as Transform3D)
-	if latest.is_empty():
-		return
+	var main_view := _live_dirs.is_empty() or _live_director == _live_dirs[0]
+	if _live_has_drawn and main_view and not _live_frames.is_empty():
+		_show_drawn(now)
+	else:
+		# No drawn frames (an older game build), or another director (Tab: the mirror): its hand-off, newest only.
+		if _car_attached:
+			for part in _car_parts:
+				var b: PackedByteArray = _cars.get(part[1], PackedByteArray())
+				if not b.is_empty() and _car_inv.has(part[1]):
+					(part[0] as Node3D).global_transform = car_transform(b, _live_axes) * _car_inv[part[1]] * (part[2] as Transform3D)
+		if latest.is_empty():
+			return
+		_set_view(live_transform(latest, _live_axes))
+		if _screens.is_empty():
+			_cam.fov = rad_to_deg(latest.decode_float(80))
 	_live_packets += 1
-	_set_view(live_transform(latest, _live_axes))
-	if _screens.is_empty():
-		_cam.fov = rad_to_deg(latest.decode_float(80))
 	if Time.get_ticks_msec() - _live_last_ms > 5000:
 		_live_last_ms = Time.get_ticks_msec()
 		print("world_view: live camera ", _cam.global_transform if _screens.is_empty() else _screens[0]["camera"].global_transform,
-			" fov %.2f (%d frames followed)" % [rad_to_deg(latest.decode_float(80)), _live_packets])
+			" (viewer %d fps, game frames every %.1f ms, shown %.1f ms behind)%s" % [Engine.get_frames_per_second(), _frame_dt * 1000,
+			(_frame_dt * 1.5 + 0.002) * 1000, " raw" if _live_raw else ""])
+
+
+# The game's drawn frames, interpolated: show the moment 1.5 game frames ago (host clock mapped by the smallest
+# latency seen), blending camera, field of view and every car between the two frames around it, so the viewer's own
+# frame rate never has to match the game's. --live-raw shows the newest frame as it is.
+func _show_drawn(now: float) -> void:
+	var k1 := _live_frames.size() - 1
+	var k0 := k1
+	var alpha := 1.0
+	if not _live_raw and _live_frames.size() > 1:
+		var t := now - _clock_off - (_frame_dt * 1.5 + 0.002)
+		var i := _live_frames.size() - 1
+		while i > 0 and float(_live_frames[i]["t"]) > t:
+			i -= 1
+		k0 = i
+		k1 = mini(i + 1, _live_frames.size() - 1)
+		var span := float(_live_frames[k1]["t"]) - float(_live_frames[k0]["t"])
+		alpha = clampf((t - float(_live_frames[k0]["t"])) / span, 0.0, 1.0) if span > 0.0 else 1.0
+	var f0: Dictionary = _live_frames[k0]
+	var f1: Dictionary = _live_frames[k1]
+	var cam := (f0["cam"] as Transform3D).interpolate_with(f1["cam"] as Transform3D, alpha)
+	_set_view(cam)
+	if _screens.is_empty():
+		_cam.fov = rad_to_deg(lerpf(float(f0["fov"]), float(f1["fov"]), alpha))
+	if not _car_attached:
+		return
+	var moves := {}
+	for car in _car_inv:
+		var a0 = _car_in_frame(car, k0)
+		var a1 = _car_in_frame(car, k1)
+		if a0 == null or a1 == null:
+			continue
+		var d0: Transform3D = (a0 as Transform3D) * (_car_inv[car] as Transform3D)
+		var d1: Transform3D = (a1 as Transform3D) * (_car_inv[car] as Transform3D)
+		d0.basis = d0.basis.orthonormalized()
+		d1.basis = d1.basis.orthonormalized()
+		moves[car] = d0.interpolate_with(d1, alpha)
+	for part in _car_parts:
+		if moves.has(part[1]):
+			(part[0] as Node3D).global_transform = (moves[part[1]] as Transform3D) * (part[2] as Transform3D)
+	if _live_log != null:
+		# What this viewer frame shows: the camera and the car nearest to it (the one it follows).
+		var best := -1
+		var best_d := INF
+		var best_o := Vector3.ZERO
+		for car in moves:
+			var o: Vector3 = (moves[car] as Transform3D) * ((_car_inv[car] as Transform3D).affine_inverse().origin)
+			var d := o.distance_to(cam.origin)
+			if d < best_d:
+				best_d = d
+				best = car
+				best_o = o
+		_live_log.store_line("%.6f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f" % [now, cam.origin.x, cam.origin.y, cam.origin.z, best_o.x, best_o.y, best_o.z])
+
+
+# A car's matrix as of frame k: that frame's, or the latest earlier one (a car can be missing from a frame).
+func _car_in_frame(car: int, k: int):
+	while k >= 0:
+		var cars: Dictionary = _live_frames[k]["cars"]
+		if cars.has(car):
+			return cars[car]
+		k -= 1
+	return null
 
 
 func _process(_delta: float) -> bool:
