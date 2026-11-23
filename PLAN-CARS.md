@@ -26,6 +26,22 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
 - On this PC the CR-X and Eclipse zips are extracted whole (`work\assets\crx`, `eclipse`: `_lod0`, `_cockpit`, brakes,
   `.xds`, `shadersettings.xml`); the other cars only as main carbins (`work\assets\carbins`).
 
+### Progress, 2026-11-23 night (commits 46fb847, 649e767, 81d2350 on `live-mirror`)
+
+- **Phase 1 done:** `tools/fm3_carbin.py` reads every carbin to its last byte (510 car, 567 wheel; corrections in
+  `FM3-FORMATS.md`: u32 + 1 byte after the shard indices, 32-bit strip restart 0xFFFFFF, symmetric bounds, vertex
+  byte 20 = baked brightness).
+- **Phase 2:** cars built from `<car>_lod0.carbin` (all eight grid cars' zips in `work\assets\cars\<car>\`, DLC ones
+  out of the DLC packs), main-file LOD 1 only where LOD 0 lacks a part, the file's own normals; unmapped materials
+  get the car's own `.xds` (nodamage / lights) and the export lists any left white.
+- **Phase 0 (part) + 3 (glass):** `tools/fm3_fxobj.py` reads the 137 constant tables; window glass runs the game's
+  formula with captured values (`fm3_carglass.gdshader`), glass diff 28.0 -> 22.1. Paint still partly fitted.
+- **Phase 4 done for the in-car view:** `cockpit_<car>_...` nodes from `<car>_cockpit.carbin`, shown for the player
+  car when the game's camera is the driver / cockpit one, with the exterior's no-shadow meshes (its own low-detail
+  dash) hidden. Gauges on an opaque copy of `interior_lod0` (dark faces, white markings: alpha 0 there, which Godot's
+  import would overwrite), unlit. CR-X in-car compare 37.8, dash crop 23.7: the cluster matches. Not done: needles
+  turning with rpm / speed (the game streams neither yet), driver's hands / arms, mirror render targets.
+
 **Revised order from here:** phase 1 (structural reader) first, with LOD0 bodies and the file's normals as its first
 use (finding 1-2, and a likely cause of the paint's stripe on the Eclipse); then phase 0's fxobj and shadersettings
 reading to replace the fitted glass and paint numbers; then the cockpit (phase 4); wheel-zip models and lights after.

@@ -9,6 +9,12 @@ cars over UDP (`FM3_LIVE=1`), `live.cmd` draws the same race in Godot, smooth af
 viewer frames 0.4%, speed jitter median 7.7% over a minute). Open question to the user: chase the remaining uneven
 steps (jitter p95 24-41%) or move on (wheels, crowd, then stage B). LIVE.md "Next for stage A" has the list.
 
+**Later the same night: cars, `PLAN-CARS.md`** (its "Progress" section is the current state). Cars come from their
+own files (`tools/fm3_carbin.py`, LOD 0 bodies, `.xds` textures), window glass runs the game's shader formula, and
+the in-car camera shows the car's cockpit model with working-looking gauges (CR-X matches the game's cluster). The
+frame-ir repo now has a remote: GitHub `braaap-stututu/FM3-Godot`, branch `live-mirror` (pushing it is allowed);
+FM3-ReGPU and ReGPU are still local only.
+
 ## 1. What the project is
 
 A system that runs as little of an old console game as possible and hands its rendering to a modern renderer through
