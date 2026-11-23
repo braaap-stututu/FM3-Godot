@@ -67,6 +67,7 @@ func _init() -> void:
 	var sun_elev := 50.0
 	var sun_azim := 30.0
 	var textured := false  # --textured: the glTF's own materials, unshaded (no normals yet); else one grey lit material
+	var fullscreen := false  # --fullscreen: the window covers the display (borderless)
 	var i := 0
 	while i < args.size():
 		match args[i]:
@@ -92,6 +93,10 @@ func _init() -> void:
 				_live_port = int(args[i + 1]); i += 1
 			"--live-raw":
 				_live_raw = true
+			"--fps":  # cap the viewer's frame rate (vsync stays on)
+				Engine.max_fps = int(args[i + 1]); i += 1
+			"--fullscreen":
+				fullscreen = true
 			"--live-log":
 				_live_log = FileAccess.open(args[i + 1], FileAccess.WRITE); i += 1
 			"--live-director":
@@ -115,6 +120,8 @@ func _init() -> void:
 		i += 1
 	DisplayServer.window_set_size(size)
 	root.size = size
+	if fullscreen:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 	root.mesh_lod_threshold = 0.0  # full detail: merged meshes span the whole track, their LOD pick would drop parts
 	var doc := GLTFDocument.new()
 	var state := GLTFState.new()
