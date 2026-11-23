@@ -33,6 +33,7 @@ import fm3_tex  # noqa: E402
 import fm3_pvs  # noqa: E402
 import fm3_families  # noqa: E402
 import fm3_car  # noqa: E402
+import fm3_carbin  # noqa: E402
 import fir_read as fr  # noqa: E402
 import re  # noqa: E402
 from fir_world import smooth_normals  # noqa: E402
@@ -69,6 +70,7 @@ CARBIN_DIRS = []  # --carbins DIR[;DIR]: whole cars from their .carbin files ins
 # FM3_LIVE): carbin car space goes to the world as F (p M) exactly (0.1 mm on the fitted cars), so every car is placed
 # by its matrix, also the far ones whose captured low-detail draws are not in the carbin (no fit possible).
 CAR_MATRICES = []
+CAR_FILE_DIRS = []  # --car-files DIR[;DIR]: <dir>/<car>/ = the car zip's contents (_lod0, _cockpit, textures, ...)
 CAR_GEOM = {}  # car -> (placed vertices sample): build_cars' cars, to drop their captured low-detail duplicates
 
 
@@ -76,7 +78,8 @@ CAR_FLAT = {k: v for k, v in json.load(open(os.path.join(os.path.dirname(os.path
                                                          'car_materials.json'))).items() if isinstance(v, dict) and not v.get('keep')}
 
 
-def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, nodes, materials_out):
+def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, nodes, materials_out, images=None,
+               textures=None, tex_out=None):
     """Every car of the capture rebuilt from its .carbin (fm3_car.py): the stock parts (the captured variants, mirrored
     to the other side, else 'a'), placed by a rigid fit of the car's captured draws (carbin car space -> world), with
     the materials the capture gave each material name (UV0 is the captured texture coordinate). Returns the car names
@@ -94,6 +97,40 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
         P = np.frombuffer(rbin, np.float32, a['count'] * 3, v.get('byteOffset', 0) + a.get('byteOffset', 0)).reshape(-1, 3)
         M = np.array(n.get('matrix', np.eye(4).ravel())).reshape(4, 4).T
         return P.astype(np.float64) @ M[:3, :3].T + M[:3, 3], p.get('material')
+    xds_tex, xds_mat = {}, {}
+
+    def xds_texture(zdir, stem):
+        """glTF texture index of <zdir>/<stem>.xds decoded to a PNG in tex_out (once), or None."""
+        key = (zdir, stem)
+        if key not in xds_tex:
+            src = os.path.join(zdir, stem + '.xds')
+            img = fm3_tex.load_xds(src) if os.path.exists(src) else None
+            if img is None:
+                xds_tex[key] = None
+            else:
+                os.makedirs(tex_out, exist_ok=True)
+                name = f'car_{os.path.basename(zdir)}_{stem}.png'
+                fr.write_png(os.path.join(tex_out, name), img.shape[1], img.shape[0], np.ascontiguousarray(img).tobytes())
+                images.append({'uri': os.path.basename(tex_out) + '/' + name})
+                textures.append({'source': len(images) - 1, 'sampler': 0})
+                xds_tex[key] = len(textures) - 1
+        return xds_tex[key]
+
+    def xds_material(zdir, stem, mname, cutout=False):
+        key = (zdir, stem, mname, cutout)
+        if key not in xds_mat:
+            ti = xds_texture(zdir, stem)
+            if ti is None:
+                xds_mat[key] = None
+            else:
+                materials_out.append({'name': f'{mname}_{stem}', 'doubleSided': True, 'pbrMetallicRoughness': {
+                    'baseColorTexture': {'index': ti}, 'metallicFactor': 0.0, 'roughnessFactor': 0.6},
+                    **({'alphaMode': 'MASK', 'alphaCutoff': 0.5} if cutout else {})})
+                xds_mat[key] = ('index', len(materials_out) - 1)
+        return xds_mat[key]
+    if images is None:
+        xds_material = None  # noqa: F811 (no texture lists to add to)
+
     per_car = {}
     for n in ref['nodes']:
         mo = re.match(r'draw(\d+) ([a-z0-9_]+)\.([a-z0-9_]+)$', n.get('name', ''))
@@ -192,25 +229,57 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
             if votes:
                 paint = max(votes, key=votes.get)
                 print(f'  {car}: paint from {votes[paint]} captured low-detail paint-shader vertices on it')
+        # The geometry (PLAN-CARS phase 2, 2026-11-23): the car's high-detail <car>_lod0.carbin (its zip contents in a
+        # --car-files folder), read structurally (fm3_carbin.py), with the main file's LOD 1 only for the parts LOD 0
+        # lacks (cabin, seats, mirrors, hood, windscreen and side glass), never both for one part; the file's own normals.
+        # Without the zip: the main file's LOD 1 as before (fm3_car.py), normals recomputed.
+        geo, geo_from = secs, 'main file LOD 1'
+        zdir = next((os.path.join(d, car) for d in CAR_FILE_DIRS if os.path.exists(os.path.join(d, car, car + '_lod0.carbin'))), None)
+        if zdir:
+            l0 = fm3_carbin.sections(fm3_carbin.parse(open(os.path.join(zdir, car + '_lod0.carbin'), 'rb').read()), 0)
+            have = {s['name'] for s in l0}
+            l1 = [s for s in fm3_carbin.sections(fm3_carbin.parse(open(path, 'rb').read()), 1) if s['name'] not in have]
+            for s in l0:
+                s['lod'] = 0
+            for s in l1:
+                s['lod'] = 1
+            geo = l0 + l1
+            geo_from = f'LOD 0 ({len(l0)} parts) + main file LOD 1 for {len(l1)} parts it lacks'
         groups = {}
-        for sec in secs:
+        unmapped = {}  # material names with no material (glTF default: white): reported
+        for sec in geo:
             if sec['name'] not in keep or sec['offset'] is None or sec['name'] == 'wheel':
                 continue
             P = (sec['local'] + sec['offset']) @ R.T + t
+            Nf = None
+            if sec.get('normal') is not None:
+                Nf = sec['normal'] @ R.T
+                Nf /= np.maximum(np.linalg.norm(Nf, axis=1, keepdims=True), 1e-9)
             for sub in sec['subs']:
-                tris = fm3_car.triangles(sub['indices'], sub['prim'])
+                tris = fm3_car.triangles(sub['indices'], sub['prim'], restart=sub.get('restart', 0xFFFF))
                 if not len(tris) or tris.max() >= len(P):
+                    print(f'  {car}: {sec["name"]}.{sub["material"]}: indices past its {len(P)} vertices, left out')
                     continue
-                m_ = mat_of.get((sec['name'], sub['material']))
-                if m_ is None and ('*', sub['material']) in mat_of:
-                    v_ = mat_of[('*', sub['material'])]
+                mname = sub['material'][:-5] if sub['material'].endswith('_lod0') else sub['material']
+                m_ = mat_of.get((sec['name'], mname))
+                if m_ is None and ('*', mname) in mat_of:
+                    v_ = mat_of[('*', mname)]
                     m_ = max(v_, key=v_.get)  # the material most of this name's captured vertices had
-                if m_ is None and sub['material'] in ('body', 'body_2') and paint is not None:
+                if m_ is None and mname in ('body', 'body_2') and paint is not None:
                     m_ = paint
-                if m_ is None and sub['material'] in CAR_FLAT:
-                    m_ = ('flat', sub['material'])
-                groups.setdefault((sub['material'], m_), []).append((P, tris, sec['uv0']))
+                if m_ is None and mname in CAR_FLAT:
+                    m_ = ('flat', mname)
+                if m_ is None and zdir and xds_material is not None:
+                    # The car's own texture (PLAN-CARS phase 3, first step): lamps on lights[_lod0].xds, the rest on
+                    # nodamage[_lod0].xds (the baseSampler's 'nodamage'); _lod0 files for LOD 0 meshes.
+                    lamp = mname.startswith(('head_light', 'tail_light', 'reverse_light', 'brake_light', 'signal'))
+                    m_ = xds_material(zdir, ('lights' if lamp else 'nodamage') + ('_lod0' if sec.get('lod') == 0 else ''),
+                                      mname, cutout=mname in ('emblem', 'badge'))
+                if m_ is None:
+                    unmapped[mname] = unmapped.get(mname, 0) + len(tris)
+                groups.setdefault((mname, m_), []).append((P, tris, sec['uv0'], Nf))
         mirrored = np.linalg.det(R) < 0
+        normal_agree = []
         for (matname, matidx), parts in groups.items():
             Pc = np.concatenate([q[0] for q in parts]).astype(np.float32)
             Uc = np.concatenate([q[2] for q in parts]).astype(np.float32)
@@ -220,6 +289,13 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                 off += len(q[0])
             T = np.concatenate(tl).astype(np.uint32)
             N = smooth_normals(Pc, T)
+            if all(q[3] is not None for q in parts):
+                # The file's normals (11:11:10 at byte 16): |cos| 0.965 per vertex against normals rebuilt from the
+                # geometry on the CR-X's LOD 0, and pointing outwards; used as they are. (Rebuilt normals take their
+                # sign from the strip winding, which alternates: no reference for the sign.)
+                Nfile = np.concatenate([q[3] for q in parts])
+                normal_agree.append(float(np.mean(np.abs(np.sum(Nfile * N, axis=1)))))
+                N = Nfile
             prim = {'attributes': {}}
             for attr, arr, typ in (('POSITION', Pc, 'VEC3'), ('NORMAL', N.astype(np.float32), 'VEC3'),
                                    ('TEXCOORD_0', Uc, 'VEC2')):
@@ -232,7 +308,9 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
             accessors.append({'bufferView': add_view(T.tobytes(), 34963), 'componentType': 5125, 'count': int(T.size),
                               'type': 'SCALAR'})
             prim['indices'] = len(accessors) - 1
-            if isinstance(matidx, tuple):
+            if isinstance(matidx, tuple) and matidx[0] == 'index':
+                prim['material'] = matidx[1]  # (a car texture material, already in materials_out)
+            elif isinstance(matidx, tuple):
                 r_ = CAR_FLAT[matidx[1]]
                 materials_out.append({'name': matidx[1], 'doubleSided': True, 'pbrMetallicRoughness': {
                     'baseColorFactor': list(r_.get('color', [0.5, 0.5, 0.5])) + [float(r_.get('alpha', 1.0))],
@@ -246,7 +324,9 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
         built.add(car)
         allp = np.concatenate([q[0] for parts in groups.values() for q in parts])
         CAR_GEOM[car] = allp[np.linspace(0, len(allp) - 1, min(6000, len(allp))).astype(int)]
-        print(f'  {car}: {len(keep)} parts from the carbin, placed by {placed_by}')
+        print(f'  {car}: {len(keep)} parts from the carbin ({geo_from}), placed by {placed_by}'
+              + (f'; file normals vs rebuilt: mean |cos| {np.mean(normal_agree):.3f}' if normal_agree else '')
+              + (f'; NO MATERIAL (white): {", ".join(f"{k} ({v} tris)" for k, v in sorted(unmapped.items()))}' if unmapped else ''))
     return built
 
 
@@ -318,7 +398,8 @@ def import_dynamic(ref_path, capdir, src, add_view, accessors, materials, images
             mat_map[i] = len(materials) - 1
         return mat_map[i]
 
-    built = build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, nodes, materials) if CARBIN_DIRS else set()
+    built = build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, nodes, materials, images, textures,
+                       tex_out) if CARBIN_DIRS else set()
     count = len(built)
     dropped_dup = 0
     for n in ref['nodes']:
@@ -705,6 +786,8 @@ def main():
                 fr.write_png(os.path.join(tex_out, 'envcube_%d.png' % k), img.shape[1], img.shape[0], img.tobytes())
     if '--carbins' in sys.argv:
         CARBIN_DIRS.extend(sys.argv[sys.argv.index('--carbins') + 1].split(';'))
+    if '--car-files' in sys.argv:
+        CAR_FILE_DIRS.extend(sys.argv[sys.argv.index('--car-files') + 1].split(';'))
     if '--car-matrices' in sys.argv:
         for c in json.load(open(sys.argv[sys.argv.index('--car-matrices') + 1]))['cars']:
             CAR_MATRICES.append(np.array(c['matrix'], dtype=np.float64).reshape(4, 4))

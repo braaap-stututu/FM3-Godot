@@ -418,7 +418,8 @@ def materials(cap, path, objs):
             for c_ in sorted({i // 4 for i in consts}):
                 vals = [consts.get(c_ * 4 + k) for k in range(4)]
                 if any(v not in (None, 0.0) for v in vals):
-                    print(f'  consts seq {d["seq"]} c{c_} =', [round(v, 4) if v is not None else None for v in vals])
+                    print(f'  consts seq {d["seq"]} c{c_} =', [round(v, 4) if v is not None else None for v in vals],
+                          f'ps {d["ps"]:016x}')
         bools = {0x4900 + i: regs.get(0x4900 + i, 0) for i in range(8)}
         loops = {i: regs.get(0x4908 + i, 0) for i in range(32)}
         texs = {t[0]: t for t in d['texs']}

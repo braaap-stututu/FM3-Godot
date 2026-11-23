@@ -151,6 +151,23 @@ def load_bix(path_header, path_base=None):
     return decode(base[:hdr['base']], hdr['w'], hdr['h'], hdr['format'], hdr['endian'])
 
 
+def xds_header(data):
+    """A car texture (.xds, in the car / wheel zips: nodamage[_lod0], lights[_lod0], interior_lod0, ..., 2026-11-23):
+    0x34 bytes of header holding a Xenos texture fetch constant at 0x1C (6 big-endian dwords), then the data. dword 0
+    bit 31 = tiled, bits 22-30 = pitch / 32; dword 1 low 6 bits = format, bits 6-7 = endian; dword 2 = width - 1 (bits
+    0-12), height - 1 (13-25). Car colour textures are sRGB values without the gamma flag (FM3-FORMATS.md)."""
+    d0, d1, d2 = struct.unpack_from('>3I', data, 0x1C)
+    return {'w': (d2 & 0x1FFF) + 1, 'h': ((d2 >> 13) & 0x1FFF) + 1, 'format': d1 & 63, 'endian': (d1 >> 6) & 3,
+            'tiled': bool(d0 >> 31), 'pitch': ((d0 >> 22) & 0x1FF) * 32, 'data_at': 0x34}
+
+
+def load_xds(path):
+    """The base level of a car .xds texture as RGBA8 (h, w, 4), or None."""
+    data = open(path, 'rb').read()
+    h = xds_header(data)
+    return decode(data[h['data_at']:], h['w'], h['h'], h['format'], h['endian'], tiled=h['tiled'], pitch=h['pitch'] or None)
+
+
 def load_stx(path):
     r"""A track's <track>.stx.bin (CAFF container): the lightmap atlases (`_0x<id>_a`) and the low-resolution stream
     copies of the .bix textures (`_0x<id>_s`).

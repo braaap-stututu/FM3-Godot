@@ -82,6 +82,23 @@ web search were not reachable).
   unpacking data), 2 x u16 UV1, 2 x u16 UV2, 4 x s16 tangent-frame quaternion, 4 x s16 SH0 (baked light). Morphs:
   u32 FMT_10_11_11. Textures bound by sampler name (textures.xml), not stored in the carbin.
 
+- **Verified on this PC's files (2026-11-23, `tools/fm3_carbin.py`, a structural reader after the layout above):**
+  every file reads to its last byte: 510 of 510 main carbins (`work\assets\carbins`), 567 of 567 wheel carbins, and the
+  CR-X's / Eclipse's whole zips (main, `_lod0`, `_cockpit`, 8 brakes each). Corrections and answers:
+  - **After the shard indices FM3 has a u32 and one byte**, not two words; the name's length then starts unaligned
+    and so does the rest of the part (CR-X caliper: u32 0, byte 1, u32 9 `caliperLF`).
+  - **Position:** all 18,444 parts have symmetric bounds (min = -max), so EVO's origin + (min + max) / 2 + xyz * w and
+    the old origin + xyz * w are the same; identical to the old reader within 6e-8 m. Question settled.
+  - **Index buffers of 4 bytes (LOD 0 files) restart strips with 0xFFFFFF**, not 0xFFFFFFFF or 0xFFFF (the Xenos's
+    24-bit index limit); a strip reader that only knows 0xFFFF drops every LOD 0 mesh.
+  - **Normals (byte 16, 11:11:10 signed, x in the low bits, big-endian word): confirmed**, |cos| 0.965 per vertex
+    against normals rebuilt from the CR-X's LOD 0 geometry, pointing outwards (other decodings: 0.79 or less).
+  - `_lod0.carbin` holds the exterior in detail (CR-X 31 parts, 103,628 vertices); the cabin, seats, steering wheel,
+    mirrors, hood and the windscreen / side glass are only in the main file (LOD 1). `_cockpit.carbin`: 21 parts.
+  - Material names in LOD 0 carry a `_lod0` suffix for some techniques (`tail_light_lod0`, `reverse_light_lod0`).
+  - Car zips of Disc 2 / DLC cars sit inside the DLC packs as `media/cars/<Car>/...` (e.g. `0013_pri_65.zip`:
+    MAZ_AxelaSport_05, MIT_EclipseGTS_03); `fm3unzip <pack> <out> <lowercase name>` extracts them.
+
 ## Car materials and textures (ForzaStudio-EVO)
 
 - **Material name = shader technique name** (cockpit model: `cockpit_` + name first; unknown names fall back to
@@ -95,6 +112,17 @@ web search were not reachable).
   `baseSampler` -> `nodamage` / `damage` (+ `_LOD0` for close-up files). Cockpit parts sit on `Interior_LOD0.xds`
   (CockpitInteriorHiSampler). Effect layout notes: technique record 5 dwords (name ref, pass count, ?, ?, first pass
   ref), pass record 5 dwords (name ref, 0, pass block ref, 2 state refs); the pass block ends with FFFFFFFF, VS ref, PS ref.
+- **Constant tables, verified (2026-11-23, `tools/fm3_fxobj.py`):** `shaders_v11.fxobj` holds 137 D3DX constant
+  tables (92 pixel, 45 vertex shaders), big-endian, **without a 'CTAB' tag**: header u32 Size = 0x1C, Creator,
+  Version (0xFFFF03xx / 0xFFFE03xx), Constants, ConstantInfo, Flags, Target; 20-byte constant records (name, register
+  set, register, count, type info, default value offsets). They name every register, with defaults. The defaults are
+  only fallbacks: the game sets runtime values (paint SpecularPower 75 in the capture, default 128), so **the captured
+  constants named by these tables are the truth**. Window glass (PS `b117fbafcc1fa980`, all 70 window draws of the
+  grid capture): GlassColor c219 = (0, 0.07, 0.06, 0.1), GlassMaxOpacity c218 = 1, FresnelMin c189 = 0.4, FresnelMax
+  c190 = 1, FresnelScale c191 = 1, FresnelPower c216 = 1.5, CubeScale c217 = 1, reflectionScaler c192 = 1,
+  SpecularAmount c116 = 0, Static / DynamicEnvLightmapDampner c180 / c119 = 0.5 / 0.3. Car paint (PS
+  `e41e183a423e6f1b`): CubeScale c224, FresnelMin/Max/Scale/Power c219-c222, SpecularAmount c180, SpecularPower c189.
+  No car's `shadersettings.xml` overrides the window technique (8 grid cars checked).
 - **Per-car parameters:** `shadersettings.xml` in the car zip, one entry per technique (`cockpit_` + material for the
   cockpit). FM3: 246 of 311 cars have one; 45 techniques set 64 parameter names, some misspelt (`GuageEmissiveScale`,
   `CokpitBumpScale`, `CockpiSpecularAmount2`); FM3-only: CarbonFiber*, CubePower, DamageSpecularKillAmount,

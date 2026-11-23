@@ -163,6 +163,9 @@ func _init() -> void:
 	for n in scene.find_children("*", "MeshInstance3D", true, false):
 		var mi := n as MeshInstance3D
 		meshes += 1
+		if id_mode and OS.get_environment("FM3_ID_HIDE") != "" and String(mi.name).contains(OS.get_environment("FM3_ID_HIDE")):
+			mi.visible = false  # (debug: FM3_ID_HIDE=<text> hides meshes whose name contains it, to see what is behind)
+			continue
 		if id_mode:
 			var k := meshes
 			var im := StandardMaterial3D.new()
@@ -229,7 +232,7 @@ func _init() -> void:
 			if lit and _blended(m) and m.roughness < 0.1 and m.albedo_texture == null:
 				# car glass: FM3's dark, reflective windows (fm3_carglass.gdshader), not a clear pane
 				mi.set_surface_override_material(s, _car_material(CARGLASS_SHADER, m, gltf_path, "FM3_CARGLASS",
-					["opacity", "body_level", "refl_gain", "refl_f0", "spec_gain", "spec_power"]))
+					["env_scale", "fresnel_min", "fresnel_power", "max_opacity"]))
 				continue
 			if lit and m.roughness >= 0.9:
 				m.metallic_specular = 0.04  # matte surfaces: almost no sky reflection (FM3's dark trim stays dark)

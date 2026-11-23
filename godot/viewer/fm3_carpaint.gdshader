@@ -13,9 +13,11 @@ uniform samplerCube env_cube : filter_linear_mipmap;
 uniform bool has_env = false;
 uniform vec3 env_fallback = vec3(0.45, 0.52, 0.56);
 uniform vec3 env_flip = vec3(-1.0, 1.0, 1.0);  // (this scene's x is the game's mirrored)
-// Fitted on the grid (tools/car_regions.py, 7 cars): median luminance off by 2.2 on average (14 with the old clear coat).
-uniform vec3 ambient = vec3(0.50, 0.51, 0.55);  // gamma-space sky light on surfaces facing up (where the sun does not reach)
-uniform vec3 ambient_ground = vec3(0.05, 0.05, 0.05);  // ... and on surfaces facing down (bumpers, sills: the road's shade)
+// Fitted on the grid (tools/car_regions.py, 7 cars). Refitted 2026-11-23 for the LOD 0 bodies with the file's own
+// normals (they face the sky more than the old rebuilt ones): sky 0.5 -> 0.24; CR-X mean colour then 135 vs the game's
+// 136. The highlights are still weaker than the game's (CR-X 90th percentile 150 vs 187).
+uniform vec3 ambient = vec3(0.24, 0.25, 0.27);  // gamma-space sky light on surfaces facing up (where the sun does not reach)
+uniform vec3 ambient_ground = vec3(0.04, 0.04, 0.04);  // ... and on surfaces facing down (bumpers, sills: the road's shade)
 uniform vec3 sun = vec3(1.0, 0.98, 0.94);
 uniform float shadow_strength = 0.85;
 // The game's paint constants (all cars on the grid): reflection c224 x c217/c218 = 1.5 x 0.3/0.5, Fresnel power c216 = 4,

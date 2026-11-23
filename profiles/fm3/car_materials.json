@@ -7,6 +7,7 @@
   "inner_rim": {"keep": true}, "blur_rim": {"keep": true}, "blur_lip": {"keep": true}, "carbon_fiber": {"keep": true},
   "bumper_frame": {"color": [0.025, 0.025, 0.027], "roughness": 0.75},
   "rubber_trim": {"color": [0.007, 0.007, 0.007], "roughness": 0.9},
+  "defrost_lines": {"color": [0.02, 0.015, 0.012], "alpha": 0.15, "roughness": 0.6, "_doc": "rear-window heater lines: in the LOD 0 files a layer over the whole rear glass (left white without a rule, 2026-11-23); the game draws thin lines from a texture, this a faint dark film"},
   "weatherstrip": {"color": [0.02, 0.02, 0.02], "roughness": 0.9},
   "black": {"color": [0.015, 0.015, 0.016], "roughness": 0.7},
   "frame": {"color": [0.03, 0.03, 0.032], "roughness": 0.6},
