@@ -34,7 +34,7 @@ $liveOut = "$out\godot.png"
 $glog = "$out\godot.log"
 $p = Start-Process $godot -ArgumentList @('--path', "`"$g\frame-ir\godot`"", '-s', 'res://viewer/world_view.gd', '--', '--gltf',
     "`"$g\frame-ir\out\world\ladera.gltf`"", '--lit', '--live', '7342', '--size', '1280x720', '--out', "`"$liveOut`"") `
-    -RedirectStandardOutput $glog -PassThru -WindowStyle Normal
+    -RedirectStandardOutput $glog -RedirectStandardError "$out\godot.err.log" -PassThru -WindowStyle Normal
 for ($i = 0; $i -lt 90 -and -not (Select-String -Path $glog -Pattern 'meshes attached' -Quiet -ErrorAction SilentlyContinue); $i++) { Start-Sleep 1 }
 Start-Sleep 2
 function Compare-View([string]$name) {

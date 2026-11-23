@@ -49,6 +49,7 @@ var _clock_off := INF  # Godot clock minus game clock (smallest seen)
 var _frame_dt := 1.0 / 120.0  # the game's frame interval (smoothed)
 var _live_raw := false  # --live-raw: the newest frame, no interpolation
 var _live_last_now := 0.0
+var _live_vtable := 0  # the game's active camera (its vtable, from the drawn-camera datagrams)
 var _live_smooth := 1.0  # --live-smooth W: the shown motion averaged over W game frames (0 = off: 8 ms less delay at 60)
 var _view_t := 0.0  # the viewer's steadied clock
 var _view_dt := 1.0 / 60.0  # the viewer's frame interval (smoothed)
@@ -179,6 +180,8 @@ func _init() -> void:
 		# hidden at rest (the grid).
 		if _is_blur_wheel(mi):
 			mi.transparency = 1.0
+		if String(mi.name).begins_with("cockpit_"):
+			mi.visible = false  # (the in-car model: shown only in the game's first-person views, live)
 		if _is_car_mesh(mi):
 			mi.layers = 2  # (left out of the live reflection cube)
 			car_centres.append(mi.global_transform * mi.get_aabb().get_center() if mi.is_inside_tree() else mi.transform * mi.get_aabb().get_center())
@@ -243,6 +246,14 @@ func _init() -> void:
 					["refl_gain", "refl_f0", "spec_gain", "spec_power", "shadow_strength", "refl_metal"]))
 				continue
 			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+			if mi.mesh.surface_get_format(s) & Mesh.ARRAY_FORMAT_COLOR:
+				m.vertex_color_use_as_albedo = true  # (the cockpit's baked brightness, fm3_track_export.py)
+			if m.resource_name.contains("gauge") and m.albedo_texture != null:
+				# cockpit gauges glow (the game's gauge_emissive technique, GaugeEmissiveScale in shadersettings.xml)
+				m.emission_enabled = true
+				m.emission_texture = m.albedo_texture
+				m.emission = Color(1, 1, 1)
+				m.emission_energy_multiplier = 0.6
 			mi.set_surface_override_material(s, m)
 	if id_mode:
 		var fa := FileAccess.open(_out + ".ids.txt", FileAccess.WRITE)
@@ -446,7 +457,7 @@ func _place_live_cube(at: Vector3) -> void:
 
 static func _is_car_mesh(mi: Node) -> bool:
 	var n := String(mi.name) + " " + String(mi.get_parent().name if mi.get_parent() else "")
-	return n.begins_with("carbin_") or n.to_lower().contains("wheel") or RegEx.create_from_string("draw\\d+_[a-z]+_[a-z0-9]+_\\d\\d").search(n) != null
+	return n.begins_with("carbin_") or n.begins_with("cockpit_") or n.to_lower().contains("wheel") or RegEx.create_from_string("draw\\d+_[a-z]+_[a-z0-9]+_\\d\\d").search(n) != null
 
 
 var _tex_cache := {}
@@ -622,7 +633,8 @@ func _attach_cars() -> void:
 						if d < best_d:
 							best_d = d
 							wk = k
-				_car_parts.append([m, car, m.global_transform, wk, (1 if _is_blur_wheel(m) else 0) if wk >= 0 else -1])
+				_car_parts.append([m, car, m.global_transform, wk, (1 if _is_blur_wheel(m) else 0) if wk >= 0 else -1,
+					String(m.name).begins_with("cockpit_"), m.cast_shadow])
 				per_car[car] = per_car.get(car, 0) + 1
 				if wk >= 0:
 					per_wheel[car] = per_wheel.get(car, 0) + 1
@@ -707,6 +719,7 @@ func _live_step() -> void:
 			# Viewer clock minus game clock: a slow average (the old "smallest seen" crept up and snapped back).
 			_clock_off = now - t if _clock_off == INF or absf((now - t) - _clock_off) > 0.1 else lerpf(_clock_off, now - t, 0.01)
 			_live_frames.append({"t": t, "cam": live_transform(b, _live_axes), "fov": b.decode_float(80), "cars": {}, "wheels": {}})
+			_live_vtable = int(b.decode_u32(84))  # (the game's active camera: first-person views show the cockpit)
 			if _live_frames.size() > 32:
 				_live_frames.pop_front()
 			_live_has_drawn = true
@@ -803,6 +816,26 @@ func _show_drawn(now: float) -> void:
 	if not _car_attached:
 		return
 	var wmoves: Dictionary = s.get("wmoves", {})
+	# The cockpit (PLAN-CARS phase 4): in the game's in-car views (CCamDriver 0x8200206C, CCamCockpit 0x82034FC4) the
+	# player car (the one nearest the camera) shows its cockpit model instead of its body and wheels.
+	var player := -1
+	var pdist := INF
+	for car in moves:
+		var o: Vector3 = (moves[car] as Transform3D) * ((_car_inv[car] as Transform3D).affine_inverse().origin)
+		if o.distance_to(cam.origin) < pdist:
+			pdist = o.distance_to(cam.origin)
+			player = car
+	var in_car := _live_vtable == 0x8200206C or _live_vtable == 0x82034FC4
+	for part in _car_parts:
+		var mine: bool = int(part[1]) == player and in_car
+		var gi := part[0] as GeometryInstance3D
+		if bool(part[5]):
+			gi.visible = mine
+		else:
+			# (the body stays as a shadow caster only: its roof and doors still shade the cabin, as in the game)
+			var own: int = part[6]
+			if own != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+				gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY if mine else own
 	for part in _car_parts:
 		var wk: int = part[3]
 		if int(part[4]) >= 0:

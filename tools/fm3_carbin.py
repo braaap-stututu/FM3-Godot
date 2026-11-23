@@ -187,6 +187,9 @@ def vertices(part, lod0=False):
     words = lambda o: raw[:, o:o + 4].copy().view('>u4').reshape(n)  # noqa: E731
     if s == 40:
         out['uv1'] = raw[:, 12:16].copy().view('>f2').astype(np.float64).reshape(n, 2)
+        # baked lighting, 8 bytes at 20 (EVO: FM4's SH0). Byte 20 behaves as a brightness (2026-11-23: CR-X cockpit
+        # cabin median 43, hood / A-pillars 105-107, the most open); the other 7 bytes centre on 128 (signed terms).
+        out['light'] = raw[:, 20].astype(np.float64)
         out['normal'] = unpack111110(words(16))
         out['damage'] = unpack111110(words(28))
         out['bitangent'] = unpack111110(words(36))
@@ -209,7 +212,7 @@ def sections(car, lod):
         if not subs or v is None:
             continue
         out.append({'name': p['name'], 'offset': p['origin'], 'local': v['xyzw'][:, :3] * v['xyzw'][:, 3:4],
-                    'uv0': v['uv0'], 'normal': v.get('normal'), 'subs': subs})
+                    'uv0': v['uv0'], 'normal': v.get('normal'), 'light': v.get('light'), 'subs': subs})
     return out
 
 

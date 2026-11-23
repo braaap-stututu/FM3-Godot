@@ -280,7 +280,9 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                 groups.setdefault((mname, m_), []).append((P, tris, sec['uv0'], Nf))
         mirrored = np.linalg.det(R) < 0
         normal_agree = []
-        for (matname, matidx), parts in groups.items():
+
+        def emit(groups, prefix):
+          for (matname, matidx), parts in groups.items():
             Pc = np.concatenate([q[0] for q in parts]).astype(np.float32)
             Uc = np.concatenate([q[2] for q in parts]).astype(np.float32)
             off, tl = 0, []
@@ -297,8 +299,11 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                 normal_agree.append(float(np.mean(np.abs(np.sum(Nfile * N, axis=1)))))
                 N = Nfile
             prim = {'attributes': {}}
-            for attr, arr, typ in (('POSITION', Pc, 'VEC3'), ('NORMAL', N.astype(np.float32), 'VEC3'),
-                                   ('TEXCOORD_0', Uc, 'VEC2')):
+            attrs = [('POSITION', Pc, 'VEC3'), ('NORMAL', N.astype(np.float32), 'VEC3'), ('TEXCOORD_0', Uc, 'VEC2')]
+            if all(len(q) > 4 and q[4] is not None for q in parts):
+                lit = np.concatenate([q[4] for q in parts]).astype(np.float32)
+                attrs.append(('COLOR_0', np.stack([lit, lit, lit, np.ones_like(lit)], axis=1), 'VEC4'))
+            for attr, arr, typ in attrs:
                 acc = {'bufferView': add_view(np.ascontiguousarray(arr).tobytes(), 34962), 'componentType': 5126,
                        'count': len(arr), 'type': typ}
                 if attr == 'POSITION':
@@ -320,11 +325,56 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
             elif matidx is not None:
                 prim['material'] = copy_mat(matidx)
             meshes.append({'name': f'{car}.{matname}', 'primitives': [prim]})
-            nodes.append({'mesh': len(meshes) - 1, 'name': f'carbin_{car}_{matname}_{len(meshes) - 1}'})
+            nodes.append({'mesh': len(meshes) - 1, 'name': f'{prefix}{car}_{matname}_{len(meshes) - 1}'})
+        emit(groups, 'carbin_')
+        # The cockpit (PLAN-CARS phase 4, 2026-11-23): <car>_cockpit.carbin, the in-car model (cabin with gauges,
+        # seats, steering wheel, A-pillars, hood, mirrors, windscreen) in the same car space; nodes 'cockpit_<car>_...',
+        # which the viewer shows instead of the car's body when the game's camera is a first-person one. Cabin
+        # materials on the car's interior_lod0.xds (CockpitInteriorHiSampler), the outside pieces on nodamage_lod0,
+        # paint and glass as on the body. (The race cage is an option, left out.)
+        ckpath = os.path.join(zdir, car + '_cockpit.carbin') if zdir else None
+        cockpit_parts = 0
+        if ckpath and os.path.exists(ckpath) and xds_material is not None:
+            cgroups = {}
+            for sec in fm3_carbin.sections(fm3_carbin.parse(open(ckpath, 'rb').read()), 0):
+                # (gauge needles come as <gauge>_min / _mid / _max parts, the needle at each end and the middle; the
+                # game shows one and turns it: keep _min, the needle at rest)
+                if sec['name'].endswith(('race', '_mid', '_max')):
+                    continue
+                cockpit_parts += 1
+                P = (sec['local'] + sec['offset']) @ R.T + t
+                Nf = None
+                if sec.get('normal') is not None:
+                    Nf = sec['normal'] @ R.T
+                    Nf /= np.maximum(np.linalg.norm(Nf, axis=1, keepdims=True), 1e-9)
+                outside = sec['name'] in ('a_pillar', 'hooda', 'mirrorL', 'mirrorR')
+                for sub in sec['subs']:
+                    tris = fm3_car.triangles(sub['indices'], sub['prim'], restart=sub.get('restart', 0xFFFF))
+                    if not len(tris) or tris.max() >= len(P):
+                        continue
+                    mname = sub['material']
+                    if mname == 'glass' and sec['name'] == 'interior':
+                        continue  # (the gauges' clear cover: through the window-glass shader it blacked the dials out)
+                    if mname in ('body', 'body_2') and paint is not None:
+                        m_ = paint
+                    elif mname in CAR_FLAT and CAR_FLAT[mname].get('glass'):
+                        m_ = ('flat', mname)
+                    elif mname.startswith('mirror'):
+                        m_ = ('flat', 'window')  # (the game's mirrors are render targets: dark reflective glass here)
+                    else:
+                        m_ = xds_material(zdir, 'nodamage_lod0' if outside else 'interior_lod0', 'cockpit_' + mname,
+                                          cutout=mname in ('emblem', 'badge'))
+                    # baked brightness (vertex byte 20) as a vertex colour: 107 = open sky (the hood's highest); linear
+                    lit = None
+                    if sec.get('light') is not None and not mname.startswith('gauge'):  # (gauges glow: GaugeEmissiveScale)
+                        lit = np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
+                    cgroups.setdefault(('cockpit_' + mname, m_), []).append((P, tris, sec['uv0'], Nf, lit))
+            emit(cgroups, 'cockpit_')
         built.add(car)
         allp = np.concatenate([q[0] for parts in groups.values() for q in parts])
         CAR_GEOM[car] = allp[np.linspace(0, len(allp) - 1, min(6000, len(allp))).astype(int)]
         print(f'  {car}: {len(keep)} parts from the carbin ({geo_from}), placed by {placed_by}'
+              + (f'; cockpit {cockpit_parts} parts' if cockpit_parts else '')
               + (f'; file normals vs rebuilt: mean |cos| {np.mean(normal_agree):.3f}' if normal_agree else '')
               + (f'; NO MATERIAL (white): {", ".join(f"{k} ({v} tris)" for k, v in sorted(unmapped.items()))}' if unmapped else ''))
     return built
