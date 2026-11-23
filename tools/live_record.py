@@ -85,6 +85,25 @@ def main():
     cam_t, cam_p = np.asarray(cam_t), np.asarray(cam_p)
     best = min(cars, key=lambda k: float(np.linalg.norm(np.asarray(cars[k][1])[0] - cam_p[0])))
     ct, cp = np.asarray(cars[best][0]), np.asarray(cars[best][1])
+    # Frame pacing (2026-11-23): per drawn game frame, how far the followed car moved. Steady driving moves it about the
+    # same distance each frame if the game steps a fixed time per frame; dividing by the timestamps' spacing instead
+    # shows whether the timestamps (taken on the render thread when the frame is built) wobble more than the motion.
+    if len(drawn_t) > 30:
+        dtn = np.asarray(drawn_t)
+        uniq = np.unique(ct)  # car packet times; per drawn frame take the car packet right after each FM3V
+        k = np.clip(np.searchsorted(ct, dtn), 0, len(ct) - 1)
+        pos = cp[k]
+        step = np.linalg.norm(np.diff(pos, axis=0), axis=1)
+        gap = np.diff(dtn)
+        ok = (step > 1e-4) & (gap > 0)
+        if ok.sum() > 20:
+            s, g = step[ok], gap[ok]
+            per_frame = np.abs(np.diff(s)) / np.mean(s) * 100
+            per_time = np.abs(np.diff(s / g)) / np.mean(s / g) * 100
+            print(f'pacing over {ok.sum()} moving frames: frame interval median {np.median(g) * 1000:.2f} ms, sd '
+                  f'{np.std(g) * 1000:.2f} ms, min {g.min() * 1000:.2f}, max {g.max() * 1000:.2f}; car step per frame '
+                  f'change median {np.median(per_frame):.1f}% p95 {np.percentile(per_frame, 95):.1f}%; speed by '
+                  f'timestamp change median {np.median(per_time):.1f}% p95 {np.percentile(per_time, 95):.1f}%')
     for name, tt, pp in (('hand-off camera', cam_t, cam_p), ('drawn camera', np.asarray(drawn_t), np.asarray(drawn_p))):
         if len(tt) < 3:
             continue

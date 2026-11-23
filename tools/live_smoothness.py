@@ -6,7 +6,10 @@
 
 Per file, over the frames where the camera moved overall (the race running):
   frozen frames     viewer frames that show no camera motion (the same game frame twice: judder)
-  speed jitter      |speed(i) - speed(i-1)| / mean speed, median and p95 (steady motion: near 0)
+  step jitter       |step(i) - step(i-1)| / mean step: the distance moved per shown frame, as seen at a fixed refresh
+                    (what the eye sees; steady motion: near 0)
+  speed jitter      |speed(i) - speed(i-1)| / mean speed, speed = step / the logged frame time (includes the viewer's
+                    own scheduling noise in the times)
   car shake         change of the car-to-camera offset per viewer frame, cm (median, p95)
 """
 import sys
@@ -41,10 +44,14 @@ def report(path, d=None):
     frozen = int(np.sum(st < 1e-5))
     mean = float(np.mean(sp))
     jit = np.abs(np.diff(sp)) / mean * 100
+    # What the eye sees at a fixed refresh: how much the distance moved changes from one shown frame to the next
+    # (independent of the logged times, which carry the viewer's own scheduling noise).
+    stj = np.abs(np.diff(st)) / max(float(np.mean(st)), 1e-9) * 100
     off = car[a:b + 2] - cam[a:b + 2]
     shake = np.linalg.norm(np.diff(off, axis=0), axis=1) * 100
     print(f'{path}: {b - a + 1} frames at {1 / np.median(dtt):.0f} fps, mean speed {mean:.1f} m/s; frozen frames {frozen} '
-          f'({100 * frozen / (b - a + 1):.1f}%); speed jitter median {np.median(jit):.1f}%, p95 {np.percentile(jit, 95):.1f}%; '
+          f'({100 * frozen / (b - a + 1):.1f}%); step jitter median {np.median(stj):.1f}%, p95 {np.percentile(stj, 95):.1f}%; '
+          f'speed jitter median {np.median(jit):.1f}%, p95 {np.percentile(jit, 95):.1f}%; '
           f'car shake median {np.median(shake):.2f} cm, p95 {np.percentile(shake, 95):.2f} cm')
 
 

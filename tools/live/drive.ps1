@@ -9,7 +9,7 @@
 #
 # -AiPlayer (the race AI drives your car) and -Seconds N (stop after N s of racing) are for unattended tests; -Log writes
 # the viewer's --live-log. The game must be closed first; the monitor awake.
-param([int]$Fps = 60, [switch]$KeepGameRendering, [switch]$AiPlayer, [int]$Seconds = 0, [string]$Log = '')
+param([int]$Fps = 60, [switch]$KeepGameRendering, [switch]$AiPlayer, [int]$Seconds = 0, [string]$Log = '', [string]$ViewerArgs = '')
 $ErrorActionPreference = 'Stop'
 $g = (Resolve-Path "$PSScriptRoot\..\..\..").Path
 $r = (Resolve-Path "$g\..\FM3-ReGPU recomp").Path
@@ -42,6 +42,7 @@ $glog = "$out\drive-godot.log"
 $vargs = @('--path', "`"$g\frame-ir\godot`"", '-s', 'res://viewer/world_view.gd', '--', '--gltf',
     "`"$g\frame-ir\out\world\ladera.gltf`"", '--lit', '--live', '7342', '--fps', "$Fps", '--size', '1920x1080')
 if ($Log) { $vargs += @('--live-log', "`"$Log`"") }
+$vargs += @($ViewerArgs -split ' ' | Where-Object { $_ })  # e.g. -ViewerArgs '--live-smooth 0' or '--fullscreen'
 $p = Start-Process "$g\Godot_v4.7.2-stable_win64_console.exe" -ArgumentList $vargs -RedirectStandardOutput $glog -PassThru -WindowStyle Normal
 for ($i = 0; $i -lt 120 -and -not (Select-String -Path $glog -Pattern 'meshes attached' -Quiet -ErrorAction SilentlyContinue); $i++) { Start-Sleep 1 }
 Select-String -Path $glog -Pattern 'meshes attached' | ForEach-Object { '  ' + ($_.Line -replace '^world_view: ', '') }

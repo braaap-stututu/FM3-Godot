@@ -45,6 +45,11 @@ var _clock_off := INF  # Godot clock minus game clock (smallest seen)
 var _frame_dt := 1.0 / 120.0  # the game's frame interval (smoothed)
 var _live_raw := false  # --live-raw: the newest frame, no interpolation
 var _live_last_now := 0.0
+var _live_smooth := 1.0  # --live-smooth W: the shown motion averaged over W game frames (0 = off: 8 ms less delay at 60)
+var _view_t := 0.0  # the viewer's steadied clock
+var _view_dt := 1.0 / 60.0  # the viewer's frame interval (smoothed)
+var _game_seq := 0  # the last drawn game frame's number and raw time
+var _game_raw := 0.0
 var _live_log: FileAccess  # --live-log <csv>: per viewer frame, time and the shown camera and followed car positions
 const TripleCameras = preload("res://triple_cameras.gd")
 const BAKED_SHADER = preload("res://viewer/fm3_baked.gdshader")
@@ -93,6 +98,8 @@ func _init() -> void:
 				_live_port = int(args[i + 1]); i += 1
 			"--live-raw":
 				_live_raw = true
+			"--live-smooth":  # average the shown motion over this many game frames (0 = off)
+				_live_smooth = float(args[i + 1]); i += 1
 			"--fps":  # cap the viewer's frame rate (vsync stays on)
 				Engine.max_fps = int(args[i + 1]); i += 1
 			"--fullscreen":
@@ -509,23 +516,43 @@ func _live_step() -> void:
 		root.get_texture().get_image().save_png(_out)
 		print("world_view: saved ", _out)
 	var latest := PackedByteArray()
-	var now := Time.get_ticks_usec() / 1e6
+	var raw_now := Time.get_ticks_usec() / 1e6
+	# The viewer's clock, steadied (2026-11-23): its frames reach the screen at a fixed refresh, but the time this code
+	# runs wobbles by a millisecond or so; sampling the game at that raw time put the wobble into the motion. Each frame
+	# advances by the smoothed frame interval, pulled 5% toward the raw time; a jump (a hitch) resets it.
 	if _live_last_now > 0.0:
-		_clock_off += 0.001 * (now - _live_last_now)  # (lets the latency estimate rise again, 1 ms per second)
-	_live_last_now = now
+		var d := raw_now - _live_last_now
+		if d > 0.0005 and d < 0.1:
+			_view_dt = lerpf(_view_dt, d, 0.02)
+	_live_last_now = raw_now
+	var pred := _view_t + _view_dt
+	_view_t = raw_now if _view_t == 0.0 or absf(raw_now - pred) > 0.03 else pred + 0.05 * (raw_now - pred)
+	var now := _view_t
 	while _udp.get_available_packet_count() > 0:
 		var b := _udp.get_packet()
 		if b.size() != 96 or b.decode_u32(4) != 1:
 			continue
 		var magic := b.slice(0, 4).get_string_from_ascii()
 		if magic == "FM3V":
-			# A drawn game frame begins: its camera, then (the datagrams after it) its cars. Timed by the game's clock.
-			var t := b.decode_double(88)
-			if not _live_frames.is_empty():
-				var dt := t - float(_live_frames[-1]["t"])
+			# A drawn game frame begins: its camera, then (the datagrams after it) its cars.
+			# Its time on a steady timeline (2026-11-23): the game advances a fixed step per frame (the car moves the
+			# same distance each frame to 0.2%), but the timestamps, taken on the render thread, wobble +-1.5 ms, and
+			# placing frames by them made the shown motion uneven. So frame n sits one smoothed interval per frame
+			# number after the last, pulled 2% toward its raw time; a gap of more than 50 ms resets the timeline.
+			var raw_t := b.decode_double(88)
+			var seq := int(b.decode_u32(8))
+			var t := raw_t
+			if not _live_frames.is_empty() and seq > _game_seq:
+				var n := seq - _game_seq
+				var dt := (raw_t - _game_raw) / n
 				if dt > 0.0005 and dt < 0.1:
-					_frame_dt = lerpf(_frame_dt, dt, 0.1)
-			_clock_off = minf(_clock_off, now - t)
+					_frame_dt = lerpf(_frame_dt, dt, 0.02)
+				var pred_t := float(_live_frames[-1]["t"]) + _frame_dt * n
+				t = raw_t if absf(raw_t - pred_t) > 0.05 else pred_t + 0.02 * (raw_t - pred_t)
+			_game_seq = seq
+			_game_raw = raw_t
+			# Viewer clock minus game clock: a slow average (the old "smallest seen" crept up and snapped back).
+			_clock_off = now - t if _clock_off == INF or absf((now - t) - _clock_off) > 0.1 else lerpf(_clock_off, now - t, 0.01)
 			_live_frames.append({"t": t, "cam": live_transform(b, _live_axes), "fov": b.decode_float(80), "cars": {}})
 			if _live_frames.size() > 32:
 				_live_frames.pop_front()
@@ -572,44 +599,40 @@ func _live_step() -> void:
 		_live_last_ms = Time.get_ticks_msec()
 		print("world_view: live camera ", _cam.global_transform if _screens.is_empty() else _screens[0]["camera"].global_transform,
 			" (viewer %d fps, game frames every %.1f ms, shown %.1f ms behind)%s" % [Engine.get_frames_per_second(), _frame_dt * 1000,
-			(_frame_dt * 1.5 + 0.002) * 1000, " raw" if _live_raw else ""])
+			_live_delay() * 1000, " raw" if _live_raw else (" smooth %.1f" % _live_smooth if _live_smooth > 0.0 else "")])
 
 
 # The game's drawn frames, interpolated: show the moment 1.5 game frames ago (host clock mapped by the smallest
 # latency seen), blending camera, field of view and every car between the two frames around it, so the viewer's own
 # frame rate never has to match the game's. --live-raw shows the newest frame as it is.
 func _show_drawn(now: float) -> void:
-	var k1 := _live_frames.size() - 1
-	var k0 := k1
-	var alpha := 1.0
-	if not _live_raw and _live_frames.size() > 1:
-		var t := now - _clock_off - (_frame_dt * 1.5 + 0.002)
-		var i := _live_frames.size() - 1
-		while i > 0 and float(_live_frames[i]["t"]) > t:
-			i -= 1
-		k0 = i
-		k1 = mini(i + 1, _live_frames.size() - 1)
-		var span := float(_live_frames[k1]["t"]) - float(_live_frames[k0]["t"])
-		alpha = clampf((t - float(_live_frames[k0]["t"])) / span, 0.0, 1.0) if span > 0.0 else 1.0
-	var f0: Dictionary = _live_frames[k0]
-	var f1: Dictionary = _live_frames[k1]
-	var cam := (f0["cam"] as Transform3D).interpolate_with(f1["cam"] as Transform3D, alpha)
+	var s: Dictionary
+	if _live_raw or _live_frames.size() < 2:
+		s = _sample(INF)
+	else:
+		# --live-smooth W (game frames; 0 = off): average two samples W game frames apart around the moment shown. The
+		# game moves its cars by uneven steps on about 12% of its frames (+-4-9%, often alternating); W = 1 cancels
+		# that frame-to-frame alternation, for W/2 game frames more delay.
+		var t := now - _clock_off - _live_delay()
+		if _live_smooth > 0.0:
+			var h := 0.5 * _live_smooth * _frame_dt
+			var a := _sample(t - h)
+			var b := _sample(t + h)
+			var mv := {}
+			for car in a["moves"]:
+				if b["moves"].has(car):
+					mv[car] = (a["moves"][car] as Transform3D).interpolate_with(b["moves"][car] as Transform3D, 0.5)
+			s = {"cam": (a["cam"] as Transform3D).interpolate_with(b["cam"] as Transform3D, 0.5),
+				"fov": 0.5 * (float(a["fov"]) + float(b["fov"])), "moves": mv}
+		else:
+			s = _sample(t)
+	var cam: Transform3D = s["cam"]
+	var moves: Dictionary = s["moves"]
 	_set_view(cam)
 	if _screens.is_empty():
-		_cam.fov = rad_to_deg(lerpf(float(f0["fov"]), float(f1["fov"]), alpha))
+		_cam.fov = rad_to_deg(float(s["fov"]))
 	if not _car_attached:
 		return
-	var moves := {}
-	for car in _car_inv:
-		var a0 = _car_in_frame(car, k0)
-		var a1 = _car_in_frame(car, k1)
-		if a0 == null or a1 == null:
-			continue
-		var d0: Transform3D = (a0 as Transform3D) * (_car_inv[car] as Transform3D)
-		var d1: Transform3D = (a1 as Transform3D) * (_car_inv[car] as Transform3D)
-		d0.basis = d0.basis.orthonormalized()
-		d1.basis = d1.basis.orthonormalized()
-		moves[car] = d0.interpolate_with(d1, alpha)
 	for part in _car_parts:
 		if moves.has(part[1]):
 			(part[0] as Node3D).global_transform = (moves[part[1]] as Transform3D) * (part[2] as Transform3D)
@@ -626,6 +649,44 @@ func _show_drawn(now: float) -> void:
 				best = car
 				best_o = o
 		_live_log.store_line("%.6f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f" % [now, cam.origin.x, cam.origin.y, cam.origin.z, best_o.x, best_o.y, best_o.z])
+
+
+# How far behind the game the viewer shows it: 1.5 game frames (so the frame after the moment has arrived), plus half
+# the smoothing width, plus 2 ms.
+func _live_delay() -> float:
+	return _frame_dt * (1.5 + 0.5 * _live_smooth) + 0.002
+
+
+# The game at time t (game clock; INF = the newest frame): camera, field of view and each car's move D = A(t) * A(0)^-1,
+# blended between the two drawn frames around t.
+func _sample(t: float) -> Dictionary:
+	var k1 := _live_frames.size() - 1
+	var k0 := k1
+	var alpha := 1.0
+	if t != INF and _live_frames.size() > 1:
+		var i := _live_frames.size() - 1
+		while i > 0 and float(_live_frames[i]["t"]) > t:
+			i -= 1
+		k0 = i
+		k1 = mini(i + 1, _live_frames.size() - 1)
+		var span := float(_live_frames[k1]["t"]) - float(_live_frames[k0]["t"])
+		alpha = clampf((t - float(_live_frames[k0]["t"])) / span, 0.0, 1.0) if span > 0.0 else 1.0
+	var f0: Dictionary = _live_frames[k0]
+	var f1: Dictionary = _live_frames[k1]
+	var moves := {}
+	if _car_attached:
+		for car in _car_inv:
+			var a0 = _car_in_frame(car, k0)
+			var a1 = _car_in_frame(car, k1)
+			if a0 == null or a1 == null:
+				continue
+			var d0: Transform3D = (a0 as Transform3D) * (_car_inv[car] as Transform3D)
+			var d1: Transform3D = (a1 as Transform3D) * (_car_inv[car] as Transform3D)
+			d0.basis = d0.basis.orthonormalized()
+			d1.basis = d1.basis.orthonormalized()
+			moves[car] = d0.interpolate_with(d1, alpha)
+	return {"cam": (f0["cam"] as Transform3D).interpolate_with(f1["cam"] as Transform3D, alpha),
+		"fov": lerpf(float(f0["fov"]), float(f1["fov"]), alpha), "moves": moves}
 
 
 # A car's matrix as of frame k: that frame's, or the latest earlier one (a car can be missing from a frame).

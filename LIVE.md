@@ -99,6 +99,31 @@ Per 10 s: frozen 1.9% in the first window (the start, the clock estimate settlin
 6.9-8.8%, p95 24-41%; no drift over the minute. The p95 (an occasional uneven step) is the open item; the guess is
 the game's own uneven frame times, not checked yet.
 
+### At 60 fps, driving it (2026-11-23, second session)
+
+The user drove the test race through Godot only (`tools\live\drive.ps1`: FM3 at 60 fps with `REGPU_NO_RENDER`, 0
+draws; the viewer at 60 fps) and still saw some jitter, guessing the two halves' frame times don't match. Measured
+(`live_record.py` "pacing", `live_smoothness.py` "step jitter" = the change of the distance moved per shown frame, what
+the eye sees at a fixed refresh):
+
+- The game moves its cars evenly per frame (step change median **0.2%**), but its frames' timestamps (taken on the
+  render thread) wobble: 15.2-18.0 ms apart, sd 0.44 ms. Placing frames by those times made the shown motion
+  uneven: speed by timestamp changes median 4.2%, p95 16%. The guess was right.
+- Fix 1 (`world_view.gd`): game frames on a steady timeline by frame number (one smoothed interval per frame, pulled 2%
+  toward the raw time), the viewer's own clock steadied the same way (5% pull), the clock offset a slow average (the
+  "smallest seen" estimate crept up 1 ms/s and snapped back).
+- What remained is in the game's own motion: on ~12% of frames the step is 4-9% off the trend, often alternating,
+  irregularly spaced (no beat between the clocks). Fix 2: `--live-smooth W` (default 1) averages two samples one game
+  frame apart around the shown moment, cancelling frame-to-frame alternation, for half a frame more delay.
+
+| 30 s AI race, both at 60 fps | step jitter median / p95 | frames > 4% off the trend | shown behind the game |
+|---|---|---|---|
+| timestamps as sent (before) | 1.8% / 7.7% | 206 | 27 ms |
+| steady timelines | 0.5% / 6.5% | 206 | 27 ms |
+| + `--live-smooth 1` (default) | 0.5% / 4.0% | ~75 | 35 ms |
+
+`drive.ps1 -ViewerArgs '--live-smooth 0'` trades the smoothing for 8 ms less delay.
+
 ## Test scripts (`tools\live\`)
 
 Both boot FM3's test grid themselves (minimized; the game must be closed and the monitor awake) and close it after.
@@ -106,6 +131,9 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
   picture at frozen moments (grid, camera views with RB, race moments); pictures in `out\live\compare\`.
 - `live_smooth.ps1 [-Seconds 60] [-Tag t] [-ViewerArgs '--live-raw'] [-NoGodot]`: an AI race with the viewer logging
   what it shows, then `tools\live_smoothness.py --window 10`; `-NoGodot` runs `tools\live_record.py` on the stream.
+- `drive.ps1 [-Fps 60] [-KeepGameRendering] [-ViewerArgs '...'] [-AiPlayer -Seconds N -Log csv]`: the user drives the
+  test race seen only through Godot (game rendering off, both at 60 fps, `FM3_INPUT_BACKGROUND=1` so keyboard and
+  wheel work while the viewer is in front); `-AiPlayer -Seconds 30 -Log x.csv` is the unattended version.
 
 ## Next for stage A (where to continue)
 
