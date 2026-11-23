@@ -71,6 +71,7 @@ CARBIN_DIRS = []  # --carbins DIR[;DIR]: whole cars from their .carbin files ins
 # by its matrix, also the far ones whose captured low-detail draws are not in the carbin (no fit possible).
 CAR_MATRICES = []
 CAR_FILE_DIRS = []  # --car-files DIR[;DIR]: <dir>/<car>/ = the car zip's contents (_lod0, _cockpit, textures, ...)
+NEEDLES = {}  # node name -> gauge needle data (cockpit gauges), written beside the glTF as <out>_needles.json
 CAR_GEOM = {}  # car -> (placed vertices sample): build_cars' cars, to drop their captured low-detail duplicates
 
 
@@ -341,11 +342,23 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
         cockpit_parts = 0
         if ckpath and os.path.exists(ckpath) and xds_material is not None:
             cgroups = {}
-            for sec in fm3_carbin.sections(fm3_carbin.parse(open(ckpath, 'rb').read()), 0):
-                # (gauge needles come as <gauge>_min / _mid / _max parts, the needle at each end and the middle; the
-                # game shows one and turns it: keep _min, the needle at rest)
+            csecs = fm3_carbin.sections(fm3_carbin.parse(open(ckpath, 'rb').read()), 0)
+            byname = {sec['name']: sec for sec in csecs}
+            ticks = gauge_ticks(os.path.join(zdir, 'carattribs.xml'))
+            for sec in csecs:
+                # (gauge needles come as <gauge>_min / _mid / _max parts, the same needle at parameter 0, 0.5 and 1;
+                # the game shows one and turns it: _min is kept, as its own node, with its rotation (needle_turn))
                 if sec['name'].endswith(('race', '_mid', '_max')):
                     continue
+                needle = None
+                if sec['name'].endswith('_min'):
+                    gname = sec['name'][:-4]
+                    mid, mx = byname.get(gname + '_mid'), byname.get(gname + '_max')
+                    if mid is not None and mx is not None:
+                        world = lambda q: (q['local'] + q['offset']) @ R.T + t  # noqa: E731
+                        needle = needle_turn(world(sec), world(mid), world(mx))
+                        if needle is not None:
+                            needle.update(gauge=gname, car=car, ticks=ticks.get(gname, []))
                 cockpit_parts += 1
                 P = (sec['local'] + sec['offset']) @ R.T + t
                 Nf = None
@@ -374,8 +387,18 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                     lit = None
                     if sec.get('light') is not None and not mname.startswith('gauge'):  # (gauges glow: GaugeEmissiveScale)
                         lit = np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
-                    cgroups.setdefault(('cockpit_' + mname, m_), []).append((P, tris, sec['uv0'], Nf, lit))
+                    gkey = 'cockpit_' + mname + (f'-{sec["name"]}' if needle is not None else '')
+                    cgroups.setdefault((gkey, m_), []).append((P, tris, sec['uv0'], Nf, lit))
+                    if needle is not None:
+                        NEEDLES[gkey] = needle
+            first = len(nodes)
             emit(cgroups, 'cockpit_')
+            for nd in nodes[first:]:
+                # (node names: cockpit_<car>_cockpit_<material>-<part>_<mesh>: the needle data under the node's name)
+                key = next((k for k in NEEDLES if isinstance(NEEDLES[k], dict) and NEEDLES[k].get('car') == car
+                            and nd['name'].startswith(f'cockpit_{car}_{k}_')), None)
+                if key is not None:
+                    NEEDLES[nd['name']] = NEEDLES.pop(key)
         built.add(car)
         allp = np.concatenate([q[0] for parts in groups.values() for q in parts])
         CAR_GEOM[car] = allp[np.linspace(0, len(allp) - 1, min(6000, len(allp))).astype(int)]
@@ -499,6 +522,45 @@ def import_dynamic(ref_path, capdir, src, add_view, accessors, materials, images
     if dropped_dup:
         print(f'  {dropped_dup} captured low-detail car pieces left out (their cars are rebuilt from the carbin)')
     return count
+
+
+def gauge_ticks(path):
+    """carattribs.xml's <Gauges>: {'speed' | 'tach' | 'fuel' | 'boost': [[param, value], ...]}; param 0..1 is the needle
+    from its _min to its _max part, value in the game's units (speed m/s, tach rpm)."""
+    out = {}
+    if not os.path.exists(path):
+        return out
+    import xml.etree.ElementTree as ET
+    g = ET.parse(path).getroot().find('Gauges')
+    for e in (list(g) if g is not None else []):
+        out[e.tag.lower()] = [[float(k.get('Param')), float(k.get('Value'))] for k in e.findall('TickMark')]
+    return out
+
+
+def needle_turn(a, m, b):
+    """A gauge needle's turn from its three poses (vertices of the _min, _mid, _max parts, same order): pivot, unit axis
+    and the angles (radians) to _mid and _max about it; None when they are not one rigid rotation."""
+    if not (len(a) == len(m) == len(b)) or len(a) < 3:
+        return None
+
+    def rigid(A, B):
+        ca, cb = A.mean(0), B.mean(0)
+        U, _, Vt = np.linalg.svd((A - ca).T @ (B - cb))
+        Rm = Vt.T @ np.diag([1, 1, np.sign(np.linalg.det(Vt.T @ U.T))]) @ U.T
+        return Rm, cb - Rm @ ca
+
+    def axis_angle(Rm):
+        ax = np.array([Rm[2, 1] - Rm[1, 2], Rm[0, 2] - Rm[2, 0], Rm[1, 0] - Rm[0, 1]])
+        return ax / max(np.linalg.norm(ax), 1e-12), float(np.arccos(np.clip((np.trace(Rm) - 1) / 2, -1, 1)))
+    R1, t1 = rigid(a, m)
+    R2, _ = rigid(m, b)
+    ax1, an1 = axis_angle(R1)
+    ax2, an2 = axis_angle(R2)
+    if abs(float(ax1 @ ax2)) < 0.99 or np.abs(a @ R1.T + t1 - m).max() > 1e-3:
+        return None
+    pivot = np.linalg.lstsq(np.eye(3) - R1, t1, rcond=None)[0]
+    pivot += ax1 * float((a.mean(0) - pivot) @ ax1)  # (the point of the axis level with the needle, not the least-norm one)
+    return {'pivot': pivot.tolist(), 'axis': ax1.tolist(), 'mid': an1, 'max': an1 + an2 * float(np.sign(ax1 @ ax2))}
 
 
 def main():
@@ -876,6 +938,8 @@ def main():
         f.write(blob)
     with open(out, 'w') as f:
         json.dump(gltf, f)
+    with open(os.path.splitext(out)[0] + '_needles.json', 'w', newline='\n') as f:
+        json.dump(NEEDLES, f, indent=1)
     print(f'{nfiles} model files -> {len(meshes)} meshes, {nv} vertices, {nt} triangles, {len(blob) / 1e6:.0f} MB: {out}')
     return 0
 

@@ -44,6 +44,7 @@ var _car_inv := {}  # car -> its matrix at attach time, inverted
 var _wheels := {}  # car -> its latest four wheel matrices (glTF space)
 var _car_prev := {}  # car -> [position (game space), game time]: for its speed
 var _car_speed := {}  # car -> speed, m/s (smoothed)
+var _needles := {}  # cockpit gauge needle node name -> {pivot, axis, mid, max, gauge, ticks} (<gltf>_needles.json)
 var _wheel_inv := {}  # car -> its four wheel matrices at attach time, inverted
 var _clock_off := INF  # Godot clock minus game clock (smallest seen)
 var _frame_dt := 1.0 / 120.0  # the game's frame interval (smoothed)
@@ -85,6 +86,11 @@ func _init() -> void:
 		match args[i]:
 			"--gltf":
 				gltf_path = args[i + 1]; i += 1
+				var np_ := gltf_path.get_basename() + "_needles.json"
+				if FileAccess.file_exists(np_):
+					var parsed = JSON.parse_string(FileAccess.get_file_as_string(np_))
+					if parsed is Dictionary:
+						_needles = parsed
 			"--out":
 				_out = args[i + 1]; i += 1
 			"--size":
@@ -596,6 +602,46 @@ static func wheel_transform(b: PackedByteArray, k: int, axes: PackedFloat32Array
 	return Transform3D(Basis(r[0], r[1], r[2]), r[3])
 
 
+# A cockpit gauge needle's turn at grid placement (glTF space): the needle's parameter (0 = its _min part, 1 = _max)
+# from the game's value through carattribs.xml's TickMarks (linear between them, extended past the ends), then the
+# angle (min -> mid for 0..0.5, mid -> max for 0.5..1, fm3_track_export.py needle_turn). Speed: the car's own speed
+# (m/s, from its streamed matrices); tach: idle (the game streams no rpm yet); fuel: full.
+func needle_turn(n: Dictionary, car) -> Transform3D:
+	var gauge := String(n.get("gauge", ""))
+	var param := 0.0
+	if gauge == "fuel":
+		param = 1.0
+	else:
+		var value := float(_car_speed.get(car, 0.0)) if gauge == "speed" else NEEDLE_IDLE_RPM
+		param = needle_param(n.get("ticks", []), value)
+	param = clampf(param, 0.0, 1.0)
+	var mid := float(n["mid"])
+	var angle := param / 0.5 * mid if param <= 0.5 else mid + (param - 0.5) / 0.5 * (float(n["max"]) - mid)
+	var a: Array = n["axis"]
+	var pv: Array = n["pivot"]
+	var b := Basis(Vector3(a[0], a[1], a[2]).normalized(), angle)
+	var p := Vector3(pv[0], pv[1], pv[2])
+	return Transform3D(b, p - b * p)
+
+
+const NEEDLE_IDLE_RPM := 900.0
+
+
+func needle_param(ticks: Array, value: float) -> float:
+	if ticks.is_empty():
+		return 0.0
+	if ticks.size() == 1:
+		return float(ticks[0][0])
+	var k := 0
+	while k < ticks.size() - 2 and value > float(ticks[k + 1][1]):
+		k += 1
+	var p0 := float(ticks[k][0])
+	var v0 := float(ticks[k][1])
+	var p1 := float(ticks[k + 1][0])
+	var v1 := float(ticks[k + 1][1])
+	return p0 + (value - v0) * (p1 - p0) / maxf(v1 - v0, 1e-6)
+
+
 func _attach_cars() -> void:
 	_car_attached = true
 	var inv := _car_inv
@@ -635,7 +681,7 @@ func _attach_cars() -> void:
 							best_d = d
 							wk = k
 				_car_parts.append([m, car, m.global_transform, wk, (1 if _is_blur_wheel(m) else 0) if wk >= 0 else -1,
-					String(m.name).begins_with("cockpit_"), m.cast_shadow])
+					String(m.name).begins_with("cockpit_"), m.cast_shadow, _needles.get(String(m.name))])
 				per_car[car] = per_car.get(car, 0) + 1
 				if wk >= 0:
 					per_wheel[car] = per_wheel.get(car, 0) + 1
@@ -851,7 +897,10 @@ func _show_drawn(now: float) -> void:
 		if wk >= 0 and wmoves.has(part[1]):
 			(part[0] as Node3D).global_transform = (wmoves[part[1]][wk] as Transform3D) * (part[2] as Transform3D)
 		elif moves.has(part[1]):
-			(part[0] as Node3D).global_transform = (moves[part[1]] as Transform3D) * (part[2] as Transform3D)
+			var turn := Transform3D.IDENTITY
+			if part[7] != null and (part[0] as Node3D).visible:
+				turn = needle_turn(part[7], part[1])
+			(part[0] as Node3D).global_transform = (moves[part[1]] as Transform3D) * turn * (part[2] as Transform3D)
 	if not _live_cube_cams.is_empty():
 		# the live reflection cube follows the player car (the car nearest the camera), 0.8 m above its origin
 		var pc := Vector3.ZERO
