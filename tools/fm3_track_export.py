@@ -65,6 +65,11 @@ def apply_uv(chan, a, b, me):
 
 
 CARBIN_DIRS = []  # --carbins DIR[;DIR]: whole cars from their .carbin files instead of the captured draws
+# --car-matrices <json> (2026-11-23): the game's car body matrices on the grid (tools/live_listen.py --save-cars, from
+# FM3_LIVE): carbin car space goes to the world as F (p M) exactly (0.1 mm on the fitted cars), so every car is placed
+# by its matrix, also the far ones whose captured low-detail draws are not in the carbin (no fit possible).
+CAR_MATRICES = []
+CAR_GEOM = {}  # car -> (placed vertices sample): build_cars' cars, to drop their captured low-detail duplicates
 
 
 CAR_FLAT = {k: v for k, v in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'profiles', 'fm3',
@@ -126,25 +131,40 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                 continue  # (movable parts: not used for the fit)
             X.append(sec['local'][vi] + sec['offset'])
             Y.append(W)
-        if not X:
-            continue
-        # robust: fit on the largest captured piece, keep the pieces it explains within 2 cm (some parts sit animated or
-        # damage-deformed in the frame), refit on those
-        good, err = [], 1.0
-        for seed in sorted(range(len(X)), key=lambda i: -len(X[i]))[:12]:  # the seed piece that explains most pieces
-            if len(X[seed]) < 4:
+        # The car's matrix (--car-matrices): the one nearest the centre of all its captured draws (within 4 m).
+        placed_by = None
+        if CAR_MATRICES:
+            centre = np.concatenate([world_of(n)[0] for _, _, n in draws]).mean(0)
+            Fz = np.diag([1.0, 1.0, -1.0])
+            best = min(CAR_MATRICES, key=lambda M: np.linalg.norm(Fz @ M[3, :3] - centre))
+            if np.linalg.norm(Fz @ best[3, :3] - centre) < 4.0:
+                R, t, err = Fz @ best[:3, :3].T, Fz @ best[3, :3], 0.0
+                good = list(range(len(X)))
+                placed_by = 'its game matrix'
+        if placed_by is None:
+            if not X:
                 continue
-            R, t, e = fm3_car.kabsch(X[seed], Y[seed])
-            g_ = [i for i in range(len(X)) if np.abs(X[i] @ R.T + t - Y[i]).max() < 0.02]
-            if sum(len(X[i]) for i in g_) > sum(len(X[i]) for i in good):
-                good, err = g_, e
-        if not good:
-            print(f'  {car}: largest captured piece is not rigid in the carbin ({err:.3f} m), kept the captured draws')
-            continue
-        R, t, err = fm3_car.kabsch(np.concatenate([X[i] for i in good]), np.concatenate([Y[i] for i in good]))
-        if err > 0.05 or len(good) < max(3, len(X) // 3):
-            print(f'  {car}: carbin fit error {err:.3f} m, kept the captured draws')
-            continue
+            # robust: fit on the largest captured piece, keep the pieces it explains within 2 cm (some parts sit animated
+            # or damage-deformed in the frame), refit on those
+            good, err = [], 1.0
+            for seed in sorted(range(len(X)), key=lambda i: -len(X[i]))[:12]:  # the seed piece that explains most pieces
+                if len(X[seed]) < 4:
+                    continue
+                R, t, e = fm3_car.kabsch(X[seed], Y[seed])
+                g_ = [i for i in range(len(X)) if np.abs(X[i] @ R.T + t - Y[i]).max() < 0.02]
+                if sum(len(X[i]) for i in g_) > sum(len(X[i]) for i in good):
+                    good, err = g_, e
+            if not good:
+                print(f'  {car}: largest captured piece is not rigid in the carbin ({err:.3f} m), kept the captured draws')
+                continue
+            R, t, err = fm3_car.kabsch(np.concatenate([X[i] for i in good]), np.concatenate([Y[i] for i in good]))
+            if err > 0.05 or len(good) < max(3, len(X) // 3):
+                print(f'  {car}: carbin fit error {err:.3f} m, kept the captured draws')
+                continue
+            placed_by = f'fit {err * 1000:.1f} mm over {len(good)} of {len(X)} captured pieces'
+        elif X:
+            fit_err = max(float(np.abs(X[i] @ R.T + t - Y[i]).max()) for i in range(len(X)))
+            placed_by += f' (its {len(X)} matched captured pieces within {fit_err * 1000:.1f} mm)'
         keep = fm3_car.stock_parts(secs, captured)
         # the car's paint: the captured material with a metallic-roughness texture (fir_world writes one only for paint)
         paint = None
@@ -153,6 +173,25 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                 for mi_, cnt_ in v.items():
                     if 'metallicRoughnessTexture' in ref['materials'][mi_].get('pbrMetallicRoughness', {}):
                         paint = mi_
+        if paint is None:
+            # A far car's paint is drawn by low-detail draws that match no carbin part: the asset match named them after
+            # whatever carbin material they resembled (the PT Cruiser's body LOD as 'emblem', the Beetle's as 'frame'),
+            # or not at all. The paint shader gives itself away: fir_world writes a metallic-roughness texture only for
+            # paint. So: the paint material of this car's own captured draws, then of the unnamed ones in its box, by
+            # vertex count.
+            Rinv = np.linalg.inv(R)
+            votes = {}
+            cand = [n for _, _, n in draws] + [n for n in ref['nodes'] if 'mesh' in n and re.match(r'draw\d+$', n.get('name', ''))]
+            for n in cand:
+                Wn, mn = world_of(n)
+                if mn is None or 'metallicRoughnessTexture' not in ref['materials'][mn].get('pbrMetallicRoughness', {}):
+                    continue
+                loc = (Wn - t) @ Rinv.T
+                if np.all(np.abs(loc[:, 0]) < 1.3) and np.all(np.abs(loc[:, 2]) < 3.0) and np.all(np.abs(loc[:, 1]) < 2.0):
+                    votes[mn] = votes.get(mn, 0) + len(Wn)
+            if votes:
+                paint = max(votes, key=votes.get)
+                print(f'  {car}: paint from {votes[paint]} captured low-detail paint-shader vertices on it')
         groups = {}
         for sec in secs:
             if sec['name'] not in keep or sec['offset'] is None or sec['name'] == 'wheel':
@@ -205,8 +244,26 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
             meshes.append({'name': f'{car}.{matname}', 'primitives': [prim]})
             nodes.append({'mesh': len(meshes) - 1, 'name': f'carbin_{car}_{matname}_{len(meshes) - 1}'})
         built.add(car)
-        print(f'  {car}: {len(keep)} parts from the carbin (fit {err * 1000:.1f} mm over {len(good)} of {len(X)} captured pieces)')
+        allp = np.concatenate([q[0] for parts in groups.values() for q in parts])
+        CAR_GEOM[car] = allp[np.linspace(0, len(allp) - 1, min(6000, len(allp))).astype(int)]
+        print(f'  {car}: {len(keep)} parts from the carbin, placed by {placed_by}')
     return built
+
+
+def on_rebuilt_car(W):
+    """True when a captured draw's vertices lie on a car rebuilt from its carbin (median distance under 3 cm): one of
+    that car's own low-detail pieces, now duplicated by the carbin. Drivers and people sit further from the body."""
+    if not CAR_GEOM or not len(W):
+        return False
+    c = W.mean(0)
+    sample = W[np.linspace(0, len(W) - 1, min(60, len(W))).astype(int)]
+    for P in CAR_GEOM.values():
+        if np.linalg.norm(P.mean(0) - c) > 4.0:
+            continue
+        d = np.array([np.min(np.linalg.norm(P - q, axis=1)) for q in sample])
+        if np.median(d) < 0.03:
+            return True
+    return False
 
 
 def import_dynamic(ref_path, capdir, src, add_view, accessors, materials, images, textures, meshes, nodes, tex_out):
@@ -260,6 +317,7 @@ def import_dynamic(ref_path, capdir, src, add_view, accessors, materials, images
 
     built = build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, nodes, materials) if CARBIN_DIRS else set()
     count = len(built)
+    dropped_dup = 0
     for n in ref['nodes']:
         if 'mesh' not in n:
             continue
@@ -272,6 +330,15 @@ def import_dynamic(ref_path, capdir, src, add_view, accessors, materials, images
         rec = caps.get(int(mo.group(1)))
         if not car and (rec is None or blob.find(bytes.fromhex(rec['vb_head'])[:32]) >= 0):
             continue
+        if not car and CAR_GEOM:
+            p0 = ref['meshes'][n['mesh']]['primitives'][0]
+            a0 = ref['accessors'][p0['attributes']['POSITION']]
+            v0 = ref['bufferViews'][a0['bufferView']]
+            P0 = np.frombuffer(rbin, np.float32, a0['count'] * 3, v0.get('byteOffset', 0) + a0.get('byteOffset', 0)).reshape(-1, 3)
+            M0 = np.array(n.get('matrix', np.eye(4).ravel())).reshape(4, 4).T
+            if on_rebuilt_car(P0.astype(np.float64) @ M0[:3, :3].T + M0[:3, 3]):
+                dropped_dup += 1
+                continue  # a rebuilt car's own low-detail piece
         prims = []
         for p in ref['meshes'][n['mesh']]['primitives']:
             q = {'attributes': {k: copy_acc(v) for k, v in p['attributes'].items()}}
@@ -289,6 +356,8 @@ def import_dynamic(ref_path, capdir, src, add_view, accessors, materials, images
                 nd[k] = n[k]
         nodes.append(nd)
         count += 1
+    if dropped_dup:
+        print(f'  {dropped_dup} captured low-detail car pieces left out (their cars are rebuilt from the carbin)')
     return count
 
 
@@ -633,6 +702,9 @@ def main():
                 fr.write_png(os.path.join(tex_out, 'envcube_%d.png' % k), img.shape[1], img.shape[0], img.tobytes())
     if '--carbins' in sys.argv:
         CARBIN_DIRS.extend(sys.argv[sys.argv.index('--carbins') + 1].split(';'))
+    if '--car-matrices' in sys.argv:
+        for c in json.load(open(sys.argv[sys.argv.index('--car-matrices') + 1]))['cars']:
+            CAR_MATRICES.append(np.array(c['matrix'], dtype=np.float64).reshape(4, 4))
     if '--dynamic-from' in sys.argv:
         ndyn = import_dynamic(sys.argv[sys.argv.index('--dynamic-from') + 1], capdir, src, add_view, accessors, materials,
                               images, textures, meshes, nodes, tex_out)

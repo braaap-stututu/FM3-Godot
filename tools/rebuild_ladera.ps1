@@ -44,8 +44,12 @@ Pop-Location
 if ($rc) { throw 'fm3_track_texmap.py failed' }
 
 Write-Host '3/4 track + props + sky + cars -> out\world\ladera.gltf (fm3_track_export.py)'
+# (work\fir\grid-cars.json: the game's car matrices on the grid, tools\live_listen.py --save-cars; places every car,
+# also the far ones, from its carbin. Without it the cars that fit their captured draws are rebuilt, the rest captured.)
+$carMats = Join-Path $work 'fir\grid-cars.json'
+$carArgs = if (Test-Path $carMats) { @('--car-matrices', $carMats) } else { @() }
 python tools\fm3_track_export.py $track out\world\ladera.gltf --camera-from out\world\grid.gltf `
-    --dynamic-from out\world\grid.gltf --carbins $carbins --texmap out\world\capmap --pvs $pvs
+    --dynamic-from out\world\grid.gltf --carbins $carbins --texmap out\world\capmap --pvs $pvs @carArgs
 if ($LASTEXITCODE) { throw 'fm3_track_export.py failed' }
 
 if ($Compare) {

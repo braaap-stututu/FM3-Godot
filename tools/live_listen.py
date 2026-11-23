@@ -81,11 +81,14 @@ def main():
     ap.add_argument('--port', type=int, default=7342)
     ap.add_argument('--seconds', type=float, default=5.0)
     ap.add_argument('--compare', help='glTF whose camera node the player view should match')
+    ap.add_argument('--save-cars', help='write every car\'s last body matrix (game space, row vectors) to this JSON: '
+                    'on the frozen grid, the placement fm3_track_export.py --car-matrices uses')
     a = ap.parse_args()
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(('127.0.0.1', a.port))
     s.settimeout(0.25)
     seen = {}
+    cars = {}
     end = time.time() + a.seconds
     while time.time() < end:
         try:
@@ -94,12 +97,22 @@ def main():
             continue
         if len(data) != 96:
             continue
+        if data[:4] == b'FM3K':
+            _, _, _, car, *body = struct.unpack('<4sIII16f2Id', data)
+            cars[car] = body[:16]
+            continue
         magic, ver, seq, director, *rest = struct.unpack(FMT, data)
         if magic != b'FM3C' or ver != 1:
             continue
         view, fov, vtable, t = rest[:16], rest[16], rest[17], rest[18]
         d = seen.setdefault(director, {'n': 0, 't0': t})
         d.update(n=d['n'] + 1, t1=t, view=view, fov=fov, vtable=vtable, seq=seq)
+    if a.save_cars:
+        out = [{'car': f'{c:08X}', 'matrix': [float(x) for x in m]} for c, m in cars.items()]
+        with open(a.save_cars, 'w', newline='\n') as f:
+            json.dump({'note': 'FM3 car body matrices (car object +0x10, game space, row vectors: rows 0-2 the car axes, '
+                       'row 3 its position), from FM3_LIVE on the frozen test grid', 'cars': out}, f, indent=1)
+        print(f'{len(out)} car matrices -> {a.save_cars}')
     if not seen:
         print(f'no packets on udp 127.0.0.1:{a.port} in {a.seconds:.0f} s (is FM3 running with FM3_LIVE set?)')
         return 1

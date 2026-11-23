@@ -41,6 +41,8 @@ var _car_parts := []  # [node, car, offset]
 var _live_has_drawn := false  # "FM3V" (the drawn camera) seen: the main view follows only those
 var _live_frames := []  # the game's last drawn frames: {t (game clock, s), cam, fov, cars: {car: matrix}}
 var _car_inv := {}  # car -> its matrix at attach time, inverted
+var _wheels := {}  # car -> its latest four wheel matrices (glTF space)
+var _wheel_inv := {}  # car -> its four wheel matrices at attach time, inverted
 var _clock_off := INF  # Godot clock minus game clock (smallest seen)
 var _frame_dt := 1.0 / 120.0  # the game's frame interval (smoothed)
 var _live_raw := false  # --live-raw: the newest frame, no interpolation
@@ -461,12 +463,28 @@ static func car_transform(b: PackedByteArray, axes: PackedFloat32Array) -> Trans
 	return Transform3D(Basis(r[0], r[1], r[2]), r[3])
 
 
+# Wheel k of an FM3W datagram (its world matrix as drawn) in the glTF's world, mirrored like car_transform.
+static func wheel_transform(b: PackedByteArray, k: int, axes: PackedFloat32Array) -> Transform3D:
+	var s := Vector3(axes[0], axes[1], axes[2])
+	var o := 16 + 64 * k
+	var r := []
+	for row in 4:
+		r.append(Vector3(b.decode_float(o + 16 * row), b.decode_float(o + 16 * row + 4), b.decode_float(o + 16 * row + 8)) * s)
+	return Transform3D(Basis(r[0], r[1], r[2]), r[3])
+
+
 func _attach_cars() -> void:
 	_car_attached = true
 	var inv := _car_inv
 	for car in _cars:
 		inv[car] = car_transform(_cars[car], _live_axes).affine_inverse()
+		if _wheels.has(car):
+			var wi := []
+			for w in _wheels[car]:
+				wi.append((w as Transform3D).affine_inverse())
+			_wheel_inv[car] = wi
 	var per_car := {}
+	var per_wheel := {}
 	for mi in _scene.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D
 		if m.mesh == null:
@@ -482,12 +500,26 @@ func _attach_cars() -> void:
 					inside = false
 					break
 			if inside:
-				_car_parts.append([m, car, m.global_transform])  # (placed at D * this, D = A(t) * A(0)^-1)
+				# A wheel's mesh (centre within 0.45 m of a wheel's centre, under 1 m across) follows that wheel's spin and
+				# steering; everything else the body. (placed at D * this, D = A(t) * A(0)^-1)
+				var wk := -1
+				if _wheels.has(car) and maxf(box.size.x, maxf(box.size.y, box.size.z)) < 1.0:
+					var c := box.get_center()
+					var best_d := 0.45
+					for k in 4:
+						var d := c.distance_to((_wheels[car][k] as Transform3D).origin)
+						if d < best_d:
+							best_d = d
+							wk = k
+				_car_parts.append([m, car, m.global_transform, wk])
 				per_car[car] = per_car.get(car, 0) + 1
+				if wk >= 0:
+					per_wheel[car] = per_wheel.get(car, 0) + 1
 				break
 	for car in _cars:
 		var o := car_transform(_cars[car], _live_axes).origin
-		print("world_view: live car %08X at (%.2f, %.2f, %.2f): %d meshes attached" % [car, o.x, o.y, o.z, per_car.get(car, 0)])
+		print("world_view: live car %08X at (%.2f, %.2f, %.2f): %d meshes attached (%d on its wheels)" % [car, o.x, o.y, o.z,
+			per_car.get(car, 0), per_wheel.get(car, 0)])
 	if per_car.size() < _cars.size():
 		print("world_view: (a car with no meshes: the game was not at the glTF's grid when the viewer started, or its model is missing)")
 
@@ -530,6 +562,16 @@ func _live_step() -> void:
 	var now := _view_t
 	while _udp.get_available_packet_count() > 0:
 		var b := _udp.get_packet()
+		if b.size() == 280 and b.slice(0, 4).get_string_from_ascii() == "FM3W" and b.decode_u32(4) == 1:
+			# A car's four wheels as drawn (spin and steering), right after that car's datagram.
+			var wcar := int(b.decode_u32(12))
+			var ws := []
+			for k in 4:
+				ws.append(wheel_transform(b, k, _live_axes))
+			_wheels[wcar] = ws
+			if not _live_frames.is_empty():
+				_live_frames[-1]["wheels"][wcar] = ws
+			continue
 		if b.size() != 96 or b.decode_u32(4) != 1:
 			continue
 		var magic := b.slice(0, 4).get_string_from_ascii()
@@ -553,7 +595,7 @@ func _live_step() -> void:
 			_game_raw = raw_t
 			# Viewer clock minus game clock: a slow average (the old "smallest seen" crept up and snapped back).
 			_clock_off = now - t if _clock_off == INF or absf((now - t) - _clock_off) > 0.1 else lerpf(_clock_off, now - t, 0.01)
-			_live_frames.append({"t": t, "cam": live_transform(b, _live_axes), "fov": b.decode_float(80), "cars": {}})
+			_live_frames.append({"t": t, "cam": live_transform(b, _live_axes), "fov": b.decode_float(80), "cars": {}, "wheels": {}})
 			if _live_frames.size() > 32:
 				_live_frames.pop_front()
 			_live_has_drawn = true
@@ -622,8 +664,15 @@ func _show_drawn(now: float) -> void:
 			for car in a["moves"]:
 				if b["moves"].has(car):
 					mv[car] = (a["moves"][car] as Transform3D).interpolate_with(b["moves"][car] as Transform3D, 0.5)
+			var wv := {}
+			for car in a["wmoves"]:
+				if b["wmoves"].has(car):
+					var ws := []
+					for k in 4:
+						ws.append((a["wmoves"][car][k] as Transform3D).interpolate_with(b["wmoves"][car][k] as Transform3D, 0.5))
+					wv[car] = ws
 			s = {"cam": (a["cam"] as Transform3D).interpolate_with(b["cam"] as Transform3D, 0.5),
-				"fov": 0.5 * (float(a["fov"]) + float(b["fov"])), "moves": mv}
+				"fov": 0.5 * (float(a["fov"]) + float(b["fov"])), "moves": mv, "wmoves": wv}
 		else:
 			s = _sample(t)
 	var cam: Transform3D = s["cam"]
@@ -633,8 +682,12 @@ func _show_drawn(now: float) -> void:
 		_cam.fov = rad_to_deg(float(s["fov"]))
 	if not _car_attached:
 		return
+	var wmoves: Dictionary = s.get("wmoves", {})
 	for part in _car_parts:
-		if moves.has(part[1]):
+		var wk: int = part[3]
+		if wk >= 0 and wmoves.has(part[1]):
+			(part[0] as Node3D).global_transform = (wmoves[part[1]][wk] as Transform3D) * (part[2] as Transform3D)
+		elif moves.has(part[1]):
 			(part[0] as Node3D).global_transform = (moves[part[1]] as Transform3D) * (part[2] as Transform3D)
 	if _live_log != null:
 		# What this viewer frame shows: the camera and the car nearest to it (the one it follows).
@@ -685,8 +738,34 @@ func _sample(t: float) -> Dictionary:
 			d0.basis = d0.basis.orthonormalized()
 			d1.basis = d1.basis.orthonormalized()
 			moves[car] = d0.interpolate_with(d1, alpha)
+	# Each wheel's move, the same way (spin between two frames stays under half a turn up to ~200 km/h at 60 fps).
+	var wmoves := {}
+	if _car_attached:
+		for car in _wheel_inv:
+			var w0 = _wheels_in_frame(car, k0)
+			var w1 = _wheels_in_frame(car, k1)
+			if w0 == null or w1 == null:
+				continue
+			var ws := []
+			for k in 4:
+				var e0: Transform3D = (w0[k] as Transform3D) * (_wheel_inv[car][k] as Transform3D)
+				var e1: Transform3D = (w1[k] as Transform3D) * (_wheel_inv[car][k] as Transform3D)
+				e0.basis = e0.basis.orthonormalized()
+				e1.basis = e1.basis.orthonormalized()
+				ws.append(e0.interpolate_with(e1, alpha))
+			wmoves[car] = ws
 	return {"cam": (f0["cam"] as Transform3D).interpolate_with(f1["cam"] as Transform3D, alpha),
-		"fov": lerpf(float(f0["fov"]), float(f1["fov"]), alpha), "moves": moves}
+		"fov": lerpf(float(f0["fov"]), float(f1["fov"]), alpha), "moves": moves, "wmoves": wmoves}
+
+
+# A car's four wheel matrices as of frame k (that frame's, or the latest earlier ones).
+func _wheels_in_frame(car: int, k: int):
+	while k >= 0:
+		var w: Dictionary = _live_frames[k]["wheels"]
+		if w.has(car):
+			return w[car]
+		k -= 1
+	return null
 
 
 # A car's matrix as of frame k: that frame's, or the latest earlier one (a car can be missing from a frame).
