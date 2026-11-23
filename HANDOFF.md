@@ -1,7 +1,13 @@
-# HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-22)
+# HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-23)
 
-Read this first on a new machine or in a new session. Then `M1.md` (the detailed log, newest work at the end of
-stage 2), `FM3-FORMATS.md` (every file format we decoded) and `ARCHITECTURE.md` (the long-term plan).
+Read this first on a new machine or in a new session. Then **`LIVE.md`** (the current work: running the game live
+into Godot), `M1.md` (the detailed log of the offline pipeline, newest work at the end of stage 2), `FM3-FORMATS.md`
+(every file format we decoded) and `ARCHITECTURE.md` (the long-term plan).
+
+**Where we stopped (2026-11-23, second PC):** the live mirror (LIVE.md stage A) works: FM3 streams its camera and
+cars over UDP (`FM3_LIVE=1`), `live.cmd` draws the same race in Godot, smooth after the fixes of that day (frozen
+viewer frames 0.4%, speed jitter median 7.7% over a minute). Open question to the user: chase the remaining uneven
+steps (jitter p95 24-41%) or move on (wheels, crowd, then stage B). LIVE.md "Next for stage A" has the list.
 
 ## 1. What the project is
 
@@ -21,7 +27,9 @@ Current result: the whole **CrownJewel** complex (Ladera + Montserrat + Iberian 
 layout is Ladera short reverse = `Ribbon_04`) renders in Godot from the files, textured, with FM3's baked lighting,
 window glass with the game's environment cube, and the grid cars rebuilt from their car files. Against the recomp's
 own screenshot of the same grid frame the mean pixel difference is **20.3** (per channel, 0-255; it was 70 at the
-start); much of the rest is the HUD. Fly through it with `fly-track.cmd`.
+start); much of the rest is the HUD. Fly through it with `fly-track.cmd`. Since 2026-11-23 it also follows the
+running game live (camera and cars, `live.cmd`, LIVE.md): beside the game the same frame differs by 20.0 on the grid
+and 21.9 six seconds into an AI-driven race.
 
 ## 2. Folder layout
 
@@ -110,9 +118,12 @@ Debug helpers: `fir_pick.py <fir> x,y` (draws under a pixel), `fir_disasm.py <fi
 
 ## 6. State of every repository (nothing is pushed)
 
-- **frame-ir**: all work committed locally (`git log`; ~37 commits this session, latest "Handoff ..."). No remote.
-- **FM3-ReGPU recomp**: committed (last `22ff609 NOTES: fix a path`), not pushed since 5e993eb..22ff609 (check
-  `git status -sb`). Untracked `FM3 DLC\` and `Project Forza Plus 3\` (game data, never commit).
+- **frame-ir**: all work committed locally (`git log`; 2026-11-23's live work from `fbee7d5` on, latest the
+  "save notes" commit of that evening). No remote.
+- **FM3-ReGPU recomp**: committed, not pushed: `main` 15+ ahead of `origin/main` (5e993eb on; 2026-11-23 added the
+  relative paths `5c4fc3f` and the live stream `9bbdca0`, `c0e0891`, `e428295`, `de95bd4`; check `git status -sb`).
+  Untracked `FM3 DLC\` and `Project Forza Plus 3\` (game data, never commit). On the second PC `build\rel` was rebuilt
+  from scratch with the live stream (the first PC's build kept as `build\rel-g`).
 - **ReGPU** (`thirdparty\ReGPU`): checked out detached at `604dd2b` (what FM3 main pins) **with the fir tap applied
   as uncommitted changes** (`src\gpu\gpu.cpp`, `renderer.cpp` modified; `fir_tap.cpp/.h`, `frame_ir.h` new). The tap
   is also committed on branch **`vulkan`** as `d828ed8` + `d540cb0`, **not pushed** (`origin/vulkan` is 2 behind).
@@ -142,12 +153,17 @@ Debug helpers: `fir_pick.py <fir> x,y` (draws under a pixel), `fir_disasm.py <fi
 | Mazda white / Focus grey | carbin match named paint panels "black"/"plastic2" | paint shader wins over carbin names; paint fallback |
 | Car pieces missing up close, badges | capture holds only what the frame drew | whole cars from `.carbin` (fm3_car.py), rigid fit to the capture |
 | Car shadows invisible | shadow strength applied in linear space | 0.85 linear (= the game's 0.42 displayed) |
+| (2026-11-23) FM3 and Godot fail at start: `vkGetPhysicalDeviceSurfaceCapabilitiesKHR` -13 | the DisplayPort monitor slept and dropped off (Windows: no monitor) | wake the monitor; not a code bug (a 70-line Vulkan test failed the same) |
+| Live camera axes unknown | director view matrix vs glTF space | fitted on the frozen grid: F = diag(1,1,-1), axes unchanged, 0.000 m / 0.00 deg |
+| Live cars and camera shook | the 360 Hz hand-off camera runs ahead of the drawn frame's cars | the drawn camera (render object r10+0x0, "FM3V"): offset jump 6 -> 0.06 cm |
+| Live judder (33% frozen viewer frames) | viewer and game frame rates differ | timestamped frame buffer, interpolated 1.5 game frames late: 0.4-0.8% |
 
 ## 8. Open items (next steps, roughly by value)
 
-**Running live (2026-11-23): stage A, the live mirror, has its camera working**: FM3 streams its camera
-(`FM3_LIVE`), `frame-ir\live.cmd` follows it in Godot, matching the game's grid and in-car views. Everything about it
-(how to run, the stream, the checks, what comes next: cars live) is in **`LIVE.md`**. The items below still apply.
+**Running live (2026-11-23): stage A, the live mirror, works**: FM3 streams its drawn camera and every car
+(`FM3_LIVE`), `frame-ir\live.cmd` follows them in Godot with interpolation. Everything about it (how to run, the
+stream, the car matrix, the checks, smoothness, test scripts in `tools\live\`, what comes next) is in **`LIVE.md`**.
+The items below (the offline scene) still apply.
 
 1. Far grid cars (Beetle, PT Cruiser, Focus, C4, Tuscani) are still the captured low-detail draws: find their LOD
    files or use the full `.carbin` with a fit from the few captured pieces.

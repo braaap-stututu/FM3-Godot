@@ -66,8 +66,8 @@ with `Fm3 "env FM3_FREEZE_TIME 1"` for each pair of pictures. All 8 cars attache
 | 6 s into the race (71 km/h) | 21.9 / 22.0 / 21.8 | every car where the game has it, the camera following the moving CR-X |
 | 15 s, first corner | 35.4 / 33.2 / 31.8 | cars match; the rest is the grandstand crowd (captured as dark static silhouettes), the HUD, a flag and a curb edge line |
 
-Pictures: produced by scratch scripts (game shot via `Save-Fm3Shot`, Godot via the `.shot` trigger); rerun the same
-way to compare.
+Pictures: `tools\live\live_compare.ps1` (game shot via `Save-Fm3Shot`, Godot via the `.shot` trigger): the camera
+table is `-Cameras 2`, the car table `-AiPlayer -Steps 'race6:6,race15:9'`.
 
 ## Smoothness (2026-11-23: "the cars/camera is stuttering a lot")
 
@@ -93,11 +93,28 @@ Measured with `world_view.gd --live-log <csv>` (per viewer frame: time, shown ca
 | `--live-raw` (newest frame) | 33.0% | 129% / 317% |
 | interpolated (default) | 0.8% | 7.7% / 35% |
 
-## Next for stage A
+A full minute (`live_smooth.ps1 -Seconds 60`, interpolated): 6,965 viewer frames at ~113 fps beside the game at ~95,
+shown 17.5 ms behind; frozen frames 0.4%, speed jitter median 7.7% / p95 33.9%, car shake median 0.6 cm / p95 2.8 cm.
+Per 10 s: frozen 1.9% in the first window (the start, the clock estimate settling), 0.1-0.3% after; jitter median
+6.9-8.8%, p95 24-41%; no drift over the minute. The p95 (an occasional uneven step) is the open item; the guess is
+the game's own uneven frame times, not checked yet.
 
-1. Smoothness left: the speed jitter's p95 (35%), likely the game's own uneven frame times; and the 18-20 ms delay.
-1. Wheels: spin and steering (the car object's wheel matrices at +0x90.., four placed and their spun/steered copies).
-2. The crowd and people: animated in the game, static captured silhouettes here.
-3. The player car's interior parts (gauges, driver) for the in-car views.
-4. Props for the other layouts (another `.pvs`), other tracks.
-5. Then stage B: ReGPU skips what Godot draws.
+## Test scripts (`tools\live\`)
+
+Both boot FM3's test grid themselves (minimized; the game must be closed and the monitor awake) and close it after.
+- `live_compare.ps1 [-AiPlayer] [-Steps 'race6:6,race15:9'] [-Cameras 2]`: the game's screenshot against Godot's
+  picture at frozen moments (grid, camera views with RB, race moments); pictures in `out\live\compare\`.
+- `live_smooth.ps1 [-Seconds 60] [-Tag t] [-ViewerArgs '--live-raw'] [-NoGodot]`: an AI race with the viewer logging
+  what it shows, then `tools\live_smoothness.py --window 10`; `-NoGodot` runs `tools\live_record.py` on the stream.
+
+## Next for stage A (where to continue)
+
+The user's last question was whether to chase the remaining uneven steps or call it good enough: ask.
+1. Smoothness left: the speed jitter's p95 (24-41%): check against the game's own frame times (the FM3V timestamps'
+   spacing, `live_record.py`) before changing the viewer; the 17-20 ms delay could shrink to ~1 frame if the jitter
+   allows.
+2. Wheels: spin and steering (the car object's wheel matrices at +0x90.., four placed and their spun/steered copies).
+3. The crowd and people: animated in the game, static captured silhouettes here.
+4. The player car's interior parts (gauges, driver) for the in-car views.
+5. Props for the other layouts (another `.pvs`), other tracks; attaching cars without starting at the capture's grid.
+6. Then stage B: ReGPU skips what Godot draws.
