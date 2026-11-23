@@ -44,7 +44,14 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
   carattribs.xml's TickMarks, param 0..1 <-> value: speed m/s, tach rpm); speed from the car's streamed speed (AI
   race: game ~88 km/h, Godot ~85), fuel full. **Next: rpm** in the stream (find it in the car object, add it to
   FM3K; FM3-ReGPU `live_camera.cpp`), then the tach follows (`needle_turn` in world_view.gd, NEEDLE_IDLE_RPM
-  now). Not done: steering wheel turning (carattribs SteeringWheelAngleOverride), driver's hands / arms, mirror
+  now). **rpm search, 2026-11-24 (not found yet):** the car object (vtable 0x820035A4 =
+  `TRefCountedObjectThreadSafe<CCarPresentation@Presentation_Unified>`) holds no rpm in its first 0x2000 bytes;
+  `CCarPresentation::SetGaugeInformation` (vtable slot 10 = `sub_8258D9D8`, args gauge index r4, pivot frame, value v1,
+  forwards to the object at +0x1308 via `sub_8281CBE8`) was hooked and **never ran** in the in-car view (so not the
+  per-frame needle path; maybe setup only). Whole-memory float scans while revving on the grid (clutch LB + right
+  trigger, the HUD tach did move) gave only buffers and noise. Next ideas: the HUD tach (`CAnalogGauge@ForzaUI`,
+  `CTelemetryHud@ForzaUI`) getters; the engine audio's rpm (strings `rpm_sample`, `audio_rpm_redline`); or read
+  the drawn needle's transform. Not done: steering wheel turning (carattribs SteeringWheelAngleOverride), driver's hands / arms, mirror
   render targets.
 
 **Revised order from here:** phase 1 (structural reader) first, with LOD0 bodies and the file's normals as its first
