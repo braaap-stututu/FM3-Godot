@@ -118,12 +118,24 @@ Debug helpers: `fir_pick.py <fir> x,y` (draws under a pixel), `fir_disasm.py <fi
 
 ## 6. State of every repository (nothing is pushed)
 
-- **frame-ir**: all work committed locally (`git log`; 2026-11-23's live work from `fbee7d5` on, latest the
-  "save notes" commit of that evening). No remote.
+- **frame-ir** = GitHub **[FM3-Godot](https://github.com/braaap-stututu/FM3-Godot)** (remote `origin`, branch `main`,
+  public): the FM3 application, full history. Remote **`upstream`** =
+  **[GodotRenderOffloadForRecomps](https://github.com/braaap-stututu/GodotRenderOffloadForRecomps)** (public): the general
+  framework (specs, core, Godot side, ReGPU patches, `tools/fir_*`, the FM3 profile as an example), imported from here
+  and merged back with `-s ours` so the histories are linked. Its local clone: `G:\claude code projects\GodotRenderOffloadForRecomps`
+  (first PC only).
+  **Workflow:** general changes (specs, core, capture tools, Godot side) are made in the upstream clone, committed and
+  pushed there, then `git fetch upstream && git merge upstream/main` here; FM3-specific work (fm3_* tools, FM3 shaders,
+  profiles/fm3 tuning, docs about FM3) is committed here and pushed to origin. Game data never goes into either.
+  **Second PC (2026-11-23):** the zip copy had no remote; `origin` was added and GitHub's main + the plan branch
+  `ccr-f9067cdb-8wxfaw` (PLAN-CARS.md, FM3-FORMATS.md) merged into the day's local work, pushed as branch
+  **`live-mirror`**. That work mixes general pieces (`world_view.gd --live`, the live tools, `tools/live/`) and FM3 ones
+  (car shaders, fm3_* tools); it has not been split into the upstream repo yet (no clone of it on this PC).
 - **FM3-ReGPU recomp**: committed, not pushed: `main` 15+ ahead of `origin/main` (5e993eb on; 2026-11-23 added the
-  relative paths `5c4fc3f` and the live stream `9bbdca0`, `c0e0891`, `e428295`, `de95bd4`; check `git status -sb`).
-  Untracked `FM3 DLC\` and `Project Forza Plus 3\` (game data, never commit). On the second PC `build\rel` was rebuilt
-  from scratch with the live stream (the first PC's build kept as `build\rel-g`).
+  relative paths `5c4fc3f`, the live stream `9bbdca0`, `c0e0891`, `e428295`, `de95bd4`, `16b833c`, and
+  `FM3_INPUT_BACKGROUND` `2396d3e`; check `git status -sb`). Untracked `FM3 DLC\` and `Project Forza Plus 3\` (game
+  data, never commit). On the second PC `build\rel` was rebuilt from scratch with the live stream (the first PC's
+  build kept as `build\rel-g`).
 - **ReGPU** (`thirdparty\ReGPU`): checked out detached at `604dd2b` (what FM3 main pins) **with the fir tap applied
   as uncommitted changes** (`src\gpu\gpu.cpp`, `renderer.cpp` modified; `fir_tap.cpp/.h`, `frame_ir.h` new). The tap
   is also committed on branch **`vulkan`** as `d828ed8` + `d540cb0`, **not pushed** (`origin/vulkan` is 2 behind).
@@ -193,7 +205,8 @@ The items below (the offline scene) still apply.
 
 ## 9. How we work (the user's preferences)
 
-- Commit and push only when the user asks (local commits after finished steps are fine and expected here; never push).
+- Commit locally after finished steps; push FM3-Godot / GodotRenderOffloadForRecomps when a step is done and the user
+  wants it shared (they set these repos up on 2026-11-22); FM3-ReGPU and ReGPU only when the user asks.
 - Never commit game data; exports stay in git-ignored `out\`.
 - Check that `fm3.exe` is not running before booting or building FM3.
 - frame-ir files use LF line endings; the FM3 repo uses autocrlf.
