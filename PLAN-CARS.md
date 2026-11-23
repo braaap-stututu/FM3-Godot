@@ -1,5 +1,36 @@
 # Plan: car fidelity and all-content phase (2026-11-23)
 
+## Status, 2026-11-23 evening (second PC): what the plan did not know, and what changes
+
+The plan was drafted from GitHub `main` (2026-11-22). The same day the second PC built, in its local copy (now on
+branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
+
+- **Finding 6 is out of date:** the game streams its camera, cars and wheels live (FM3-ReGPU `src/hooks/live_camera.cpp`,
+  `FM3_LIVE`); `world_view.gd --live` follows them (`live.cmd`, `tools/live/drive.ps1`: the user drives FM3 seen only
+  through Godot). **Open question 1 answered.**
+- **Placement (phase 2) is solved without any fit:** the car object's body matrix (+0x10) places carbin car space
+  exactly (world = F (p M), 0.1-0.4 mm on the fitted cars); `fm3_track_export.py --car-matrices work\fir\grid-cars.json`
+  builds all eight grid cars from their carbin (the five far ones included) and drops their captured low-detail
+  draws. Far-car paint: the paint-shader material among each car's own draws (finding 1's mis-voted LOD materials).
+- **Wheels (phase 2):** the game streams each wheel's matrix as drawn (car object +0x190.., spin and steering), so
+  open question 5 is moot: no kinematics. Motion blur: the captured `blur_*` meshes fade in with speed (4-14 m/s), as
+  this plan proposed. Still captured wheel meshes, not wheel-zip models.
+- **Materials (phase 3), first pass, partly fitted:** `fm3_carpaint.gdshader` from the paint PS's structure and
+  constants (c118 x **c119.x** colour scale, Fresnel power c216, highlight c189/c180, metallic by c191); the game's
+  cube **is dynamic** (t6/t7 rendered every frame), so the viewer renders a live cube at the player car
+  (`--live-cube`). `fm3_carglass.gdshader`: dark body, opacity 0.95, grazing reflections, **fitted** to the grid
+  capture (`tools/car_regions.py`), not yet from GlassColor / GlassMaxOpacity / Fresnel*: the CR-X's
+  `shadersettings.xml` overrides only `detail_glass_red`, so window glass takes the **fxobj defaults** (phase 0's
+  `fm3_fxobj.py` is needed for it).
+- **Shadows:** the sun was converted with the wrong mirror (fixed in `fir_world.py`).
+- On this PC the CR-X and Eclipse zips are extracted whole (`work\assets\crx`, `eclipse`: `_lod0`, `_cockpit`, brakes,
+  `.xds`, `shadersettings.xml`); the other cars only as main carbins (`work\assets\carbins`).
+
+**Revised order from here:** phase 1 (structural reader) first, with LOD0 bodies and the file's normals as its first
+use (finding 1-2, and a likely cause of the paint's stripe on the Eclipse); then phase 0's fxobj and shadersettings
+reading to replace the fitted glass and paint numbers; then the cockpit (phase 4); wheel-zip models and lights after.
+Open questions 2-4 still stand.
+
 Drafted by a planning agent from `HANDOFF.md`, `M1.md`, `FM3-FORMATS.md`, the tools, the Godot viewer and the
 ForzaStudio-EVO research. Steps run on the PC with the game files. Findings 1 and 5 were spot-checked in the code.
 
