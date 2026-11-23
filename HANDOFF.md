@@ -157,6 +157,10 @@ Debug helpers: `fir_pick.py <fir> x,y` (draws under a pixel), `fir_disasm.py <fi
 | Live camera axes unknown | director view matrix vs glTF space | fitted on the frozen grid: F = diag(1,1,-1), axes unchanged, 0.000 m / 0.00 deg |
 | Live cars and camera shook | the 360 Hz hand-off camera runs ahead of the drawn frame's cars | the drawn camera (render object r10+0x0, "FM3V"): offset jump 6 -> 0.06 cm |
 | Live judder (33% frozen viewer frames) | viewer and game frame rates differ | timestamped frame buffer, interpolated 1.5 game frames late: 0.4-0.8% |
+| Five far grid cars low-detail | their captured LOD draws are not in the carbin, so no fit | place every carbin car by the game's car matrix (`--car-matrices`, work\fir\grid-cars.json): exact to 0.1 mm |
+| Far cars white | their paint draws were named after other carbin materials | the paint-shader material (has a metallic-roughness texture) among the car's own draws |
+| Paint colours too light (Mazda near white) | the paint shader scales c118 by c119.x (0.8 solid, 0.6 metallic); and the export never recopied changed capture textures | `color_scale_const` [119,0]; recopy when the source is newer |
+| Paint flat, glass clear | Godot clear coat; car glass alpha 0.65 | `fm3_carpaint.gdshader` (lit colour with sky/ground ambient + Fresnel cube reflection + sun highlight, FM3's constants c216/c189/c180, metallic by c191) and `fm3_carglass.gdshader` (dark body, opacity 0.95, grazing reflections), fitted with `tools/car_regions.py`: paint median luminance off 14.2 -> 2.2, glass medians ~50 -> around the game's |
 
 ## 8. Open items (next steps, roughly by value)
 
@@ -165,9 +169,12 @@ Debug helpers: `fir_pick.py <fir> x,y` (draws under a pixel), `fir_disasm.py <fi
 stream, the car matrix, the checks, smoothness, test scripts in `tools\live\`, what comes next) is in **`LIVE.md`**.
 The items below (the offline scene) still apply.
 
-1. Far grid cars (Beetle, PT Cruiser, Focus, C4, Tuscani) are still the captured low-detail draws: find their LOD
-   files or use the full `.carbin` with a fit from the few captured pieces.
-2. Car paint reflections: use the same environment cube as the windows (`fm3_glass.gdshader` approach).
+1. Cars (2026-11-23 the user asked to "fix the cars completely"; done: all eight from their carbin, paint and glass
+   shaders, live wheel matrices). Left: wheel motion blur at speed (the game swaps in its `blur_*` wheel meshes; the
+   viewer keeps the grid's sharp spokes, so the spin is not checkable by eye yet), the shadow blob (too big, behind the
+   car instead of beside it), a faint stripe on the Eclipse's doors (normals?), reflections of the live surroundings
+   (the game renders a cube per frame; the viewer uses the layout's static cube), the C4's highlights too strong.
+2. (done 2026-11-23: car paint reflections, see item 1.)
 3. Road-edge and shoulder-grass recipes are inferred (no captured example); the lake has no animated normals;
    chain-link fences' UVs; props only for Ribbon_04 (other layouts: pick another `.pvs`).
 4. Tail-light lens brightness per car; the CR-X headlights/trunk are fitted from the file (movable parts).

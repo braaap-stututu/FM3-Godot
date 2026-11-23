@@ -294,8 +294,11 @@ def import_dynamic(ref_path, capdir, src, add_view, accessors, materials, images
             uri = ref['images'][ref['textures'][t]['source']]['uri']
             dst = os.path.join(tex_out, 'cap_' + os.path.basename(uri))
             os.makedirs(tex_out, exist_ok=True)
-            if not os.path.exists(dst):
-                shutil.copyfile(os.path.join(ref_dir, uri), dst)
+            src_ = os.path.join(ref_dir, uri)
+            # (copied again when the capture export rewrote it: its names come from texture addresses, not the colours
+            # composited in, so an old copy would otherwise stay, as the paint colours did until 2026-11-23)
+            if not os.path.exists(dst) or os.path.getmtime(src_) > os.path.getmtime(dst):
+                shutil.copyfile(src_, dst)
             images.append({'uri': os.path.basename(tex_out) + '/' + os.path.basename(dst)})
             textures.append({'source': len(images) - 1, 'sampler': 0})
             tex_map[t] = len(textures) - 1

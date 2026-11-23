@@ -3,6 +3,9 @@
   "e41e183a423e6f1b": {
     "name": "car paint",
     "color_const": 118,
+    "color_scale_const": [119, 0],
+    "metallic_const": [191, 0],
+    "_color_scale_doc": "the paint shader multiplies c118 by c119.x (fir_disasm: mul r2 = c118 * c119.x): 0.8 for solid paint, 0.6 for metallics (the Mazda, the Eclipse), 2026-11-23",
     "texture": 0,
     "texture_mode": "over_alpha",
     "roughness": 0.55

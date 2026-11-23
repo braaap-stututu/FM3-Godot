@@ -530,6 +530,9 @@ def materials(cap, path, objs):
             if 'color_const' in rule:
                 colour = np.array([consts.get(rule['color_const'] * 4 + k, 0.0) for k in range(3)])
             colour = colour * rule.get('color_scale', 1.0)
+            if 'color_scale_const' in rule:  # a PS constant component scaling the colour (car paint: c119.x)
+                ci, ck = rule['color_scale_const']
+                colour = colour * consts.get(ci * 4 + ck, 1.0)
             slot = rule.get('texture', rule.get('alpha_texture'))
             t, tex = decoded(slot) if slot is not None else (None, None)
             if slot is not None and (tex is None or slot not in fetch_at):
@@ -538,6 +541,9 @@ def materials(cap, path, objs):
             mat = {'uv': fetch_at[slot][:, :2].astype(np.float32) if tex else None, 'factor': [1.0, 1.0, 1.0, 1.0],
                    'blend': 'alpha_texture' in rule, 'image': None, 'key': None, 'color': color, 'unlit': rule.get('unlit', False),
                    'roughness': rule.get('roughness', 1.0), 'metallic': rule.get('metallic', 0.0)}
+            if 'metallic_const' in rule:  # car paint: c191.x is 4 for metallic paint, 0 for solid (glTF metallic 1 / 0)
+                ci, ck = rule['metallic_const']
+                mat['metallic'] = 1.0 if consts.get(ci * 4 + ck, 0.0) > 0 else 0.0
             if tex is None:
                 mat['factor'] = colour.tolist() + [float(rule.get('alpha', 1.0))]
                 mat['blend'] = mat['blend'] or 'alpha' in rule

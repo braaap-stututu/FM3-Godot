@@ -57,6 +57,8 @@ const TripleCameras = preload("res://triple_cameras.gd")
 const BAKED_SHADER = preload("res://viewer/fm3_baked.gdshader")
 const BAKED_BLEND_SHADER = preload("res://viewer/fm3_baked_blend.gdshader")
 const GLASS_SHADER = preload("res://viewer/fm3_glass.gdshader")
+const CARPAINT_SHADER = preload("res://viewer/fm3_carpaint.gdshader")
+const CARGLASS_SHADER = preload("res://viewer/fm3_carglass.gdshader")
 const BLEND_SHADER = preload("res://viewer/fm3_blend.gdshader")
 
 
@@ -213,16 +215,18 @@ func _init() -> void:
 					baked_no_tex += 1
 				continue
 			if lit and _blended(m) and m.roughness < 0.1 and m.albedo_texture == null:
-				m.metallic_specular = 0.12  # glass: Fresnel reflections of the probe and sky (calibrated on the grid's cars)
-				m.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
+				# car glass: FM3's dark, reflective windows (fm3_carglass.gdshader), not a clear pane
+				mi.set_surface_override_material(s, _car_material(CARGLASS_SHADER, m, gltf_path, "FM3_CARGLASS",
+					["opacity", "body_level", "refl_gain", "refl_f0", "spec_gain", "spec_power"]))
+				continue
 			if lit and m.roughness >= 0.9:
 				m.metallic_specular = 0.04  # matte surfaces: almost no sky reflection (FM3's dark trim stays dark)
 			if lit and m.roughness_texture != null and m.albedo_texture != null:
-				# car paint (fir_world.py writes a roughness texture only for paint): FM3's paint is a clear coat over the
-				# colour, reflecting the environment with a Fresnel falloff
-				m.clearcoat_enabled = true
-				m.clearcoat = 0.3  # (calibrated on the grid's cars: 1.0 turns dark paint into chrome)
-				m.clearcoat_roughness = 0.12
+				# car paint (fir_world.py writes a roughness texture only for paint): FM3's paint shader
+				# (fm3_carpaint.gdshader: lit colour + Fresnel environment reflection + sun highlight)
+				mi.set_surface_override_material(s, _car_material(CARPAINT_SHADER, m, gltf_path, "FM3_CARPAINT",
+					["refl_gain", "refl_f0", "spec_gain", "spec_power", "shadow_strength", "refl_metal"]))
+				continue
 			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 			mi.set_surface_override_material(s, m)
 	if id_mode:
@@ -341,6 +345,33 @@ func _env_cube(gltf_path: String, tex_dir: String) -> Cubemap:
 		c.create_from_images(imgs)
 		_env[key] = c
 	return _env[key]
+
+
+# A car paint / glass ShaderMaterial from the glTF's material: its colour (and texture), the layout's static car cube.
+# Fitting: <env> = comma-separated values for <names> (e.g. FM3_CARPAINT=0.9,0.06,0.8,60,0.85); FM3_CARPAINT_AMB /
+# FM3_CARPAINT_SUN = r,g,b override the paint's ambient and sun light.
+func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: String, names: Array) -> ShaderMaterial:
+	var sm := ShaderMaterial.new()
+	sm.shader = shader
+	sm.set_shader_parameter("albedo_color", m.albedo_color)
+	sm.set_shader_parameter("metallic", m.metallic)
+	if m.albedo_texture != null:
+		sm.set_shader_parameter("albedo_tex", m.albedo_texture)
+	var cube := _env_cube(gltf_path, gltf_path.get_file().get_basename() + "_tex")
+	sm.set_shader_parameter("has_env", cube != null)
+	if cube != null:
+		sm.set_shader_parameter("env_cube", cube)
+	var v := OS.get_environment(env)
+	if v != "":
+		var f := v.split_floats(",")
+		for k in mini(f.size(), names.size()):
+			sm.set_shader_parameter(names[k], f[k])
+	for extra in [["_AMB", "ambient"], ["_GROUND", "ambient_ground"], ["_SUN", "sun"]]:
+		var e := OS.get_environment(env + extra[0])
+		if e != "":
+			var c := e.split_floats(",")
+			sm.set_shader_parameter(extra[1], Vector3(c[0], c[1], c[2]))
+	return sm
 
 
 var _tex_cache := {}
