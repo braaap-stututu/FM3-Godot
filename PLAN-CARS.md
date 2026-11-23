@@ -44,7 +44,11 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
   carattribs.xml's TickMarks, param 0..1 <-> value: speed m/s, tach rpm); speed from the car's streamed speed (AI
   race: game ~88 km/h, Godot ~85), fuel full. **Next: rpm** in the stream (find it in the car object, add it to
   FM3K; FM3-ReGPU `live_camera.cpp`), then the tach follows (`needle_turn` in world_view.gd, NEEDLE_IDLE_RPM
-  now). **rpm search, 2026-11-24 (not found yet):** the car object (vtable 0x820035A4 =
+  now). **rpm found and streamed, 2026-11-24:** the car-physics object keeps the engine speed at **+324** and the
+  redline at **+452** (rad/s, as FH1R's ICarDynamics); found through the getters that multiply by 60/2pi (constant
+  0x82000BEC; `sub_821ED218` = redline, the HUD's call returning to 0x821F2044 gives the player's object). FM3-ReGPU
+  sends **"FM3E"** (player rpm + redline, `live_camera.cpp`); `world_view.gd` turns the tach with it (AI race,
+  in-car: game and Godot both ~7,000 rpm). Dead ends on the way: **(earlier search, kept for the record)** the car object (vtable 0x820035A4 =
   `TRefCountedObjectThreadSafe<CCarPresentation@Presentation_Unified>`) holds no rpm in its first 0x2000 bytes;
   `CCarPresentation::SetGaugeInformation` (vtable slot 10 = `sub_8258D9D8`, args gauge index r4, pivot frame, value v1,
   forwards to the object at +0x1308 via `sub_8281CBE8`) was hooked and **never ran** in the in-car view (so not the

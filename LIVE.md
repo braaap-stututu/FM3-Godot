@@ -34,7 +34,9 @@ nothing.
 object; the hook in `src/hooks/mirror.cpp` calls `LiveCarDrawn`). The car object keeps its body's world matrix at
 **+0x10** (rows = the car's axes, row 3 = position; +0x50 the same, +0x90.. the wheels), found with
 `FM3_LIVE_CAR_SCAN=1` (logs every world matrix in each car object and one level of the objects it points to). Each car
-is one "FM3K" datagram per drawn frame (96 bytes; layout in `live_camera.cpp`). In Godot (`world_view.gd`
+is one "FM3K" datagram per drawn frame (96 bytes; layout in `live_camera.cpp`), followed by its wheels ("FM3W");
+the player's engine speed and redline come as "FM3E" (2026-11-24: car-physics object +324 / +452 rad/s; the
+cockpit tach, PLAN-CARS.md phase 4). In Godot (`world_view.gd`
 `_attach_cars`), half a second after the first car datagram every mesh smaller than 6 m that lies wholly inside a car's
 box (1.5 m sideways, 2 m up/down, 3.2 m along, in the car's frame) is attached to that car with its offset
 `A(0)^-1 * node`; each frame it is placed at `A(t) * offset` (A = the car matrix in glTF space; the z mirror cancels).

@@ -50,6 +50,7 @@ var _clock_off := INF  # Godot clock minus game clock (smallest seen)
 var _frame_dt := 1.0 / 120.0  # the game's frame interval (smoothed)
 var _live_raw := false  # --live-raw: the newest frame, no interpolation
 var _live_last_now := 0.0
+var _engine_rpm := -1.0  # the player's engine speed ("FM3E"; -1 = none yet): the cockpit tach
 var _live_vtable := 0  # the game's active camera (its vtable, from the drawn-camera datagrams)
 var _live_smooth := 1.0  # --live-smooth W: the shown motion averaged over W game frames (0 = off: 8 ms less delay at 60)
 var _view_t := 0.0  # the viewer's steadied clock
@@ -605,14 +606,15 @@ static func wheel_transform(b: PackedByteArray, k: int, axes: PackedFloat32Array
 # A cockpit gauge needle's turn at grid placement (glTF space): the needle's parameter (0 = its _min part, 1 = _max)
 # from the game's value through carattribs.xml's TickMarks (linear between them, extended past the ends), then the
 # angle (min -> mid for 0..0.5, mid -> max for 0.5..1, fm3_track_export.py needle_turn). Speed: the car's own speed
-# (m/s, from its streamed matrices); tach: idle (the game streams no rpm yet); fuel: full.
+# (m/s, from its streamed matrices); tach: the player's engine speed ("FM3E"; idle until one comes); fuel: full.
 func needle_turn(n: Dictionary, car) -> Transform3D:
 	var gauge := String(n.get("gauge", ""))
 	var param := 0.0
 	if gauge == "fuel":
 		param = 1.0
 	else:
-		var value := float(_car_speed.get(car, 0.0)) if gauge == "speed" else NEEDLE_IDLE_RPM
+		var rpm := _engine_rpm if _engine_rpm >= 0.0 else NEEDLE_IDLE_RPM
+		var value := float(_car_speed.get(car, 0.0)) if gauge == "speed" else rpm
 		param = needle_param(n.get("ticks", []), value)
 	param = clampf(param, 0.0, 1.0)
 	var mid := float(n["mid"])
@@ -732,6 +734,10 @@ func _live_step() -> void:
 	var now := _view_t
 	while _udp.get_available_packet_count() > 0:
 		var b := _udp.get_packet()
+		if b.size() == 32 and b.slice(0, 4).get_string_from_ascii() == "FM3E" and b.decode_u32(4) == 1:
+			# The player's engine speed (rpm) and redline: only the player's cockpit is shown, so its tach takes this.
+			_engine_rpm = b.decode_float(12)
+			continue
 		if b.size() == 280 and b.slice(0, 4).get_string_from_ascii() == "FM3W" and b.decode_u32(4) == 1:
 			# A car's four wheels as drawn (spin and steering), right after that car's datagram.
 			var wcar := int(b.decode_u32(12))
