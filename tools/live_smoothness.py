@@ -1,6 +1,8 @@
 """How smooth the live viewer's motion was: reads world_view.gd --live-log <csv> (time, camera xyz, followed car xyz).
 
-    python tools/live_smoothness.py <csv> [<csv> ...]
+    python tools/live_smoothness.py [--window S] <csv> [<csv> ...]
+
+--window S also reports every S seconds of the run on its own line.
 
 Per file, over the frames where the camera moved overall (the race running):
   frozen frames     viewer frames that show no camera motion (the same game frame twice: judder)
@@ -12,10 +14,15 @@ import sys
 import numpy as np
 
 
-def report(path):
+def load(path):
     # (whole lines only: the viewer may be stopped in the middle of one)
     rows = [l.split(',') for l in open(path).read().splitlines()]
-    d = np.array([[float(x) for x in r] for r in rows if len(r) == 7 and all(r)], dtype=np.float64).reshape(-1, 7)
+    return np.array([[float(x) for x in r] for r in rows if len(r) == 7 and all(r)], dtype=np.float64).reshape(-1, 7)
+
+
+def report(path, d=None):
+    if d is None:
+        d = load(path)
     if len(d) < 30:
         print(f'{path}: {len(d)} frames, too few')
         return
@@ -41,5 +48,17 @@ def report(path):
           f'car shake median {np.median(shake):.2f} cm, p95 {np.percentile(shake, 95):.2f} cm')
 
 
-for p in sys.argv[1:]:
+args = sys.argv[1:]
+window = 0.0
+if args[:1] == ['--window']:
+    window, args = float(args[1]), args[2:]
+for p in args:
     report(p)
+    if window > 0:
+        d = load(p)
+        t0 = d[0, 0]
+        k = 0
+        while t0 + k * window < d[-1, 0]:
+            part = d[(d[:, 0] >= t0 + k * window) & (d[:, 0] < t0 + (k + 1) * window)]
+            report(f'  {k * window:4.0f}-{(k + 1) * window:3.0f} s', part)
+            k += 1
