@@ -70,6 +70,9 @@ CARBIN_DIRS = []  # --carbins DIR[;DIR]: whole cars from their .carbin files ins
 # FM3_LIVE): carbin car space goes to the world as F (p M) exactly (0.1 mm on the fitted cars), so every car is placed
 # by its matrix, also the far ones whose captured low-detail draws are not in the carbin (no fit possible).
 CAR_MATRICES = []
+CAR_MATRIX_WHEELS = []  # per CAR_MATRICES entry: its four wheels' matrices as drawn (game space, row vectors) or []
+WHEEL_DIRS = []  # --wheel-files DIR: <dir>/<car>/ = the car's stock wheel zip (Media\\Wheels\\<car>.zip, DLC packs)
+WHEELS_BUILT = set()  # cars whose wheels were built from their wheel carbin (their captured wheel draws are dropped)
 CAR_FILE_DIRS = []  # --car-files DIR[;DIR]: <dir>/<car>/ = the car zip's contents (_lod0, _cockpit, textures, ...)
 CARMATS = {}  # car mesh node name -> its glass material's parameters (the game's shader settings), <out>_carmaterials.json
 NEEDLES = {}  # node name -> gauge needle data (cockpit gauges), written beside the glTF as <out>_needles.json
@@ -177,10 +180,12 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
             Y.append(W)
         # The car's matrix (--car-matrices): the one nearest the centre of all its captured draws (within 4 m).
         placed_by = None
+        best_wheels = []
         if CAR_MATRICES:
             centre = np.concatenate([world_of(n)[0] for _, _, n in draws]).mean(0)
             Fz = np.diag([1.0, 1.0, -1.0])
             best = min(CAR_MATRICES, key=lambda M: np.linalg.norm(Fz @ M[3, :3] - centre))
+            best_wheels = next((w for M, w in zip(CAR_MATRICES, CAR_MATRIX_WHEELS) if M is best), [])
             if np.linalg.norm(Fz @ best[3, :3] - centre) < 4.0:
                 R, t, err = Fz @ best[:3, :3].T, Fz @ best[3, :3], 0.0
                 good = list(range(len(X)))
@@ -429,14 +434,75 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                     if gp is not None:
                         CARMATS[nm] = gp
                     break
+        wheel_note = build_wheels(car, best_wheels, ref, copy_mat, xds_material, emit) if best_wheels else ''
         built.add(car)
         allp = np.concatenate([q[0] for parts in groups.values() for q in parts])
         CAR_GEOM[car] = allp[np.linspace(0, len(allp) - 1, min(6000, len(allp))).astype(int)]
         print(f'  {car}: {len(keep)} parts from the carbin ({geo_from}), placed by {placed_by}'
-              + (f'; cockpit {cockpit_parts} parts' if cockpit_parts else '')
+              + (f'; cockpit {cockpit_parts} parts' if cockpit_parts else '') + wheel_note
               + (f'; file normals vs rebuilt: mean |cos| {np.mean(normal_agree):.3f}' if normal_agree else '')
               + (f'; NO MATERIAL (white): {", ".join(f"{k} ({v} tris)" for k, v in sorted(unmapped.items()))}' if unmapped else ''))
     return built
+
+
+def build_wheels(car, wheels, ref, copy_mat, xds_material, emit):
+    """A car's four wheels from its stock wheel carbin (PLAN-CARS phase 2): LOD 0 (rims, spokes, the blurred rim; FM3's
+    LOD 0 has no tyre) plus the tyre of LOD 1, each placed by the wheel's matrix as the game draws it (spin and steering
+    included; world = F (p W) as the body). Materials: the captured wheel draws' by material name, else the wheel zip's
+    textures (wheel_lod0.xds; the blurred rim wheel0_lod0.xds), the tyre a flat rubber. Nodes 'wheel_<car>_<k>_<material>_n'
+    (the viewer follows each wheel's matrix and switches rim / blurred rim by speed)."""
+    wdir = next((os.path.join(d, car) for d in WHEEL_DIRS if os.path.isdir(os.path.join(d, car))), None)
+    path = None
+    if wdir:
+        for root_, _, files in os.walk(wdir):
+            for f_ in files:
+                if f_.lower() == car + '.carbin':
+                    path = os.path.join(root_, f_)
+    if not path or len(wheels) != 4:
+        return ''
+    tex_dir = os.path.dirname(path)
+    w = fm3_carbin.parse(open(path, 'rb').read())
+    secs = [(s, False) for s in fm3_carbin.sections(w, 0)]
+    secs += [(dict(s, subs=[u for u in s['subs'] if u['material'] in ('tire', 'tread', 'sidewall')]), True)
+             for s in fm3_carbin.sections(w, 1)]
+    # the captured wheel draws' materials by name (their textures as the game bound them)
+    cap = {}
+    for n in ref['nodes']:
+        mo = re.match(r'draw\d+ wheel:([a-z0-9_]+)\.([A-Za-z0-9_]+)$', n.get('name', ''))
+        if mo and mo.group(1) == car and 'mesh' in n:
+            p0 = ref['meshes'][n['mesh']]['primitives'][0]
+            if 'material' in p0:
+                cap.setdefault(mo.group(2), p0['material'])
+    Fz = np.diag([1.0, 1.0, -1.0])
+    groups = {}
+    for k, W in enumerate(wheels):
+        R = Fz @ W[:3, :3].T
+        t = Fz @ W[3, :3]
+        for sec, lod1 in secs:
+            P = (sec['local'] + sec['offset']) @ R.T + t
+            Nf = None
+            if sec.get('normal') is not None:
+                Nf = sec['normal'] @ R.T
+                Nf /= np.maximum(np.linalg.norm(Nf, axis=1, keepdims=True), 1e-9)
+            for sub in sec['subs']:
+                tris = fm3_car.triangles(sub['indices'], sub['prim'], restart=sub.get('restart', 0xFFFF))
+                if not len(tris) or tris.max() >= len(P):
+                    continue
+                mname = sub['material']
+                if mname in cap:
+                    m_ = ('index', copy_mat(cap[mname]))
+                elif mname in ('tire', 'tread', 'sidewall'):
+                    m_ = ('flat', 'tire')
+                elif xds_material is not None:
+                    m_ = xds_material(tex_dir, 'wheel0_lod0' if 'blur' in mname else 'wheel_lod0', 'wheel_' + mname,
+                                      cutout='blur' in mname)
+                else:
+                    m_ = None
+                lit = None if sec.get('light') is None else np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
+                groups.setdefault((f'{k}_{mname}', m_), []).append((P, tris, sec['uv0'], Nf, lit))
+    emit(groups, 'wheel_')
+    WHEELS_BUILT.add(car)
+    return f'; wheels from {os.path.basename(path)} ({len(cap)} captured materials)'
 
 
 def on_rebuilt_car(W):
@@ -520,6 +586,8 @@ def import_dynamic(ref_path, capdir, src, add_view, accessors, materials, images
         car = bool(mo.group(2).strip())
         if car and mo.group(2).strip().split('.')[0] in built:
             continue  # rebuilt whole from its .carbin
+        if car and mo.group(2).strip().startswith('wheel:') and mo.group(2).strip()[6:].split('.')[0] in WHEELS_BUILT:
+            continue  # its wheels rebuilt from the wheel carbin
         rec = caps.get(int(mo.group(1)))
         if not car and (rec is None or blob.find(bytes.fromhex(rec['vb_head'])[:32]) >= 0):
             continue
@@ -1020,6 +1088,9 @@ def main():
     if '--car-matrices' in sys.argv:
         for c in json.load(open(sys.argv[sys.argv.index('--car-matrices') + 1]))['cars']:
             CAR_MATRICES.append(np.array(c['matrix'], dtype=np.float64).reshape(4, 4))
+            CAR_MATRIX_WHEELS.append([np.array(w, dtype=np.float64).reshape(4, 4) for w in c.get('wheels', [])])
+    if '--wheel-files' in sys.argv:
+        WHEEL_DIRS.extend(sys.argv[sys.argv.index('--wheel-files') + 1].split(';'))
     if '--dynamic-from' in sys.argv:
         ndyn = import_dynamic(sys.argv[sys.argv.index('--dynamic-from') + 1], capdir, src, add_view, accessors, materials,
                               images, textures, meshes, nodes, tex_out)

@@ -195,6 +195,8 @@ def vertices(part, lod0=False):
         out['bitangent'] = unpack111110(words(36))
     elif s in (16, 44):
         out['normal'] = unpack111110(words(12))
+        if s == 44:
+            out['light'] = raw[:, 16].astype(np.float64)  # (wheels: baked brightness at 16, same scale as cars' byte 20)
     return out
 
 

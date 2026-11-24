@@ -89,11 +89,17 @@ def main():
     s.settimeout(0.25)
     seen = {}
     cars = {}
+    wheels = {}
     end = time.time() + a.seconds
     while time.time() < end:
         try:
-            data, _ = s.recvfrom(256)
+            data, _ = s.recvfrom(512)
         except socket.timeout:
+            continue
+        if len(data) == 280 and data[:4] == b'FM3W':
+            # a car's four wheel matrices as drawn (car object +0x190 + 0x40 k: spin and steering included)
+            car = struct.unpack_from('<I', data, 12)[0]
+            wheels[car] = [list(struct.unpack_from('<16f', data, 16 + 64 * k)) for k in range(4)]
             continue
         if len(data) != 96:
             continue
@@ -108,10 +114,12 @@ def main():
         d = seen.setdefault(director, {'n': 0, 't0': t})
         d.update(n=d['n'] + 1, t1=t, view=view, fov=fov, vtable=vtable, seq=seq)
     if a.save_cars:
-        out = [{'car': f'{c:08X}', 'matrix': [float(x) for x in m]} for c, m in cars.items()]
+        out = [{'car': f'{c:08X}', 'matrix': [float(x) for x in m],
+                'wheels': [[float(x) for x in w] for w in wheels.get(c, [])]} for c, m in cars.items()]
         with open(a.save_cars, 'w', newline='\n') as f:
             json.dump({'note': 'FM3 car body matrices (car object +0x10, game space, row vectors: rows 0-2 the car axes, '
-                       'row 3 its position), from FM3_LIVE on the frozen test grid', 'cars': out}, f, indent=1)
+                       'row 3 its position) and its four wheels as drawn (+0x190 + 0x40 k, same layout), from FM3_LIVE '
+                       'on the frozen test grid', 'cars': out}, f, indent=1)
         print(f'{len(out)} car matrices -> {a.save_cars}')
     if not seen:
         print(f'no packets on udp 127.0.0.1:{a.port} in {a.seconds:.0f} s (is FM3 running with FM3_LIVE set?)')

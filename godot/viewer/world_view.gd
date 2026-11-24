@@ -299,10 +299,14 @@ func _init() -> void:
 					["refl_gain", "refl_f0", "spec_gain", "spec_power", "shadow_strength", "refl_metal"]))
 				continue
 			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
-			if lit and m.metallic >= 0.9 and String(mi.name).begins_with("carbin_"):
+			if lit and m.metallic >= 0.9 and (String(mi.name).begins_with("carbin_") or String(mi.name).begins_with("wheel_")):
 				# car chrome (mirror faces, exhaust tips, trim): it reflects the game's own car cube, far darker than this
 				# viewer's surroundings (the windows' env_scale 0.2, fm3_carglass.gdshader): the same scale here
 				m.albedo_color = Color(m.albedo_color.r * CHROME_SCALE, m.albedo_color.g * CHROME_SCALE, m.albedo_color.b * CHROME_SCALE, m.albedo_color.a)
+			if lit and String(mi.name).begins_with("wheel_") and m.metallic < 0.9:
+				# rims: the game lights them by its ambient (SH) light, not the sun, at PaintScale 0.75 (ShaderSettings
+				# rim): here the sunlit albedo at RIM_SCALE
+				m.albedo_color = Color(m.albedo_color.r * RIM_SCALE, m.albedo_color.g * RIM_SCALE, m.albedo_color.b * RIM_SCALE, m.albedo_color.a)
 			if mi.mesh.surface_get_format(s) & Mesh.ARRAY_FORMAT_COLOR:
 				m.vertex_color_use_as_albedo = true  # (the cockpit's baked brightness, fm3_track_export.py)
 			if m.resource_name.contains("gauge") and m.albedo_texture != null:
@@ -652,6 +656,17 @@ static func _is_blur_wheel(mi: Node) -> bool:
 	return n.contains("wheel") and n.contains("blur")
 
 
+# A wheel mesh's part in the speed blur: 1 the blurred rim / lip (fades in), 0 the sharp rim / lip it replaces (fades out),
+# 2 the rest (tyre, inner barrel, hub: always drawn, as in the game).
+static func _wheel_blur_kind(mi: Node) -> int:
+	if _is_blur_wheel(mi):
+		return 1
+	var n := String(mi.name).to_lower()
+	if n.contains("tire") or n.contains("tread") or n.contains("sidewall") or n.contains("inner_rim") or n.contains("wheel_black"):
+		return 2
+	return 0
+
+
 # Wheel k of an FM3W datagram (its world matrix as drawn) in the glTF's world, mirrored like car_transform.
 static func wheel_transform(b: PackedByteArray, k: int, axes: PackedFloat32Array) -> Transform3D:
 	var s := Vector3(axes[0], axes[1], axes[2])
@@ -698,6 +713,7 @@ func needle_turn(n: Dictionary, car) -> Transform3D:
 
 
 const NEEDLE_IDLE_RPM := 900.0
+const RIM_SCALE := 0.5  # wheel rims (PaintScale 0.75 x ambient instead of sun ~0.66; see the material loop)
 const CHROME_SCALE := 0.25  # car chrome's reflection level (see the material loop)
 # FM3's own cockpit wheel at full steering input: carattribs.xml SteeringWheelAngleOverride in turns (the export's
 # game_deg; the CR-X's 0.206 = 74 deg matches its in-car pictures, ~73); cars without one (0) take the game's default,
@@ -785,7 +801,7 @@ func _attach_cars() -> void:
 						if d < best_d:
 							best_d = d
 							wk = k
-				_car_parts.append([m, car, m.global_transform, wk, (1 if _is_blur_wheel(m) else 0) if wk >= 0 else -1,
+				_car_parts.append([m, car, m.global_transform, wk, _wheel_blur_kind(m) if wk >= 0 else -1,
 					String(m.name).begins_with("cockpit_"), m.cast_shadow, _needles.get(String(m.name))])
 				per_car[car] = per_car.get(car, 0) + 1
 				var nm_ := String(m.name)
@@ -1041,7 +1057,8 @@ func _show_drawn(now: float) -> void:
 			# Wheel motion blur: the game's blurred wheel meshes fade in between 4 and 14 m/s (fully blurred at the 67 km/h
 			# of the captured race), the sharp rim and spokes out.
 			var blur := smoothstep(4.0, 14.0, float(_car_speed.get(part[1], 0.0)))
-			(part[0] as GeometryInstance3D).transparency = (1.0 - blur) if int(part[4]) == 1 else blur
+			if int(part[4]) < 2:
+				(part[0] as GeometryInstance3D).transparency = (1.0 - blur) if int(part[4]) == 1 else blur
 		if wk >= 0 and wmoves.has(part[1]):
 			(part[0] as Node3D).global_transform = (wmoves[part[1]][wk] as Transform3D) * (part[2] as Transform3D)
 		elif moves.has(part[1]):

@@ -51,6 +51,8 @@ $carArgs = if (Test-Path $carMats) { @('--car-matrices', $carMats) } else { @() 
 # (work\assets\cars\<car>\: the car zips' contents, extracted with fm3unzip: the high-detail _lod0 bodies)
 $carFiles = Join-Path $work 'assets\cars'
 if (Test-Path $carFiles) { $carArgs += @('--car-files', $carFiles) }
+$wheelFiles = Join-Path $work 'assets\wheelzips'  # each car's stock wheel zip (Media\Wheels\<car>.zip; DLC ones from the DLC packs)
+if (Test-Path $wheelFiles) { $carArgs += @('--wheel-files', $wheelFiles) }
 python tools\fm3_track_export.py $track out\world\ladera.gltf --camera-from out\world\grid.gltf `
     --dynamic-from out\world\grid.gltf --carbins $carbins --texmap out\world\capmap --pvs $pvs @carArgs
 if ($LASTEXITCODE) { throw 'fm3_track_export.py failed' }
