@@ -43,7 +43,17 @@ uniform float spec_power = 75.0;
 // c216.x; Normal.xml has none): the game's amount saturated our cars (p90 255), so scaled: 0.1 fitted on the captured
 // grid (summary 16.8, with the metallic reflection boost refl_metal 1.6 -> 1.0; before 16.9). The game's reflection is
 // the same for both finishes.
-uniform float spec2_gain = 0.1;
+uniform float spec2_gain = 0.0;
+// Metallic flakes (2026-11-24, after the usual three-layer car paint model: pigment, flakes embedded in it, clear coat):
+// the flakes give a broad highlight around the sun in the pigment's own colour (flake_gain x pow(r.v, flake_power) x the
+// paint colour), and metallic paint 'flops': darker towards grazing views (flop: the base colour x mix(1 - flop, 1,
+// cos^flop_power)). Metallic only (glTF metallic 1 = the game's c191 > 0). Fitted on the grid's three metallic cars, offline:
+// flake 1.2 / power 6 (the white second lobe spec2 off): Mazda 20.6 -> 17.8 (p10/50/90 20/38/173, game 19/43/172), Eclipse
+// 13.1 -> 12.9 (p90 73 vs 72), C4 13.3 -> 12.5, all cars 14.8 -> 14.2. A flop (0.2-0.3) scored worse: left at 0.
+uniform float flake_gain = 1.2;
+uniform float flake_power = 6.0;
+uniform float flop = 0.0;
+uniform float flop_power = 1.0;
 uniform float spec2_power = 4.0;
 uniform float fresnel_power = 4.0;
 uniform bool game_fresnel = true;
@@ -102,9 +112,11 @@ void light() {
 			: refl_f0 + (1.0 - refl_f0) * pow(1.0 - cosv, fresnel_power);
 		float rl = max(dot(reflect(-LIGHT, NORMAL), VIEW), 0.0);
 		float spec = pow(rl, spec_power) * sh + pow(rl, spec2_power) * sh * spec2_gain / spec_gain * metallic;
-		vec3 add = env * fres * mix(env_bottom, env_top, pow(up, env_up_power)) * mix(refl_gain, refl_metal, metallic) * mix(1.0, sh, 0.3) + sun * spec * spec_gain;
+		vec3 pg = paint_gamma * mix(1.0, mix(1.0 - flop, 1.0, pow(cosv, flop_power)), metallic);
+		vec3 flake = pg * sun * pow(rl, flake_power) * sh * flake_gain * metallic;
+		vec3 add = flake + env * fres * mix(env_bottom, env_top, pow(up, env_up_power)) * mix(refl_gain, refl_metal, metallic) * mix(1.0, sh, 0.3) + sun * spec * spec_gain;
 		if (gamma_sum) {
-			DIFFUSE_LIGHT += to_linear(paint_gamma * diff + add);
+			DIFFUSE_LIGHT += to_linear(pg * diff + add);
 		} else {
 			DIFFUSE_LIGHT += to_linear(diff);
 			SPECULAR_LIGHT += to_linear(add);

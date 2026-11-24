@@ -188,6 +188,13 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
     moderate facing. Now sun x n.l^2 (sun 1.35, ambient 0.30): per-car paint 16.0 -> 14.9 (captured CR-X 23.4 -> 12.6,
     Mazda 27.6 -> 20.7, p10/50/90 19/37/163 vs the game's 19/43/172); live capture-free grid 20.1 / 19.8 / 18.2, live
     Mazda 24.1 -> 19.8.
+  - **Metallic flakes (2026-11-24, late):** after the usual three-layer car paint model (pigment; metallic flakes embedded
+    in it, taking its colour; a glossy clear coat with a Fresnel reflection; metallics 'flop' darker at grazing views):
+    the grid's metallic cars were 20-25% short from the mid tones up (Eclipse 62/88/131 vs 77/112/191 in the game's
+    60-100 / 100-150 / 150+ bands) while the solid CR-X was right. `fm3_carpaint` now adds a flake highlight in the
+    pigment's colour (flake_gain 1.2 x pow(r.v, 6) x paint colour x sun, metallic only) instead of the white second lobe:
+    offline Mazda 20.6 -> 17.8 (p90 173 vs 172), Eclipse 13.1 -> 12.9, C4 13.3 -> 12.5; live Mazda 19.8 -> 16.9. The flop
+    term (in the shader, flop 0) scored worse. Sparkle (per-flake normal noise) not tried: sub-pixel at 720p on the grid.
   - *Highlights, tried offline on the captured grid (paint shader only, then reverted)*: env_scale 0.2 -> 0.4 / 0.7 /
     1.0 brightens everything (summary 16.9 -> 21.0 / 29.3 / 39.3); a sharper cube (env_lod 2.5 -> 1 / 0) changes nothing
     (17.1); a steeper Fresnel with no floor widens the spread (power 4, scale 1.0, min 0: Mazda p10/p90 14/117, summary
