@@ -47,8 +47,9 @@ research" and LIVE.md stage A item 5):
 Open: the AI cars' windows lack the game's sky blue (the Eclipse 26), the Eclipse's amber signal areas, the pit wall
 (barr_*_nolm: face brighter and warmer in the game, cap darker), the distant scene brighter than the game's in the
 darks (not the fog: TrackSettings' fog is light blue), the crowd's 3D figures near the camera, the sea's colour
-(AmalfiGP), the other multi-texture shaders without a recipe (track_audit.md). Keep the physical monitor on (a virtual
-display alone gives Vulkan -13 on this PC).
+(AmalfiGP), the other multi-texture shaders without a recipe (track_audit.md), Suzuka's tree walls (bush_diff_opac_2_2sd: UVs span
+~0-1 over a whole wall, drawn as streaks; the game's tiling unknown without a capture). Keep the physical monitor on (a
+virtual display alone gives Vulkan -13 on this PC).
 
 ## 1. What the project is
 
