@@ -129,6 +129,9 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
   +0xC70, and the player's yellow CR-X holds red (its colour 1) there too. So the yellow is painted into the livery
   texture the game builds at run time; showing it needs that texture streamed (or read from the profile's livery),
   not a colour.
+- **Lamp lenses (2026-11-24):** `fm3_lensrefl.gdshader`, an additive pass (static cube x Fresnel x 0.05) over the lens's
+  multiply filter: CR-X amber corners 80/46/0 -> 85/62/27 (game 90/56/44). Open: the red tails 83/0/0 vs 51/8/8 (not
+  reached by the pass). Cockpit: cockpit_glass windows, no sun, `fm3_cockpit.gdshader` light, gauges 0.25, mirrors (LIVE.md).
 - **Road lines (rdline_blnd_spec_opac_3, the largest shader without a recipe: 478 meshes on CrownJewel, 10.8% of all
   meshes are such multi-texture shaders, `out\manifest\track_audit.md`):** Godot draws them as solid white (the grid
   boxes), the game as worn grey lines. The captured ps 94e08de1 (`fir_disasm.py ..\work\fir\grid-single-1f.fir
