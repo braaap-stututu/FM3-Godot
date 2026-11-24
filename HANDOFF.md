@@ -20,9 +20,12 @@ own table (`Media\Cars\ShaderSettings`), brake / reverse lights, wheels and brak
 modes (F7), rpm and steering / brake input in the stream (FM3E); the viewer loads textures GPU-compressed (8 GB card)
 and FM3 runs at 1280x720. Other tracks: all 17 parse completely (`tools/fm3_track_audit.py`), any track builds
 without a capture (`tools/build_track.ps1 -Track <Name>`), and cars come from a car library named by the game
-(FM3N, `tools/fm3_car_library.py`): the live mirror runs on a capture-free scene. Library cars now match the captured
-ones (2026-11-24: mirrored nodes + Color-to-vec4 linearisation, PLAN-CARS). Open first: the sky of capture-free tracks is grey. Keep the physical monitor on (a virtual display alone gives
-Vulkan -13 on this PC).
+(FM3N, `tools/fm3_car_library.py`): the live mirror runs on a capture-free scene. Afternoon of 2026-11-24: library
+cars match the captured ones (mirrored nodes + Color-to-vec4 linearisation, PLAN-CARS), capture-free tracks get the
+game's sky textures and sun (TrackSettings `ShadowLightDirection`), and the live capture-free CrownJewel grid
+measures **21.7 / 21.7 / 20.0** against the game (the captured Ladera scene: 20.7-20.8). Open: the player's custom
+paint is the livery layer (a texture, not a colour: FM3N can't carry it), crowd sprites, the sea's colour (AmalfiGP,
+not fitted). Keep the physical monitor on (a virtual display alone gives Vulkan -13 on this PC).
 
 ## 1. What the project is
 

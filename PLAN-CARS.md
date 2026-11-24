@@ -120,7 +120,13 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
   18.7). The baked track shader still gets its colour as a Color (track materials mostly 1.0; not changed, it would
   move the tuned track match). **Open:** the player's custom paint (profile); calipers (need the wheel's
   non-spinning frame) not in the library.
-
+- **Also 2026-11-24 afternoon:** the library's lamp list is the exporter's (LAMP_MATERIALS): reflectors are on the
+  lights texture (the CR-X's red CR-X VTEC panel came out white from nodamage; swap crop 12.3/24.4/9.7 ->
+  7.2/17.9/3.6). **The player's custom paint is the livery layer:** FM3_LIVE_DUMP_CARS=1 (FM3-ReGPU) dumped the
+  eight grid cars' objects: each holds its database colour (Combo_Colors RGB, float4) at +0x9A0, +0xA30, +0xAC0 and
+  +0xC70, and the player's yellow CR-X holds red (its colour 1) there too. So the yellow is painted into the livery
+  texture the game builds at run time; showing it needs that texture streamed (or read from the profile's livery),
+  not a colour.
 **Revised order from here:** phase 1 (structural reader) first, with LOD0 bodies and the file's normals as its first
 use (finding 1-2, and a likely cause of the paint's stripe on the Eclipse); then phase 0's fxobj and shadersettings
 reading to replace the fitted glass and paint numbers; then the cockpit (phase 4); wheel-zip models and lights after.
