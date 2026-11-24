@@ -435,8 +435,7 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
             for pre in ('carbin_' + car + '_', 'cockpit_' + car + '_cockpit_'):
                 if nm.startswith(pre):
                     mname = nm[len(pre):].rsplit('_', 1)[0].split('-')[0]
-                    gp = glass_params(settings, ('cockpit_' + mname) if pre.startswith('cockpit') and
-                                      ('cockpit_' + mname) in settings else mname)
+                    gp = cockpit_glass_params(settings, mname) if pre.startswith('cockpit') else glass_params(settings, mname)
                     if gp is not None:
                         CARMATS[nm] = gp
                     break
@@ -734,6 +733,22 @@ def glass_params(settings, mname):
     if not g or 'GlassColor' not in g:
         return None
     return {GLASS_PARAMS[k]: v for k, v in g.items() if k in GLASS_PARAMS}
+
+
+def cockpit_glass_params(settings, mname):
+    """The glass shader's parameters for a cockpit mesh. The cockpit's own windows ('window', 'glass': the glass the
+    driver looks through) take ShaderSettings' cockpit_glass, which has a specular highlight only (no GlassColor,
+    Fresnel or opacity): clear glass with highlights. With the exterior window's settings (dark, alpha >= 0.4) the
+    in-car view of the capture-free CrownJewel was ~60% of the game's brightness through the windscreen (sky 123 vs
+    209, 2026-11-24)."""
+    if ('cockpit_' + mname) in settings:
+        return glass_params(settings, 'cockpit_' + mname)
+    g = settings.get('cockpit_glass')
+    if g is not None and (mname.startswith('window') or mname == 'glass'):
+        p = {GLASS_PARAMS[k]: v for k, v in g.items() if k in GLASS_PARAMS}
+        p.update(fresnel_min=0.0, fresnel_max=0.0, max_opacity=0.0, glass_color=[0.0, 0.0, 0.0, 0.0])
+        return p
+    return glass_params(settings, mname)
 
 
 def gauge_ticks(path):

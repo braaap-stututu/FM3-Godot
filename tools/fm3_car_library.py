@@ -285,7 +285,7 @@ def build(car, cdir, wdir, db, outdir):
                 full = f'{node}_{len(g.meshes) - 1}'
                 if needle is not None:
                     needles[full] = needle
-                gp = tx.glass_params(settings, ('cockpit_' + mname) if ('cockpit_' + mname) in settings else mname)
+                gp = tx.cockpit_glass_params(settings, mname)
                 if gp is not None:
                     carmats[full] = gp
     # wheels (wheel space) and rotors
