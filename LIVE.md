@@ -187,10 +187,11 @@ The user's last question was whether to chase the remaining uneven steps or call
    level rear camera (30 deg; the middle mirror straight back), as FM3 renders its mirror as a separate scene. The CR-X's
    middle mirror then shows the stands and the run-off behind like the game's, framed a little lower; in-car vs game
    17.4 / 17.8 / 18.6 (dark glass 16.8 / 17.4 / 18.3: a framing offset costs more pixel difference than flat glass).
-   Its cost in-car not measured yet. Tried and reverted: the cabin's specular at the game's 0.09 (removes the sky's blue
-   tint on the dash, 15/21/30 vs the game's 13/13/13, but the cabin went black: in-car 19.0 / 19.1 / 18.3), plus a
-   cockpit-only light from above for SHCockpitTop (0.3: still black; 2.0: dash top right, vertical faces black, 19.1 /
-   19.6 / 19.2). The cockpit needs a hemisphere ambient of its own (top 0.3, bottom 0), not a directional light. live_compare's picture waits (up to 10 s) for the library cars. Open: the player's
+   Its cost in-car not measured yet. The cabin's plain surfaces: `fm3_cockpit.gdshader` (unshaded: albedo x baked
+   brightness x a hemisphere by facing, top 1 / bottom 0.05 fitted; no sun, no sky reflection, which had tinted the dash
+   blue): capture-free in-car 17.5 / 17.9 / 17.3; captured Ladera grid 20.0 / 19.2 / 18.1, in-car 19.1 / 18.9 / 17.6.
+   Vertical cabin faces still too dark (A-pillar 3 vs the game's 13); tried: the game's SH numbers as a top light (all
+   black) and a flat light (roof liner 88 vs 16). live_compare's picture waits (up to 10 s) for the library cars. Open: the player's
    custom paint (the livery layer: the car object holds only the database colour, +0x9A0 etc.,
    `FM3_LIVE_DUMP_CARS=1`), crowd sprites, the sky dome's seam line, the sea's colour.
 6. Then stage B: ReGPU skips what Godot draws.
