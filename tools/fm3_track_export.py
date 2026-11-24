@@ -23,6 +23,7 @@ import glob
 import json
 import os
 import shutil
+import struct
 import sys
 
 import numpy as np
@@ -1103,6 +1104,48 @@ def main():
             textures.append({'source': len(images) - 1, 'sampler': sampler})
             img_ids[(png, sampler)] = len(textures) - 1
         return img_ids[(png, sampler)]
+
+    # The crowd (the layout's <track>_track_NN.crowd beside its .pvs, PLAN-CARS): header version, cell count, people
+    # count (u32 BE); per cell 52 bytes: row start, end, middle (3 floats each), half length, 0, first person, count;
+    # per person 16 bytes: u16 figure (low byte 0..14; +256 a second set), 6 zero bytes, the offset from its cell's
+    # middle as three half floats, the facing angle as a half float (radians). CrownJewel Ribbon_04: 95 cells, 2627
+    # people, every one within a few metres of its cell's row. Drawn as upright cards from the 'crowds' sprite sheet
+    # (seven seated figures; the game draws 3D people near the camera and sprites past SpriteDistance): crowd_people.
+    crowd_png = next((k[1] for k in groups if k[0] == 'crowds' and k[1]), None)
+    crowd_file = None
+    if '--pvs' in sys.argv:
+        crowd_file = next(iter(glob.glob(os.path.join(os.path.dirname(os.path.abspath(sys.argv[sys.argv.index('--pvs') + 1])),
+                                                       '*.crowd'))), None)
+    # (not with --dynamic-from: a captured scene has the frame's own people)
+    if crowd_file and crowd_png and '--no-crowd' not in sys.argv and '--dynamic-from' not in sys.argv:
+        cd = open(crowd_file, 'rb').read()
+        _ver, ncell, npeople = struct.unpack('>3I', cd[:12])
+        mids = np.zeros((npeople, 3))
+        for c in range(ncell):
+            v = struct.unpack('>10f3I', cd[12 + 52 * c: 12 + 52 * c + 52])
+            mids[v[11]:v[11] + v[12]] = v[6:9]
+        R_ = np.frombuffer(cd[12 + 52 * ncell: 12 + 52 * ncell + 16 * npeople], np.uint8).reshape(-1, 16)
+        fig = R_[:, 0:2].copy().view('>u2').ravel() & 0xFF
+        pos = mids + R_[:, 8:14].copy().view('>f2').reshape(-1, 3).astype(np.float64)
+        ang = R_[:, 14:16].copy().view('>f2').ravel().astype(np.float64)
+        hw, ht = 0.37, 1.3  # (a seated figure: the sheet's cells are 73 x 128 px)
+        right = np.stack([np.cos(ang), np.zeros_like(ang), -np.sin(ang)], 1)
+        corners = []
+        for sx, sy in ((-1, 0), (1, 0), (1, 1), (-1, 1)):
+            corners.append(pos + right * (sx * hw) + np.array([0.0, sy * ht, 0.0]))
+        # (no F: the cells lie where the track's own 'crowds' cards are in the glTF, z 96..472 on CrownJewel; with F
+        # they landed on the far side of the complex)
+        Pq = np.stack(corners, 1).reshape(-1, 3)
+        col = fig % 7
+        u0, u1 = col / 7.0, (col + 1) / 7.0
+        Uq = np.stack([np.stack([u0, np.ones_like(u0)], 1), np.stack([u1, np.ones_like(u0)], 1),
+                       np.stack([u1, np.zeros_like(u0)], 1), np.stack([u0, np.zeros_like(u0)], 1)], 1).reshape(-1, 2)
+        b4 = np.arange(npeople) * 4
+        Tq = np.concatenate([np.stack([b4, b4 + 1, b4 + 2], 1), np.stack([b4, b4 + 2, b4 + 3], 1)])
+        groups.setdefault(('crowd_people', crowd_png, None, None), []).append(
+            (Pq.astype(np.float32), Tq.astype(np.int64), Uq.astype(np.float32), None,
+             {'factor': [1, 1, 1, 1], 'blend': 'MASK'}, None))
+        print(f'crowd: {npeople} people in {ncell} cells from {os.path.basename(crowd_file)}')
 
     nv = nt = 0
     for (name, base, lm, famj), parts in sorted(groups.items(), key=lambda kv: str(kv[0])):
