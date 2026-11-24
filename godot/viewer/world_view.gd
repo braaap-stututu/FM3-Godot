@@ -299,6 +299,10 @@ func _init() -> void:
 					["refl_gain", "refl_f0", "spec_gain", "spec_power", "shadow_strength", "refl_metal"]))
 				continue
 			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+			if lit and m.metallic >= 0.9 and String(mi.name).begins_with("carbin_"):
+				# car chrome (mirror faces, exhaust tips, trim): it reflects the game's own car cube, far darker than this
+				# viewer's surroundings (the windows' env_scale 0.2, fm3_carglass.gdshader): the same scale here
+				m.albedo_color = Color(m.albedo_color.r * CHROME_SCALE, m.albedo_color.g * CHROME_SCALE, m.albedo_color.b * CHROME_SCALE, m.albedo_color.a)
 			if mi.mesh.surface_get_format(s) & Mesh.ARRAY_FORMAT_COLOR:
 				m.vertex_color_use_as_albedo = true  # (the cockpit's baked brightness, fm3_track_export.py)
 			if m.resource_name.contains("gauge") and m.albedo_texture != null:
@@ -694,6 +698,7 @@ func needle_turn(n: Dictionary, car) -> Transform3D:
 
 
 const NEEDLE_IDLE_RPM := 900.0
+const CHROME_SCALE := 0.25  # car chrome's reflection level (see the material loop)
 # FM3's own cockpit wheel at full steering input: carattribs.xml SteeringWheelAngleOverride in turns (the export's
 # game_deg; the CR-X's 0.206 = 74 deg matches its in-car pictures, ~73); cars without one (0) take the game's default,
 # not measured yet: this guess.
