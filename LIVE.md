@@ -153,6 +153,43 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
   test race seen only through Godot (game rendering off, both at 60 fps, `FM3_INPUT_BACKGROUND=1` so keyboard and
   wheel work while the viewer is in front); `-AiPlayer -Seconds 30 -Log x.csv` is the unattended version.
 
+## Other tracks (2026-11-24 night)
+
+- **`tools\live\live_track.ps1 -Index N -Gltf <abs>\out\world\<track>.gltf [-FreezeAfter 11]`**: boots FM3 through the
+  recomp's tour route (`tools\tour.ps1`: Free Play > Quick Race > Acura RSX Type-S > environment N, its first layout),
+  starts the race, freezes the world in the countdown (FreezeAfter 11 = the chase view; 8 = the car intro), starts the
+  viewer beside it and compares (`out\live\tracks\<name>-{game,godot,cmp}.png`). Environments: 0 AmalfiGP, 3 Catalunya,
+  7 LeMans, 8 MapleValley, 9 LagunaSeca, 10 Mugello, 11 NewYork, 15 RoadAmerica, 16 RoadAtlanta, 17 Sebring,
+  20 Silverstone, 21 SunsetInfield, 22 Suzuka, 23 Tsukuba, 24 Motegi (1/2/18/19 Autopark). Free Play's opponents and
+  grid slot change every boot, so each run is a new picture.
+- **Every car the game can field is in the car library** (500: disc 1's 305 + Disc 2's 199 from the recomp's installed
+  packages, `out\user\dlc\*\Media\DLCZips\*_pri_65.zip`, `tools\add_cars.ps1`; ~33 GB in `out\cars`); Disc 2 cars'
+  colours come from the packages' `*_merge.slt` databases. The viewer's picture waits for the cars to attach.
+- **Track shaders from the game's own code:** `tools\fm3_trackshader.py <track>\shaders\track\<NAME>.fxobj`
+  disassembles any track shader (FM3-FORMATS "The track shaders themselves"); recipes written from it in
+  `tools/fm3_families.py` (overlay, three-layer value blend, the road blends, road lines, edge decals, shoulder and
+  terrain blends) and single-texture shaders' UV scale / gain read from their code (`simple_terms`). Per track:
+  TrackSettings DarkColor / LightColor as the static light (`<track>_track.json`), the sky scaled by skyScale / tone
+  white point, crowds from the shared `Media\Spectators.zip` sprites where a track has no crowd sheet, `OCCLUD_*`
+  occlusion meshes skipped.
+- First survey (before most of the fixes): AmalfiGP 49.3, Catalunya 16.6 (fixed first), LeMans 22.6, MapleValley 46.0,
+  LagunaSeca 40.3, RoadAmerica 68.0, RoadAtlanta 44.5, Sebring 39.2, Silverstone 24.0, SunsetInfield 26.4, Suzuka
+  25.1, Tsukuba 20.2, Motegi 49.0 (player car unnamed); Mugello (viewer stalled) and NewYork (boot route stuck before
+  the pre-race menu) gave no picture.
+- **Road sun specular (opt-in `FM3_ROAD_SPEC=1`):** the road shaders' shadowed variants add a sun highlight, read
+  exactly by running their code in `tools/fir_vs.py` with a live capture's constants (debug server `capture`, boot with
+  `REGPU_NO_PACKED_CONSTANTS=1`): c223/c224 are TrackSettings' RoadSpecular/2, RoadSkid/2, RoadGlossiness/2,
+  RoadLightmapDark/LightPoint as written; formula in `fm3_blend.gdshaderinc`. Off by default: on MapleValley facing the
+  sun it overshoots (glare 253 vs the game's 176; without it 66 vs 193); the reason is still open.
+- **Display gamma (measured 2026-11-24):** FM3's display table (ReGPU applies it at present; live switches
+  `REGPU_NO_GAMMA` / `REGPU_NO_GAMMA_PWL`) is a fixed toe curve, the same on MapleValley and LagunaSeca: 16 -> 9-12,
+  48 -> 33, 80 -> 60, 112 -> 95-98, 144 -> 132-137, 240 -> 244-247. It is not the per-track brightness difference, nor
+  highlight compression; our calibration (on the game's shots) already includes it.
+- **Open:** per-track brightness (LagunaSeca 1.25x brighter than ours, LeMans 0.88x; not the display gamma; next
+  suspect: the bloom pass, TrackSettings bloomCutoff / bloomScale), the road specular's overshoot; the palette barriers (`diff_clr_spec_2`: a per-model
+  palette row, ModelData c148), LeMans' `shldr_blnd_spec_vclr_dualmix_4`, reflective glass `diff_spec_opac_refl_3`,
+  MapleValley's Castrol banners and asphalt tone, Catalunya's grass 25% dim.
+
 ## Next for stage A (where to continue)
 
 The user's last question was whether to chase the remaining uneven steps or call it good enough: ask.

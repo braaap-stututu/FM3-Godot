@@ -26,7 +26,7 @@ if (-not (Start-TourBoot @{ FM3_LIVE = '1' })) { Get-Process fm3 -ErrorAction Si
 for ($i = 0; $i -lt $Index; $i++) { Tour-Press RIGHT 0.9 }
 if (-not (Tour-Expect trackselect { Tour-Press A 4 } 2 "$Index-trackselect")) { throw 'track select not reached' }
 Tour-Press A 2                                 # Go race: loading, then the pre-race menu over the fly-over
-Start-Sleep 50
+Start-Sleep 70
 if (-not (Tour-Expect menu { Tour-Press LB 1 } 3 "$Index-prerace")) { throw 'pre-race menu not reached' }
 Tour-Press A $FreezeAfter                      # Start race; the car intro and countdown
 Fm3 'env FM3_FREEZE_TIME 1' | Out-Null          # the world stops (frame_time.cpp)
