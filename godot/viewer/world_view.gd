@@ -213,6 +213,7 @@ func _init() -> void:
 	var baked := 0
 	var baked_no_tex := 0
 	var glass_set := 0
+	var rim_set := 0
 	var baked_gain := 1.0  # (the baked shader evaluates FM3's own lightmap formula; 1 = as the game)
 	var grey_unshaded := StandardMaterial3D.new()
 	grey_unshaded.albedo_color = Color(0.5, 0.5, 0.5)
@@ -314,8 +315,18 @@ func _init() -> void:
 			if lit and m.roughness_texture != null and m.albedo_texture != null:
 				# car paint (fir_world.py writes a roughness texture only for paint): FM3's paint shader
 				# (fm3_carpaint.gdshader: lit colour + Fresnel environment reflection + sun highlight)
-				mi.set_surface_override_material(s, _car_material(CARPAINT_SHADER, m, gltf_path, "FM3_CARPAINT",
-					["refl_gain", "refl_f0", "spec_gain", "spec_power", "shadow_strength", "refl_metal"]))
+				var pm_ := _car_material(CARPAINT_SHADER, m, gltf_path, "FM3_CARPAINT",
+					["refl_gain", "refl_f0", "spec_gain", "spec_power", "shadow_strength", "refl_metal"])
+				if String(mi.name).begins_with("wheel_"):
+					# rims are painted (the game's rim material has a PaintScale, 0.75; the capture gave them the paint
+					# shader): its colour at that scale and a far weaker reflection than body paint (light grey spokes
+					# where the game's are dark; same cause as the chrome's)
+					pm_.set_shader_parameter("albedo_color", Color(m.albedo_color.r * 0.75, m.albedo_color.g * 0.75, m.albedo_color.b * 0.75, m.albedo_color.a))
+					pm_.set_shader_parameter("refl_gain", RIM_REFLECTION)
+					pm_.set_shader_parameter("refl_metal", RIM_REFLECTION)
+					pm_.set_shader_parameter("spec_gain", 0.3)
+					rim_set += 1
+				mi.set_surface_override_material(s, pm_)
 				continue
 			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 			if lit and m.metallic >= 0.9 and (String(mi.name).begins_with("carbin_") or String(mi.name).begins_with("wheel_")):
@@ -326,6 +337,10 @@ func _init() -> void:
 				# rims: the game lights them by its ambient (SH) light, not the sun, at PaintScale 0.75 (ShaderSettings
 				# rim): here the sunlit albedo at RIM_SCALE
 				m.albedo_color = Color(m.albedo_color.r * RIM_SCALE, m.albedo_color.g * RIM_SCALE, m.albedo_color.b * RIM_SCALE, m.albedo_color.a)
+				# (and their reflection: what made them light grey was Godot's reflection of its bright surroundings, the
+				# chrome's problem: a colour scale of 0 changed nothing)
+				m.metallic_specular = RIM_SPECULAR
+				rim_set += 1
 			if mi.mesh.surface_get_format(s) & Mesh.ARRAY_FORMAT_COLOR:
 				m.vertex_color_use_as_albedo = true  # (the cockpit's baked brightness, fm3_track_export.py)
 			if m.resource_name.contains("gauge") and m.albedo_texture != null:
@@ -423,6 +438,7 @@ func _init() -> void:
 	var sun_fwd := -sun.global_transform.basis.z if sun.is_inside_tree() else -sun.transform.basis.z
 	for cm in _car_mats:
 		(cm as ShaderMaterial).set_shader_parameter("sun_dir", -sun_fwd)  # (towards the sun: the glass highlight)
+	print("world_view: %d wheel rim surfaces dimmed" % rim_set)
 	if glass_set:
 		print("world_view: %d car glass surfaces with the game's own glass settings" % glass_set)
 	sun.directional_shadow_max_distance = 250.0
@@ -732,7 +748,9 @@ func needle_turn(n: Dictionary, car) -> Transform3D:
 
 
 const NEEDLE_IDLE_RPM := 900.0
-const RIM_SCALE := 0.5  # wheel rims (PaintScale 0.75 x ambient instead of sun ~0.66; see the material loop)
+const RIM_SCALE := 0.5  # wheel rims' colour (the game lights them by its ambient at PaintScale 0.75; see the material loop)
+const RIM_REFLECTION := 0.25  # painted rims' environment reflection (body paint 1.0 / 1.6)
+const RIM_SPECULAR := 0.1  # ... and their reflection (Godot's default 0.5: light grey rims where the game's are dark)
 const CHROME_SCALE := 0.25  # car chrome's reflection level (see the material loop)
 # FM3's own cockpit wheel at full steering input: carattribs.xml SteeringWheelAngleOverride in turns (the export's
 # game_deg; the CR-X's 0.206 = 74 deg matches its in-car pictures, ~73); cars without one (0) take the game's default,

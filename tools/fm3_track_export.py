@@ -497,9 +497,9 @@ def build_wheels(car, wheels, ref, copy_mat, xds_material, emit, zdir=None):
                 if not len(tris) or tris.max() >= len(P):
                     continue
                 mname = sub['material']
-                if mname in cap:
-                    m_ = ('index', copy_mat(cap[mname]))
-                elif mname in ('tire', 'tread', 'sidewall'):
+                # (the wheel zip's own textures, not the captured draws' materials: those came as the track's blend
+                # family or paint, past the viewer's rim handling: light grey spokes)
+                if mname in ('tire', 'tread', 'sidewall'):
                     m_ = ('flat', 'tire')
                 elif xds_material is not None:
                     m_ = xds_material(tex_dir, 'wheel0_lod0' if 'blur' in mname else 'wheel_lod0', 'wheel_' + mname,
