@@ -925,6 +925,19 @@ def main():
                     mesh_tex[me_['index_offset']] = (pv['textures'][texl[sl[0]]]['id'], shn)
                 if len(sl) > 7 and 0 <= sl[7] < len(texl):
                     mesh_lm[me_['index_offset']] = pv['textures'][texl[sl[7]]]
+        if is_sky and pv is not None and model.get('materials'):
+            # The sky dome's textures: its material slots 0..n-1 (one per sky mesh) are the last n of the .pvs texture
+            # entries with flags 1, in id order (streamed from the .stx; no .pvs model lists them). Checked on
+            # CrownJewel against the captured sky: sky1..4 = ids 3509 / 3510 / 3507 / 3508, mean |diff| 3.5-6 (sky5 the
+            # zenith cap, sky6 the landscape below the horizon, both drawn too); AmalfiGP, Suzuka, NewYork and LeMans
+            # have 5 such entries for 5 sky meshes.
+            n_sky = len(model['materials'])
+            ones = sorted(t['id'] for t in pv['textures'] if t['flags'] == 1)
+            if len(ones) >= n_sky:
+                for me_ in model['meshes']:
+                    sl = model['materials'][me_['material_index']]['slots']
+                    if sl and 0 <= sl[0] < n_sky:
+                        mesh_tex[me_['index_offset']] = (ones[len(ones) - n_sky + sl[0]], 'sky_diff_1')
         # Placements: (3x3, translation, lightmap entry or None); world-space files once, as they are.
         places = [(np.eye(3), np.zeros(3), None)]
         if is_sky:

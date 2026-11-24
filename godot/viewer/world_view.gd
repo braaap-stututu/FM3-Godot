@@ -65,6 +65,7 @@ var _gltf_path := ""
 var _car_names := {}  # car -> {name, color, metallic} ("FM3N")
 var _library_tried := {}  # cars a library model was tried for
 var _library_queue := []  # cars waiting for their library model
+var _shot_held_since := -1  # (ms: a requested picture waiting for the library cars)
 var _cars_with_parts := {}  # cars with meshes attached
 var _sun_to := Vector3(0, 1, 0)  # towards the sun (glass highlights)
 var _carmats := {}  # car mesh node name -> its glass parameters from the game's shader settings (<gltf>_carmaterials.json)
@@ -929,6 +930,18 @@ func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle
 # Cars the glTF does not hold (any track but the capture's grid, or a car not in it): built from the car library
 # (tools/fm3_car_library.py: out/cars/<car>.gltf in its own car / wheel space), named by the game ("FM3N": media name,
 # Combo_Colors colour, paint type), placed by its streamed matrices like the others.
+# Streamed cars the scene lacks that have not had their library model yet (queued, or no FM3N name so far).
+func _cars_pending() -> bool:
+	if not _library_queue.is_empty():
+		return true
+	if not _car_attached:
+		return false
+	for c in _cars:
+		if not _cars_with_parts.has(c) and not _library_tried.has(c):
+			return true
+	return false
+
+
 func _attach_library_car(car) -> void:
 	_library_tried[car] = true
 	var info: Dictionary = _car_names[car]
@@ -1182,8 +1195,15 @@ func _live_step() -> void:
 		_live_director = _live_dirs[(_live_dirs.find(_live_director) + 1) % _live_dirs.size()]
 		print("world_view: live director %08X%s" % [_live_director, " (the drawn camera)" if _live_director == _live_dirs[0] else ""])
 	_live_tab = tab
-	# A picture on request: create <out>.shot and the next frame is saved to <out> (the file is removed).
-	if _out != "" and FileAccess.file_exists(_out + ".shot"):
+	# A picture on request: create <out>.shot and the next frame is saved to <out> (the file is removed). Held (up to
+	# 10 s) while streamed cars still wait for their library model: on the capture-free CrownJewel the three cars loaded
+	# last were missing from live_compare's picture (one load a frame, ~0.4 s each).
+	if _out != "" and FileAccess.file_exists(_out + ".shot") and _shot_held_since < 0:
+		_shot_held_since = Time.get_ticks_msec()
+	if _out != "" and _shot_held_since >= 0 and _cars_pending() and Time.get_ticks_msec() - _shot_held_since < 10000:
+		pass
+	elif _out != "" and FileAccess.file_exists(_out + ".shot"):
+		_shot_held_since = -1
 		DirAccess.remove_absolute(_out + ".shot")
 		root.get_texture().get_image().save_png(_out)
 		print("world_view: saved ", _out)
