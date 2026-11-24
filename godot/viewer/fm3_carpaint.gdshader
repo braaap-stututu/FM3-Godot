@@ -11,6 +11,9 @@ uniform sampler2D albedo_tex : filter_linear_mipmap_anisotropic, repeat_enable, 
 uniform vec4 albedo_color = vec4(1.0);
 uniform samplerCube env_cube : filter_linear_mipmap;
 uniform bool has_env = false;
+// The static cube (the other cars: only the player's car reflects the live cube) blurred: at its sharpest level the
+// track's stripes and stands shimmered as streaks along curved doors, where the game's reflections are soft.
+uniform float env_lod = 2.5;
 uniform vec3 env_fallback = vec3(0.45, 0.52, 0.56);
 uniform vec3 env_flip = vec3(-1.0, 1.0, 1.0);  // (this scene's x is the game's mirrored)
 // Fitted on the grid (tools/car_regions.py, 7 cars). Refitted 2026-11-23 for the LOD 0 bodies with the file's own
@@ -51,7 +54,7 @@ void light() {
 		float up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y * 0.5 + 0.5;
 		DIFFUSE_LIGHT += to_linear(mix(ambient_ground, ambient, up) + sun * ndl * sh);
 		vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
-		vec3 env = has_live ? live_cube(r) : (has_env ? texture(env_cube, r * env_flip).rgb : env_fallback);
+		vec3 env = has_live ? live_cube(r) : (has_env ? textureLod(env_cube, r * env_flip, env_lod).rgb : env_fallback);
 		float cosv = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 		float fres = refl_f0 + (1.0 - refl_f0) * pow(1.0 - cosv, fresnel_power);
 		float spec = pow(max(dot(reflect(-LIGHT, NORMAL), VIEW), 0.0), spec_power) * sh;

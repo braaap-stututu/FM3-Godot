@@ -53,6 +53,11 @@ var _car_back := {}  # car -> true while it moves backwards
 var _car_lit := {}  # car -> brake light amount shown (0..1)
 var _player_brake := -1.0  # the player's brake input ("FM3E" v3; -1 = none)
 var _light_mats := {}  # car -> [[material, "brake" | "reverse"], ...]
+# The live reflection cube is the player's car's only (the game's paint shader picks t6 / t7: the player car's cube,
+# rendered every frame around it, or the static one): the other cars reflect the layout's static cube. Before this they
+# all reflected the cube rendered at the player's car, wrong place and 128 px: streaks on the Eclipse's doors.
+var _car_shader_mats := {}  # car -> its paint / glass ShaderMaterials
+var _live_player := -2
 const BRAKE_DECEL := 2.5
 const BRAKE_ENERGY := 2.0  # emission at full brake (gamma-space look fitted by eye; the game's BrakeColor is HDR 7)
 var _carmats := {}  # car mesh node name -> its glass parameters from the game's shader settings (<gltf>_carmaterials.json)
@@ -513,8 +518,8 @@ func _make_live_cube(at: Vector3) -> void:
 		_live_cube_cams.append(c)
 		texs.append(vp.get_texture())
 	_place_live_cube(at)
+	_live_player = -2  # (has_live: the player's car only, set in _show_drawn)
 	for sm in _car_mats:
-		(sm as ShaderMaterial).set_shader_parameter("has_live", true)
 		for k in 6:
 			(sm as ShaderMaterial).set_shader_parameter("live%d" % k, texs[k])
 	print("world_view: live reflection cube, %d px a face, at %s" % [_live_cube_size, at])
@@ -804,6 +809,12 @@ func _attach_cars() -> void:
 				_car_parts.append([m, car, m.global_transform, wk, _wheel_blur_kind(m) if wk >= 0 else -1,
 					String(m.name).begins_with("cockpit_"), m.cast_shadow, _needles.get(String(m.name))])
 				per_car[car] = per_car.get(car, 0) + 1
+				for si2_ in m.get_surface_override_material_count():
+					var sm2_ = m.get_surface_override_material(si2_)
+					if sm2_ is ShaderMaterial and _car_mats.has(sm2_):
+						if not _car_shader_mats.has(car):
+							_car_shader_mats[car] = []
+						_car_shader_mats[car].append(sm2_)
 				var nm_ := String(m.name)
 				var kind_ := "brake" if nm_.contains("tail_light") or nm_.contains("brake_light") else ("reverse" if nm_.contains("reverse_light") else "")
 				if nm_.contains("detail_glass_red") or nm_.contains("red_glass"):
@@ -1037,6 +1048,11 @@ func _show_drawn(now: float) -> void:
 			player = car
 	var in_car := _live_vtable == 0x8200206C or _live_vtable == 0x82034FC4
 	_update_lights(player)
+	if player != _live_player and not _live_cube_cams.is_empty():
+		_live_player = player
+		for c_ in _car_shader_mats:
+			for sm_ in _car_shader_mats[c_]:
+				(sm_ as ShaderMaterial).set_shader_parameter("has_live", c_ == player)
 	for part in _car_parts:
 		var mine: bool = int(part[1]) == player and in_car
 		var gi := part[0] as GeometryInstance3D
