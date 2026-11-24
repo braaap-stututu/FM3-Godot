@@ -565,6 +565,14 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 		if e != "":
 			var c := e.split_floats(",")
 			sm.set_shader_parameter(extra[1], Vector3(c[0], c[1], c[2]))
+	if shader == CARLENS_SHADER:
+		# the lens's reflection over its filter (fm3_lensrefl.gdshader)
+		var rp := ShaderMaterial.new()
+		rp.shader = load("res://viewer/fm3_lensrefl.gdshader")
+		rp.set_shader_parameter("has_env", cube != null)
+		if cube != null:
+			rp.set_shader_parameter("env_cube", cube)
+		sm.next_pass = rp
 	return sm
 
 
