@@ -61,16 +61,15 @@ def recipe(shader, params, stride, slots):
             return None
         tint0 = list(params[0][:3]) if k > 0 else [1.0, 1.0, 1.0]
         s1 = k + 1
+        tint1 = list(params[k + 2][:3]) if (vclr and k + 2 < len(params)) else [1.0, 1.0, 1.0]
         if k == 0 and len(params) > 2 and abs(params[1][3] - 1.0) < 1e-3 and params[2][2] == 0.0:
-            # shldr_blnd_spec_3: P[0] specular (scale0), P[1] a colour (w 1: (1,1,1) on CrownJewel, greys and browns on
-            # Catalunya), P[2] scale1 (as terr_*'s tint, spec, scale order, the tint moved after the spec)
-            tint0, s1 = list(params[1][:3]), 2
+            # shldr_blnd_spec_3 (disassembled, SHLDR_BLND_SPEC_3.fxobj): lerp(A, B * P[1].rgb, v), A at UV * P[0].xy,
+            # B at the same UV * P[2].xy (P[1]: (1,1,1) on CrownJewel, greys and browns on Catalunya)
+            tint1, s1 = list(params[1][:3]), 2
         return {'mode': 'blend', 'src0': pairs[0], 'src1': pairs[1] if len(pairs) >= 3 else pairs[0],
                 'mask': pairs[-1], 'lm': pairs[-1], 'vclr': vclr and stride == 32,
                 'scale0': list(params[k][:2]), 'scale1': list(params[s1][:2]) if s1 < len(params) else [1.0, 1.0],
-                'tint0': tint0,
-                'tint1': list(params[k + 2][:3]) if (vclr and k + 2 < len(params)) else [1.0, 1.0, 1.0],
-                'slots': slots[:3]}
+                'tint0': tint0, 'tint1': tint1, 'slots': slots[:3]}
     pairs = list(range(16, stride - 3, 4))
     if REFL.match(shader) and slots and slots[0] >= 0 and params and pairs:
         # windows and glazing (diff_spec_refl_norm_4 / diff_spec_refl_3; captured ps f4e339d2): base t0 at UV0 * P[0].yz,

@@ -1238,6 +1238,26 @@ def main():
     if '--pvs' in sys.argv:
         crowd_file = next(iter(glob.glob(os.path.join(os.path.dirname(os.path.abspath(sys.argv[sys.argv.index('--pvs') + 1])),
                                                        '*.crowd'))), None)
+    # Tracks without a 'crowds' sheet of their own (LeMans, Suzuka, Motegi, ...): the game's shared spectator sprites,
+    # Media\Spectators.zip sprites.xds (2048 x 1024: 32 people in a 4 x 8 grid, each 8 views of 64 x 128 px: four standing,
+    # four seated; the eighth is seated, facing front)
+    shared_sprites = False
+    if crowd_file and not crowd_png and '--pvs' in sys.argv:
+        media_ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
+            sys.argv[sys.argv.index('--pvs') + 1])))))
+        spz = os.path.join(media_, 'Spectators.zip')
+        if os.path.exists(spz):
+            import subprocess
+            import tempfile
+            unzip = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fm3unzip', 'fm3unzip.exe')
+            with tempfile.TemporaryDirectory() as td:
+                subprocess.run([unzip, spz, td, 'sprites.xds'], capture_output=True)
+                img = fm3_tex.load_xds(os.path.join(td, 'sprites.xds')) if os.path.exists(os.path.join(td, 'sprites.xds')) else None
+            if img is not None:
+                os.makedirs(tex_out, exist_ok=True)
+                crowd_png = 'spectator_sprites.png'
+                fr.write_png(os.path.join(tex_out, crowd_png), img.shape[1], img.shape[0], np.ascontiguousarray(img).tobytes())
+                shared_sprites = True
     # (not with --dynamic-from: a captured scene has the frame's own people)
     if crowd_file and crowd_png and '--no-crowd' not in sys.argv and '--dynamic-from' not in sys.argv:
         cd = open(crowd_file, 'rb').read()
@@ -1251,6 +1271,8 @@ def main():
         pos = mids + R_[:, 8:14].copy().view('>f2').reshape(-1, 3).astype(np.float64)
         ang = R_[:, 14:16].copy().view('>f2').ravel().astype(np.float64)
         hw, ht = 0.37, 1.3  # (a seated figure: the sheet's cells are 73 x 128 px)
+        if shared_sprites:
+            hw, ht = 0.45, 1.8  # (a whole person's 64 x 128 px cell: a standing figure's height)
         right = np.stack([np.cos(ang), np.zeros_like(ang), -np.sin(ang)], 1)
         corners = []
         for sx, sy in ((-1, 0), (1, 0), (1, 1), (-1, 1)):
@@ -1258,10 +1280,17 @@ def main():
         # (no F: the cells lie where the track's own 'crowds' cards are in the glTF, z 96..472 on CrownJewel; with F
         # they landed on the far side of the complex)
         Pq = np.stack(corners, 1).reshape(-1, 3)
-        col = fig % 7
-        u0, u1 = col / 7.0, (col + 1) / 7.0
-        Uq = np.stack([np.stack([u0, np.ones_like(u0)], 1), np.stack([u1, np.ones_like(u0)], 1),
-                       np.stack([u1, np.zeros_like(u0)], 1), np.stack([u0, np.zeros_like(u0)], 1)], 1).reshape(-1, 2)
+        if shared_sprites:
+            who = (R_[:, 0:2].copy().view('>u2').ravel().astype(np.int64) + np.arange(npeople) * 7) % 32
+            u0 = ((who % 4) * 8 + 7) / 32.0
+            u1 = u0 + 1 / 32.0
+            vt, vb = (who // 4) / 8.0, (who // 4 + 1) / 8.0
+        else:
+            col = fig % 7
+            u0, u1 = col / 7.0, (col + 1) / 7.0
+            vt, vb = np.zeros_like(u0), np.ones_like(u0)
+        Uq = np.stack([np.stack([u0, vb], 1), np.stack([u1, vb], 1),
+                       np.stack([u1, vt], 1), np.stack([u0, vt], 1)], 1).reshape(-1, 2)
         b4 = np.arange(npeople) * 4
         Tq = np.concatenate([np.stack([b4, b4 + 1, b4 + 2], 1), np.stack([b4, b4 + 2, b4 + 3], 1)])
         groups.setdefault(('crowd_people', crowd_png, None, None), []).append(

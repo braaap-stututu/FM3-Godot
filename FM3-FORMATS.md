@@ -158,6 +158,19 @@ web search were not reachable).
   (terrain blend `lerp(t0 * tint, t1, mask.r)` with per-layer UV scales from the specular parameter vector; road
   `marks * grain(world x, z)`; paint; road edge; two-scale mix). Road-edge, mountain-road and shoulder-grass recipes
   are inferred from their textures (not in the captured frame).
+- **The track shaders themselves (2026-11-24, `tools/fm3_trackshader.py`):** each track zip carries its shaders as
+  `shaders\track\<NAME>.fxobj`, holding Xbox 360 shader containers (big-endian): u32 magic (`0x102A1100` pixel,
+  `0x102A1101` vertex), u32 data offset, u32 data size, u32 0, u32 0x24, u32 info offset, u32 code-info offset, u32 0;
+  the D3DX constant table at +0x28 (names every parameter: `Blend_A_uvOS` = c120, `TextureMap_4903Sampler` = s0, ...);
+  at code-info: u32 code offset within the data, u32 code size; the data starts with the literal constants (16-byte
+  vectors numbered down to c255), then the Xenos microcode, the same code a capture holds (`fir_disasm.disasm`). So every
+  track shader's exact formula is readable without a capture. Per file: several variants (with / without the shadow
+  map, depth and lightmap-only passes); the plain one is the shortest full one without `TimeGain`. Texture coordinates
+  are `uv * (cN.zw * c(param).xy) + cN.xy` (each sampler's uvOS c116-c124, the material parameter giving the scale);
+  vertex fetch offsets are patched at load time (0 in the file), so which interpolant is which vertex UV pair is read
+  from the meshes (the lightmap / value-map pair is the one within 0..1). Formulas found this way are in
+  `tools/fm3_families.py` (overlay blend, three-layer value blend, the road blends, road lines: lerp(P0, line, road
+  alpha) x P1.z with the line's own alpha, road-edge decals with a separate opacity map).
 - **Where UV0 sits** depends on shader and stride: byte 16 for most; byte 12 for `tree_*` cards (stride 24); byte 20 for
   the shoulder-grass `*_vclr_mix_3` (stride 28, byte 16 = vertex colour); terrain stride 28: UV0 16, second layer 20,
   mask/lightmap 24; terrain stride 32 with vertex colour (ARGB at 20): 16, 24, 28; road edges (stride 36): UV0 16,
@@ -170,7 +183,8 @@ web search were not reachable).
   `TXCM` "CarTrackCubemap"; D3D texture header with the fetch constant at 0x58; data from header size + 12): the static
   environment cube reflected by car paint and window glass, 256 x 256 DXT5 (endian 1, tiled), faces +X, -X, +Y, -Y, +Z,
   -Z every 64 KiB.
-- Not geometry to draw as is: `flare_*` (the sun flare) and `LGHT_*` meshes (light volumes, no material).
+- Not geometry to draw as is: `flare_*` (the sun flare), `LGHT_*` meshes (light volumes, no material) and `OCCLUD_*`
+  (occlusion geometry: RoadAmerica, Sebring, Mugello).
 - **ForzaStudio-EVO (matches our files: u32 version 4 = FM3, 6 = FM4; section count u32 at 0x74):** per section: u32 1;
   three float3 blocks each followed by f32 0; u32 1; name (i32 length + ASCII; text before the first `_` = type);
   u32 2; u32 vertex count; u32 stride; vertices; u32 1; u32 subsection count. Per subsection: u32 1, u32 2; name; u32 LOD;
