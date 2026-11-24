@@ -331,7 +331,7 @@ func _init() -> void:
 					# rims are painted (the game's rim material has a PaintScale, 0.75; the capture gave them the paint
 					# shader): its colour at that scale and a far weaker reflection than body paint (light grey spokes
 					# where the game's are dark; same cause as the chrome's)
-					pm_.set_shader_parameter("albedo_color", Color(m.albedo_color.r * 0.75, m.albedo_color.g * 0.75, m.albedo_color.b * 0.75, m.albedo_color.a))
+					pm_.set_shader_parameter("albedo_color", Vector4(m.albedo_color.r * 0.75, m.albedo_color.g * 0.75, m.albedo_color.b * 0.75, m.albedo_color.a))
 					pm_.set_shader_parameter("refl_gain", RIM_REFLECTION)
 					pm_.set_shader_parameter("refl_metal", RIM_REFLECTION)
 					pm_.set_shader_parameter("spec_gain", 0.3)
@@ -503,6 +503,14 @@ func _env_cube(gltf_path: String, tex_dir: String) -> Cubemap:
 	return _env[key]
 
 
+# A colour for a plain vec4 shader uniform. Godot 4.7 converts a Color given to a vec4 uniform from sRGB to linear even
+# without source_color; the shaders here linearise themselves (to_linear), so a Color came out darkened twice: library
+# cars' paint (white texture x the database colour) measured 22 where the captured copy (the colour in its texture) has
+# 55, 56 once passed as a Vector4 (2026-11-24, --library-swap maz_axelasport_05).
+static func _vec4(c: Color) -> Vector4:
+	return Vector4(c.r, c.g, c.b, c.a)
+
+
 # A car paint / glass ShaderMaterial from the glTF's material: its colour (and texture), the layout's static car cube.
 # Fitting: <env> = comma-separated values for <names> (e.g. FM3_CARPAINT=0.9,0.06,0.8,60,0.85); FM3_CARPAINT_AMB /
 # FM3_CARPAINT_SUN = r,g,b override the paint's ambient and sun light.
@@ -510,7 +518,7 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 	var sm := ShaderMaterial.new()
 	sm.shader = shader
 	_car_mats.append(sm)
-	sm.set_shader_parameter("albedo_color", m.albedo_color)
+	sm.set_shader_parameter("albedo_color", _vec4(m.albedo_color))
 	sm.set_shader_parameter("metallic", m.metallic)
 	if m.albedo_texture != null:
 		sm.set_shader_parameter("albedo_tex", m.albedo_texture)
@@ -952,7 +960,6 @@ func _attach_library_car(car) -> void:
 		wi.append((w_att[k] as Transform3D).affine_inverse())
 	_wheel_inv[car] = wi
 	var flip := a_att.basis.determinant() < 0.0
-	var fm := Transform3D(Basis.from_scale(Vector3(1, 1, -1)), Vector3.ZERO)
 	var paint_col := Color(1, 1, 1)
 	var metal := 0.0
 	var key := str(int(info["color"]))
@@ -982,8 +989,8 @@ func _attach_library_car(car) -> void:
 			needle["axis"] = [a2.x, a2.y, a2.z]
 		if nm.begins_with("cockpit_"):
 			m.visible = false
-		# (the library's vertices carry the game -> glTF mirror: placed by the matrix x that mirror, a proper rotation)
-		var off := ((w_att[wk] as Transform3D) if wk >= 0 else a_att) * fm
+		# (the library's vertices are in raw car / wheel space: placed by the streamed matrix itself, mirrored or not)
+		var off: Transform3D = (w_att[wk] as Transform3D) if wk >= 0 else a_att
 		_register_part(m, car, off, wk, needle)
 		m.global_transform = off  # (now: offline renders; live moves it)
 		n += 1
@@ -1034,6 +1041,16 @@ func _library_swap_test(spec: String) -> void:
 	_wheels[-7] = ws
 	_car_names[-7] = {"name": parts[0], "color": int(parts[1]), "metallic": parts[2] == "1"}
 	_attach_library_car(-7)
+	# (car:colour:metallic:hide1,hide2,..: library meshes whose names contain these stay hidden; 'noshadow' = the
+	# library car casts no shadow)
+	if parts.size() > 3:
+		for p in _car_parts:
+			if p[1] == -7:
+				for h in parts[3].split(","):
+					if h == "noshadow" and p[0] is GeometryInstance3D:
+						(p[0] as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+					elif h != "" and String((p[0] as Node).name).contains(h):
+						(p[0] as Node3D).visible = false
 	print("world_view: --library-swap %s (matrix %.2f m from the captured car)" % [lname, bd])
 
 

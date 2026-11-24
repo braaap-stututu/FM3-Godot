@@ -167,5 +167,6 @@ The user's last question was whether to chase the remaining uneven steps or call
    from its files; "FM3N" names each car (media name, Combo_Colors colour, paint type: car object +0xC44) and the
    viewer attaches the car library's model (`tools/fm3_car_library.py` -> `out\cars`) to any car the scene lacks.
    Test: `tools\live\live_compare.ps1 -Gltf out\world\crownjewel.gltf` (capture-free CrownJewel: all eight cars from
-   the library). Open: library cars too dark (PLAN-CARS), grey sky without a capture, the player's custom paint.
+   the library). Library cars as bright as the captured ones since 2026-11-24 (PLAN-CARS).
+   Open: grey sky without a capture, the player's custom paint.
 6. Then stage B: ReGPU skips what Godot draws.

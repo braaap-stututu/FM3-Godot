@@ -106,11 +106,20 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
   is yellow in the profile, its colour 1 is red). FM3-ReGPU streams it as **"FM3N"**. `tools/fm3_car_library.py`
   builds each car alone (`out\cars\<car>.gltf`, raw car / wheel space + colours, glass, needles sidecars);
   `world_view.gd` attaches a library car to any streamed car the scene lacks (`_attach_library_car`, one a frame).
-  Checked on the capture-free CrownJewel: all eight cars where the game has them. **Open:** library cars come out
-  too dark although colour and shader match the captured cars' (so: orientation: the library keeps raw car space
-  and leaves the mirror to the node transform; reversing the winding swapped which cars looked dark: compare one
-  car captured vs library in one controlled render next); the player's custom paint (profile); calipers (need the
-  wheel's non-spinning frame) not in the library.
+  Checked on the capture-free CrownJewel: all eight cars where the game has them. **Library cars as bright as the
+  captured ones (2026-11-24):** `world_view.gd --library-swap <car>:<colour>:<metallic>[:hide,..|noshadow]` swaps a
+  grid car for its library model in one controlled render (Mazda colour 7: paint 41 at first, the captured copy 55).
+  Two causes: (1) the library baked the glTF mirror F into its vertices (triangles reversed) and the viewer placed
+  it with matrix x F; the grid's car matrices are proper rotations, so the nodes were mirrored over reversed
+  triangles and Godot drew back faces (a dark band across the trunk). Now raw car / wheel space, the file's winding
+  (reversed only for the mirrored right-side wheels), placed by the streamed matrices as they are. (2) Godot 4.7
+  converts a Color given to a plain vec4 shader uniform from sRGB to linear; the car shaders linearise themselves,
+  so the library paint (white texture x the database colour) was darkened twice, 22 where the captured paint (the
+  colour inside its texture) is 55. Car shader colours now go in as Vector4 (`_vec4`; the rims' 0.75 too). Result:
+  Mazda library paint 56 vs captured 55, crop difference 1.7 / 1.4 / 1.3; captured grid unchanged (20.6 / 19.7 /
+  18.7). The baked track shader still gets its colour as a Color (track materials mostly 1.0; not changed, it would
+  move the tuned track match). **Open:** the player's custom paint (profile); calipers (need the wheel's
+  non-spinning frame) not in the library.
 
 **Revised order from here:** phase 1 (structural reader) first, with LOD0 bodies and the file's normals as its first
 use (finding 1-2, and a likely cause of the paint's stripe on the Eclipse); then phase 0's fxobj and shadersettings

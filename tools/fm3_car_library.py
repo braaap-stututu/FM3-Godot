@@ -74,16 +74,17 @@ class Gltf:
             self.mat_ids[key] = len(self.materials) - 1
         return self.mat_ids[key]
 
-    def mesh(self, node_name, P, T, U, N, lit, mat, flip=True):
+    def mesh(self, node_name, P, T, U, N, lit, mat, flip=False):
         if not len(T):
             return
-        # The game -> glTF mirror (F = diag(1, 1, -1)) is baked in here, as the grid export bakes it into its world
-        # vertices: positions and normals z-mirrored, triangles reversed (flip; False where a second mirror cancels it:
-        # the right-side wheels). The viewer then places the car with car_transform x F, a proper rotation: with the
-        # mirror left in the node transform the library cars came out lit at about half (2026-11-24, --library-swap).
-        P = P * np.array([1.0, 1.0, -1.0])
-        if N is not None:
-            N = N * np.array([1.0, 1.0, -1.0])
+        # Raw car space, the file's winding (counter-clockwise = outside: its normals agree with the rebuilt ones on
+        # 99.8% of the Mazda's paint vertices); flip reverses the triangles where the caller mirrored the vertices (the
+        # right-side wheels). The viewer places the meshes with the streamed matrices as they are, mirrored or not
+        # (Godot culls a mirrored node's faces itself). (Until 2026-11-24 the glTF mirror F was baked in here, triangles
+        # reversed, and the viewer added x F to the matrix: the grid's car matrices are proper rotations, so the nodes
+        # came out mirrored over reversed triangles and Godot drew the cars' back faces: a dark band across the Mazda's
+        # trunk, its paint 41 against the captured copy's 55; the rest of the gap was the viewer's colour, world_view.gd
+        # _vec4.)
         if flip:
             T = T[:, ::-1]
         P = P.astype(np.float32)
@@ -201,7 +202,7 @@ def build(car, cdir, wdir, db, outdir):
             return None
         return np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
 
-    def add(prefix, sec, P, Nf, mname, mat, lit, flip=True):
+    def add(prefix, sec, P, Nf, mname, mat, lit, flip=False):
         for sub in sec['subs']:
             if sub['material'] != mname and not (sub['material'].endswith('_lod0') and sub['material'][:-5] == mname):
                 continue
@@ -316,7 +317,7 @@ def build(car, cdir, wdir, db, outdir):
                 Nf = None if sec.get('normal') is None else sec['normal'] @ side
                 lit = None if sec.get('light') is None else np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
                 for mname in sorted({u['material'] for u in sec['subs']}):
-                    add(f'wheel_{car}_{k}_{mname}', sec, P, Nf, mname, wheel_mat(mname), lit, flip=k not in (1, 2))
+                    add(f'wheel_{car}_{k}_{mname}', sec, P, Nf, mname, wheel_mat(mname), lit, flip=k in (1, 2))
                     nw += 1
             rp = os.path.join(zdir, f'{car}_rotor{corner[k]}.carbin')
             if os.path.exists(rp):
