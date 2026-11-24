@@ -14,6 +14,8 @@ uniform bool has_env = false;
 // The static cube (the other cars: only the player's car reflects the live cube) blurred: at its sharpest level the
 // track's stripes and stands shimmered as streaks along curved doors, where the game's reflections are soft.
 uniform float env_lod = 2.5;
+// The player's live cube (has_live) against the static cube the paint was fitted on: brighter (open sky, no cars)
+uniform float live_scale = 0.3;  // (fitted live: the CR-X 24.9 at 1.0, 14.0 at 0.5, 10.4 at 0.3; static cube 12.5)
 uniform vec3 env_fallback = vec3(0.45, 0.52, 0.56);
 uniform vec3 env_flip = vec3(-1.0, 1.0, 1.0);  // (this scene's x is the game's mirrored)
 // Fitted on the grid (tools/car_regions.py, 7 cars). Refitted 2026-11-23 for the LOD 0 bodies with the file's own
@@ -91,7 +93,7 @@ void light() {
 		float up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y * 0.5 + 0.5;
 		vec3 diff = mix(ambient_ground, ambient, up) + sun * pow(ndl, sun_pow) * sh;
 		vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
-		vec3 env = has_live ? live_cube(r) : (has_env ? textureLod(env_cube, r * env_flip, env_lod).rgb : env_fallback);
+		vec3 env = has_live ? live_cube(r) * live_scale : (has_env ? textureLod(env_cube, r * env_flip, env_lod).rgb : env_fallback);
 		float cosv = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 		// the game's Fresnel (ShaderSettings body: FresnelMin 0.15, Max 1, Power 1.5, CubeScale 1.5), the reflected
 		// brightness at the windows' measured env_scale (the same, darker, game cube): replaces the fitted f0 0.02 /

@@ -38,10 +38,21 @@ uniform vec3 sun_dir = vec3(0.0, 1.0, 0.0);
 uniform float glow = 0.0;
 // The one number not from the game: the brightness of what is reflected. The game's cube (and its damping towards the
 // track lightmap, c180 / c119) is far darker than the viewer's live cube of its surroundings; with env_scale 1 the
-// CR-X's rear glass came out at 178 where the game has 15. Measured on the grid (tools/car_regions.py).
-uniform float env_scale = 0.2;
+// CR-X's rear glass came out at 178 where the game has 15. Measured on the grid (tools/car_regions.py). 2026-11-24: with
+// gamma_blend and the player's own dim reflection (below), the AI windows fit at 0.5 (glass summary 15.6 -> 13.8).
+uniform float env_scale = 0.25;
+// The player's glass (has_live): the game's per-frame cube is rendered from inside the player's car and mostly sees its
+// own dark cabin, so its windows reflect little (the CR-X's rear glass 9/15/20 in the game) where the AI cars' windows,
+// on the static cube, show the sky (the Eclipse 40/48/57). (Until 2026-11-24 one env_scale 0.2 for every window, fitted
+// on the CR-X, darkened the AI cars' glass too.)
+uniform float player_env = 0.1;
+uniform bool player_glass = false;
+// The game blends its glass in gamma space (the framebuffer is gamma); Godot blends in linear light, which brightens a
+// bright reflection over a dark cabin. gamma_blend reads the scene behind and mixes in gamma space.
+uniform bool gamma_blend = true;
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear;
 // (kept so FM3_CARGLASS overrides of the first version do not error; unused)
-uniform float opacity = 0.0;
+uniform float opacity = 0.0;  // added to the window's opacity (fitted)
 uniform float body_level = 0.0;
 uniform float refl_gain = 0.0;
 uniform float refl_f0 = 0.0;
@@ -50,6 +61,11 @@ uniform float metallic = 0.0;
 
 #include "res://viewer/fm3_livecube.gdshaderinc"
 
+vec3 to_gamma(vec3 c) {
+	c = max(c, vec3(0.0));
+	return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
+}
+
 vec3 to_linear(vec3 c) {
 	c = max(c, vec3(0.0));
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
@@ -57,15 +73,22 @@ vec3 to_linear(vec3 c) {
 
 void fragment() {
 	vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
-	vec3 env = (has_live ? live_cube(r) : (has_env ? texture(env_cube, r * env_flip).rgb : env_fallback)) * cube_scale * env_scale;
+	vec3 env = (has_env ? texture(env_cube, r * env_flip).rgb : env_fallback) * cube_scale * ((has_live || player_glass) ? player_env : env_scale);
 	float cosv = clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0);
 	float f = clamp(fresnel_scale * pow(1.0 - cosv, fresnel_power), fresnel_min, fresnel_max) * reflection_scaler;
-	float a = min(f + glass_color.a, max_opacity);
+	float a = min(f + glass_color.a + opacity, max_opacity);
 	vec3 l = normalize((VIEW_MATRIX * vec4(sun_dir, 0.0)).xyz);
 	float spec = pow(max(dot(reflect(-l, NORMAL), VIEW), 0.0), spec_power) * spec_amount;
 	vec3 c = mix(glass_color.rgb, env, f) + spec_color * spec * 0.25;
 	vec3 lamp = glass_color.rgb / max(max(glass_color.r, glass_color.g), max(glass_color.b, 0.001));
 	c = mix(c, lamp, clamp(glow, 0.0, 1.0));
-	ALBEDO = to_linear(c);
-	ALPHA = clamp(max(a + spec * 0.25, glow * 0.95), 0.0, 1.0);
+	float al = clamp(max(a + spec * 0.25, glow * 0.95), 0.0, 1.0);
+	if (gamma_blend) {
+		vec3 bg = to_gamma(texture(screen_tex, SCREEN_UV).rgb);
+		ALBEDO = to_linear(mix(bg, c, al));
+		ALPHA = 1.0;
+	} else {
+		ALBEDO = to_linear(c);
+		ALPHA = al;
+	}
 }

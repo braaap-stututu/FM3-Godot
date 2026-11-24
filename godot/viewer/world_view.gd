@@ -70,6 +70,7 @@ var _library_queue := []  # cars waiting for their library model
 # its cockpit has no directional light (TrackSettings SHCockpitDir 0) and the view a higher exposure. Cockpit meshes
 # sit on their own render layer the sun leaves out, and the exposure rises in-car by IN_CAR_EXPOSURE.
 const COCKPIT_LAYER := 8
+var CABIN_K := float(OS.get_environment("FM3_CABIN_K")) if OS.get_environment("FM3_CABIN_K") != "" else 1.0
 const COCKPIT_GAIN := 1.0  # (fm3_cockpit.gdshader's light scale)
 # Cockpit mirrors (fm3_mirror.gdshader): one small viewport each, rendered only while the player's car is seen in-car.
 const MIRROR_SIZE := Vector2i(512, 256)
@@ -88,6 +89,7 @@ var _world_env: WorldEnvironment = null
 var _base_exposure := 1.0
 var _was_in_car := false
 var _shot_held_since := -1  # (ms: a requested picture waiting for the library cars)
+var _shot_settle := 3
 var _cars_with_parts := {}  # cars with meshes attached
 var _sun_to := Vector3(0, 1, 0)  # towards the sun (glass highlights)
 var _carmats := {}  # car mesh node name -> its glass parameters from the game's shader settings (<gltf>_carmaterials.json)
@@ -346,6 +348,9 @@ func _init() -> void:
 				if not gp_.is_empty():
 					glass_set += 1
 				_lens_sync(gm_)
+				# (offline: FM3_PLAYER_CAR=<car> marks that car's glass as the player's, fm3_carglass player_glass)
+				if OS.get_environment("FM3_PLAYER_CAR") != "" and String(mi.name).contains(OS.get_environment("FM3_PLAYER_CAR")):
+					gm_.set_shader_parameter("player_glass", true)
 				mi.set_surface_override_material(s, gm_)
 				continue
 			if lit and m.roughness >= 0.9:
@@ -1134,6 +1139,8 @@ func _update_mirrors(player, in_car: bool, eye: Transform3D) -> void:
 var _livery_mtime := 0
 var _livery_next_ms := 0
 var _livery_applied := {}
+var _livery_names := {}
+var _library_cars := {}  # cars dressed from the car library (the captured ones carry their paint in their texture)
 
 
 func _poll_liveries() -> void:
@@ -1151,9 +1158,10 @@ func _poll_liveries() -> void:
 	var data = JSON.parse_string(FileAccess.get_file_as_string(idx))
 	if not (data is Dictionary):
 		return
+	_livery_names = data
 	for car in _car_names:
 		var nm := String(_car_names[car]["name"]).to_lower()
-		if _livery_applied.has(car) or not data.has(nm) or not _cars_with_parts.has(car):
+		if _livery_applied.has(car) or not data.has(nm) or not _library_cars.has(car):
 			continue
 		var img := Image.load_from_file(dir.path_join(nm + ".png"))
 		if img == null:
@@ -1183,6 +1191,11 @@ func _cars_pending() -> bool:
 	for c in _cars:
 		if not _cars_with_parts.has(c) and not _library_tried.has(c):
 			return true
+	# (and the game's liveries: a car with an entry in live_liveries/index.json not dressed yet)
+	if _livery_mtime != 0:
+		for c in _car_names:
+			if _library_cars.has(c) and not _livery_applied.has(c) and _livery_names.has(String(_car_names[c]["name"]).to_lower()):
+				return true
 	return false
 
 
@@ -1265,6 +1278,8 @@ func _attach_library_car(car) -> void:
 		_register_part(m, car, off, wk, needle)
 		m.global_transform = off  # (now: offline renders; live moves it)
 		n += 1
+	_live_player = -2  # (re-evaluate has_live: this car's new paint / glass materials may be the player's)
+	_library_cars[car] = true
 	print("world_view: live car %08X is %s colour %s: %d meshes from the car library (%d ms; paint %s)" % [car, info["name"], key, n, Time.get_ticks_msec() - t0, paint_col])
 
 
@@ -1356,6 +1371,8 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 					gm.set_shader_parameter(k, float(v))
 			gm.set_shader_parameter("sun_dir", _sun_to)
 			_lens_sync(gm)
+			if OS.get_environment("FM3_PLAYER_CAR") != "" and nm.contains(OS.get_environment("FM3_PLAYER_CAR")):
+				gm.set_shader_parameter("player_glass", true)
 			mi.set_surface_override_material(s, gm)
 			continue
 		if nm.contains("gauge") and m.albedo_texture != null:
@@ -1366,6 +1383,10 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 			mi.set_surface_override_material(s, gg)
 			continue
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+		if nm.contains("_interior_") or nm.contains("_seat"):
+			# the exterior model's own cabin, seen through the windows: dark in the game (CABIN_K)
+			m.albedo_color = Color(m.albedo_color.r * CABIN_K, m.albedo_color.g * CABIN_K, m.albedo_color.b * CABIN_K, m.albedo_color.a)
+			m.metallic_specular = 0.0
 		m.cull_mode = BaseMaterial3D.CULL_DISABLED
 		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 		if m.roughness >= 0.9:
@@ -1461,7 +1482,9 @@ func _live_step() -> void:
 	if _out != "" and FileAccess.file_exists(_out + ".shot") and _shot_held_since < 0:
 		_shot_held_since = Time.get_ticks_msec()
 	if _out != "" and _shot_held_since >= 0 and _cars_pending() and Time.get_ticks_msec() - _shot_held_since < 10000:
-		pass
+		_shot_settle = 3
+	elif _out != "" and _shot_settle > 0 and FileAccess.file_exists(_out + ".shot"):
+		_shot_settle -= 1  # (a few frames more: what the last load changed, e.g. has_live, is drawn one frame later)
 	elif _out != "" and FileAccess.file_exists(_out + ".shot"):
 		_shot_held_since = -1
 		DirAccess.remove_absolute(_out + ".shot")
@@ -1585,14 +1608,23 @@ func _live_step() -> void:
 		_show_drawn(now)
 	else:
 		# No drawn frames (an older game build), or another director (Tab: the mirror): its hand-off, newest only.
-		if _car_attached:
-			for part in _car_parts:
-				var b: PackedByteArray = _cars.get(part[1], PackedByteArray())
-				if not b.is_empty() and _car_inv.has(part[1]):
-					(part[0] as Node3D).global_transform = car_transform(b, _live_axes) * _car_inv[part[1]] * (part[2] as Transform3D)
 		if latest.is_empty():
 			return
 		_set_view(live_transform(latest, _live_axes))
+		if _car_attached:
+			var mv := {}
+			for car in _car_inv:
+				var b: PackedByteArray = _cars.get(car, PackedByteArray())
+				if not b.is_empty():
+					mv[car] = car_transform(b, _live_axes) * (_car_inv[car] as Transform3D)
+			var wv := {}
+			for car in _wheel_inv:
+				if _wheels.has(car):
+					var ws := []
+					for k in 4:
+						ws.append((_wheels[car][k] as Transform3D) * (_wheel_inv[car][k] as Transform3D))
+					wv[car] = ws
+			_update_live_cars(live_transform(latest, _live_axes), mv, wv, now)
 		if _screens.is_empty():
 			_cam.fov = rad_to_deg(latest.decode_float(80))
 	_live_packets += 1
@@ -1641,7 +1673,13 @@ func _show_drawn(now: float) -> void:
 		_cam.fov = rad_to_deg(float(s["fov"]))
 	if not _car_attached:
 		return
-	var wmoves: Dictionary = s.get("wmoves", {})
+	_update_live_cars(cam, moves, s.get("wmoves", {}), now)
+
+
+# The cars' state each frame from the moves of the moment shown (also from the hand-off path, where the game sends no
+# drawn frames, e.g. on the frozen grid: there has_live, the brake lights, the in-car switch and the wheel blur never
+# ran, 2026-11-24): cockpit / exterior, lights, the player's live cube, part placement, mirrors.
+func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, now: float) -> void:
 	# The cockpit (PLAN-CARS phase 4): in the game's in-car views (CCamDriver 0x8200206C, CCamCockpit 0x82034FC4) the
 	# player car (the one nearest the camera) shows its cockpit model instead of its body and wheels.
 	var player := -1

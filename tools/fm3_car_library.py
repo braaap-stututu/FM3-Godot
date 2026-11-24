@@ -36,6 +36,10 @@ from fir_world import smooth_normals  # noqa: E402
 # the lights texture's materials: the lamps and the reflectors (the CR-X's 'reflector' is the red CR-X VTEC panel between its
 # tail lights, on lights_lod0; from nodamage it came out white)
 LAMPS = tx.LAMP_MATERIALS
+# The exterior model's own cabin (the main file's LOD 1 parts LOD 0 lacks: seats, interior, steering wheel), seen through
+# the windows: the game shows it near black (the CR-X's rear glass 9/15/20); its baked brightness lit it grey.
+CABIN_PARTS = {'interior', 'seatL', 'seatR', 'steering_wheel', 'dash', 'console'}
+CABIN_DIM = float(os.environ.get('FM3_CABIN_DIM', '1.0'))
 
 
 class Gltf:
@@ -210,7 +214,8 @@ def build(car, cdir, wdir, db, outdir):
     def lit_of(sec, mname):
         if sec.get('light') is None or mname.startswith('gauge') or (mname.startswith(tx.LAMP_MATERIALS) and not mname.startswith('tail_light')):
             return None
-        return np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
+        k = CABIN_DIM if sec['name'] in CABIN_PARTS else 1.0
+        return k * np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
 
     def add(prefix, sec, P, Nf, mname, mat, lit, flip=False, fz=False):
         for sub in sec['subs']:

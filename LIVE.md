@@ -174,6 +174,13 @@ The user's last question was whether to chase the remaining uneven steps or call
    library wheels / calipers: **20.4 / 20.2 / 18.5** (game and Godot pictures line up within 1 px in all three views:
    the rest is shading and content: HUD, the player's paint, crowd, lighting); the crowd from the .crowd files (FM3-FORMATS) 20.4 / 20.1 / 18.5; the paint summed in gamma space with refitted
    reflections (PLAN-CARS) 20.2 / 19.9 / 18.2; the game's liveries (below) 19.9 / 18.6 / 18.2.
+   **The frozen grid skipped the per-car update (found 2026-11-24):** there the game sends no drawn-camera frames, so the
+   viewer took its hand-off path, which only placed the cars: has_live (the player's live cube), brake lights, the
+   in-car switch and wheel blur never ran in grid pictures (they did after an RB press and in races). Now both paths run
+   `_update_live_cars`. With it: the player's paint on the live cube at x0.3 (CR-X 10.4), its glass dim (the game's
+   per-frame cube sees its own cabin: CR-X glass 17.1 -> 12.4), AI glass blended in gamma space at reflection 0.25.
+   live_compare's picture also waits for the liveries and 3 frames more, and keeps the viewer's stderr (godot.err.log).
+   Live: captured Ladera 19.8 / 18.8 / 17.7 (in-car 19.2 / 18.9 / 17.6), capture-free CrownJewel 19.9 / 18.4 / 18.0.
    **Liveries (custom paint):** `tools/live_liveries.py <FM3 run dir> <gamedb.slt> out\cars\live_liveries <viewer log>`
    while a race is loaded: one traced frame through the debug server, every car-paint draw's t0 read from guest memory
    (peek) and decoded, named by its paint colour (c118 = the car's Combo_Colors RGB, the cars from the viewer's FM3N
