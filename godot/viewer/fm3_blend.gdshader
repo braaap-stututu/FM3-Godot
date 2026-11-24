@@ -57,6 +57,18 @@ void fragment() {
 			t1 *= mix(vec3(1.0), tint1, COLOR.a);
 		}
 		a = mix(t0, t1, m);
+	} else if (mode == 9) {
+		// three layers by a value texture (terr_blnd_spec_norm_5, disassembled): lerp(lerp(A, B, v.g), C, v.b) * v.r * tint0
+		vec3 v = texture(tex2, uv23.zw).rgb;
+		vec3 la = texture(albedo_tex, UV * scale0).rgb;
+		vec3 lb = texture(tex1, uv23.xy * scale1).rgb;
+		vec3 lc = texture(tex3, UV * scale2).rgb;
+		a = mix(mix(la, lb, v.g), lc, v.b) * v.r * tint0;
+	} else if (mode == 8) {
+		// overlay blend (road_diff_spec_ovly_2, disassembled): t1 < 0.5 ? 2 t0 t1 : 1 - 2 (1 - t0)(1 - t1)
+		vec3 t0 = texture(albedo_tex, UV * scale0).rgb;
+		vec3 t1 = texture(tex1, uv23.xy * scale1).rgb;
+		a = mix(2.0 * t0 * t1, 1.0 - 2.0 * (1.0 - t0) * (1.0 - t1), step(0.5, t1));
 	} else if (mode == 7) {
 		a = texture(albedo_tex, UV * scale0).rgb;
 	} else if (mode == 6) {

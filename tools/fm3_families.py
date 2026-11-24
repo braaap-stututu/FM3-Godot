@@ -39,6 +39,8 @@ EDGE = re.compile(r'^rdedg_blnd_diff_spec_bump')
 MIX = re.compile(r'^(shldr|terr)_blnd_spec_vclr_mix')
 PAINT = re.compile(r'^shldr_4clr_blnd_mask')
 REFL = re.compile(r'^diff_spec_refl_(norm_4|3)$')
+OVLY = re.compile(r'^road_diff_spec_ovly_2$')
+BLEND3 = re.compile(r'^terr_blnd_spec_norm_5$')
 SHEEN = (0.1, 0.13, 0.17)
 
 
@@ -76,6 +78,23 @@ def recipe(shader, params, stride, slots):
                 'scale0': list(params[0][1:3]), 'scale1': [1.0, 1.0], 'tint0': [params[0][0]] * 3,
                 'tint1': list(params[2][:3]) if len(params) > 2 else [1.0, 1.0, 1.0],  # reflection tint (teal glass)
                 'slots': [slots[0], slots[0]]}
+    if BLEND3.match(shader) and len(slots) >= 4 and min(slots[:4]) >= 0 and len(params) >= 2 and stride >= 28:
+        # terr_blnd_spec_norm_5 (AmalfiGP's cliffs and slopes; disassembled from TERR_BLND_SPEC_NORM_5.fxobj): v = the
+        # blend value texture (slot 2) at UV byte 20; albedo = lerp(lerp(A, B, v.g), C, v.b) * v.r * P[0].rgb * P[2].z,
+        # A (slot 0) at UV 16 * P[1].x, B (slot 1) at UV 20 * P[1].y, C (slot 3) at UV 16 * P[1].z; the lightmap at 24
+        # (slot 4, the normal map, not used)
+        z = params[2][2] if len(params) > 2 else 1.0
+        return {'mode': 'blend3', 'src0': 16, 'src1': 20, 'mask': 20, 'lm': 24, 'vclr': False,
+                'scale0': [params[1][0]] * 2, 'scale1': [params[1][1]] * 2, 'scale2': [params[1][2]] * 2,
+                'tint0': [params[0][i] * z for i in range(3)], 'tint1': [1.0, 1.0, 1.0],
+                'slots': [slots[0], slots[1], slots[2], slots[3]]}
+    if OVLY.match(shader) and len(slots) >= 2 and min(slots[:2]) >= 0 and len(params) >= 2 and len(pairs) >= 2:
+        # road_diff_spec_ovly_2 (AmalfiGP's cobbles; disassembled from the game's own ROAD_DIFF_SPEC_OVLY_2.fxobj,
+        # tools/fm3_trackshader.py): an overlay blend, t0 (c120 = P[0]: UV0 * xy) and t1 (c121 = P[1]: the lightmap's UV
+        # * xy): t1 < 0.5 ? 2 t0 t1 : 1 - 2 (1 - t0)(1 - t1); then x lerp(c247, c248, lightmap) as every lit surface
+        return {'mode': 'ovly', 'src0': pairs[0], 'src1': pairs[1], 'mask': None, 'lm': pairs[1], 'vclr': False,
+                'scale0': list(params[0][:2]), 'scale1': list(params[1][:2]), 'tint0': [1.0, 1.0, 1.0],
+                'tint1': [1.0, 1.0, 1.0], 'slots': slots[:2]}
     if CURB.match(shader) and len(slots) >= 2 and min(slots[:2]) >= 0 and len(pairs) >= 2 and params:
         # shldr_road_blnd_spec_3 (curbs, painted run-off; captured, ps aa004de7): t0 at UV0 * lerp(P[0].rgb, 1, t1.g at
         # UV1); the lightmap on UV1
