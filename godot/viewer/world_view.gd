@@ -534,6 +534,8 @@ func _init() -> void:
 	for cm in _car_mats:
 		(cm as ShaderMaterial).set_shader_parameter("sun_dir", -sun_fwd)  # (towards the sun: the glass highlight)
 	_sun_to = -sun_fwd
+	for bm in _blend_mats:
+		(bm as ShaderMaterial).set_shader_parameter("sun_dir", _sun_to)
 	print("world_view: %d wheel rim surfaces dimmed, %d sky dome meshes (kept on the camera)" % [rim_set, _sky_nodes.size()])
 	if glass_set:
 		print("world_view: %d car glass surfaces with the game's own glass settings" % glass_set)
@@ -740,6 +742,8 @@ func _blend_material(m: BaseMaterial3D, f: Dictionary, gltf_path: String) -> Sha
 		if OS.get_environment("FM3_GLASS_PART") != "":
 			sm.set_shader_parameter("debug_part", int(OS.get_environment("FM3_GLASS_PART")))
 	_apply_track_light(sm, gltf_path)
+	_blend_mats.append(sm)
+	sm.set_shader_parameter("sun_dir", _sun_to)
 	sm.set_shader_parameter("albedo_tex", _load_tex(gltf_path, tex[0]))
 	sm.set_shader_parameter("tex1", _load_tex(gltf_path, tex[1]))
 	if tex.size() > 2:
@@ -1240,6 +1244,11 @@ func _poll_liveries() -> void:
 
 
 var _track_light_cache := {}
+var _blend_mats := []  # the track's blend materials (their road specular needs the sun direction, set once it is known)
+# The road's sun specular (the game's formula, fm3_blend.gdshaderinc): opt-in with FM3_ROAD_SPEC=1 until the game's tone
+# curve is in. MapleValley facing the sun: without it the glare patches 66 / 92 vs the game's 193 / 187; with it 253 / 219
+# vs 176 / 120 (the game's highlights stop near 224: its post-process compresses them; frame 37.7 off, 41.3 on).
+var _no_road_spec := OS.get_environment("FM3_ROAD_SPEC") == ""
 
 
 # The static world's ambient / sun (c247 / c248) from the track's TrackSettings DarkColor / LightColor, written by
@@ -1255,6 +1264,12 @@ func _apply_track_light(sm: ShaderMaterial, gltf_path: String) -> void:
 		sm.set_shader_parameter("ambient", Vector3(t["DarkColor"][0], t["DarkColor"][1], t["DarkColor"][2]))
 	if t.has("LightColor"):
 		sm.set_shader_parameter("sun", Vector3(t["LightColor"][0], t["LightColor"][1], t["LightColor"][2]))
+	if t.has("RoadSpec") and t.has("RoadGloss") and not _no_road_spec:
+		var a: Array = t["RoadSpec"]
+		var b: Array = t["RoadGloss"]
+		sm.set_shader_parameter("road_spec", Vector4(a[0], a[1], a[2], a[3]))
+		sm.set_shader_parameter("road_gloss", Vector4(b[0], b[1], b[2], b[3]))
+		sm.set_shader_parameter("road_spec_on", true)
 
 
 func _cars_pending() -> bool:

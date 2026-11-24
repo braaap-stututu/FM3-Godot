@@ -34,6 +34,17 @@ uniform vec3 env_zenith = vec3(0.40, 0.58, 0.74);  // mode 7: the reflected envi
 uniform vec3 env_horizon = vec3(0.45, 0.52, 0.56);  // (the track's surroundings: hills, trees, haze)
 uniform vec3 env_ground = vec3(0.16, 0.16, 0.14);
 
+// The road's sun specular (the shadowed variants of the road shaders, disassembled and run in tools/fir_vs.py against a
+// live capture's constants): m = lerp(road_spec.x, road_spec.y, mask) + lerp(road_spec.w, road_spec.z, skid);
+// spec = m * max(0, (lightmap.r - road_gloss.z) / (road_gloss.w - road_gloss.z)) * pow(N.H, lerp(road_gloss.x,
+// road_gloss.y, m)), added in gamma space (unclamped: it saturates to white facing a low sun). mask = the base texture's
+// alpha; skid = a per-shader channel (road_spec_mask below). road_spec = TrackSettings RoadSpecular, RoadSpecular2,
+// RoadSkid, RoadSkid2; road_gloss = RoadGlossiness, RoadGlossiness2, RoadLightmapDarkPoint, RoadLightmapLightPoint.
+uniform bool road_spec_on = false;
+uniform vec4 road_spec = vec4(0.4, 0.7, -2.0, -0.5);
+uniform vec4 road_gloss = vec4(10.0, 20.0, 0.5, 0.75);
+uniform vec3 sun_dir = vec3(0.0, 1.0, 0.0);  // towards the sun, world space
+
 varying vec4 uv23;  // glTF TEXCOORD_2 (xy) and TEXCOORD_3 (zw), Godot's CUSTOM0 (vertex stage only)
 
 void vertex() {
@@ -48,6 +59,8 @@ vec3 to_linear(vec3 c) {
 void fragment() {
 	vec3 a;
 	float alpha_v = 1.0;
+	float spec_mask = -1.0;  // >= 0: this mode has the road specular (the base texture's alpha)
+	float spec_skid = 0.0;
 	if (mode == 1) {
 		vec3 t0 = texture(albedo_tex, UV * scale0).rgb * tint0;
 		vec3 t1 = texture(tex1, uv23.xy * scale1).rgb;
@@ -83,11 +96,15 @@ void fragment() {
 		vec3 c = texture(tex1, uv23.xy * scale1).rgb;
 		float v = texture(tex2, uv23.zw * scale2).g;
 		a = mode == 11 ? mix(g.a * tint0, (g.rgb + tint1) * c, v) : g.rgb * tint0 + v * c * (g.rgb + tint1 - g.rgb * tint0);
+		spec_mask = g.a;
+		spec_skid = mode == 11 ? c.g * v : v;
 	} else if (mode == 10) {
 		// road_3clr_blnd_2 (disassembled): grain * tint0 + v * (grain + tint1 - grain * tint0), v = t1.rgb * t1.a
 		vec3 g = texture(albedo_tex, UV * scale0).rgb;
 		vec4 t1 = texture(tex1, uv23.xy * scale1);
 		a = g * tint0 + t1.rgb * t1.a * (g + tint1 - g * tint0);
+		spec_mask = texture(albedo_tex, UV * scale0).a;
+		spec_skid = t1.r * t1.a;
 	} else if (mode == 9) {
 		// three layers by a value texture (terr_blnd_spec_norm_5, disassembled): lerp(lerp(A, B, v.g), C, v.b) * v.r * tint0
 		vec3 v = texture(tex2, uv23.zw).rgb;
@@ -100,6 +117,8 @@ void fragment() {
 		vec3 t0 = texture(albedo_tex, UV * scale0).rgb;
 		vec3 t1 = texture(tex1, uv23.xy * scale1).rgb;
 		a = mix(2.0 * t0 * t1, 1.0 - 2.0 * (1.0 - t0) * (1.0 - t1), step(0.5, t1));
+		spec_mask = texture(albedo_tex, UV * scale0).a;
+		spec_skid = t1.r;
 	} else if (mode == 7) {
 		a = texture(albedo_tex, UV * scale0).rgb;
 	} else if (mode == 6) {
@@ -111,6 +130,8 @@ void fragment() {
 		vec4 s = texture(tex1, uv23.xy * scale1);
 		if (mode == 2) {
 			a = s.rgb * 0.34 * grain;
+			spec_mask = texture(albedo_tex, UV * scale0).a;
+			spec_skid = s.r;
 		} else if (mode == 4) {
 			vec3 dirt = texture(tex2, uv23.xy * scale2).rgb;
 			float m = texture(tex3, uv23.zw).r;
@@ -121,6 +142,14 @@ void fragment() {
 	}
 	vec3 light = has_lightmap ? mix(ambient, sun, texture(light_tex, UV2).rgb) : vec3(unlit_level);
 	vec3 c = a * light;
+	if (road_spec_on && spec_mask >= 0.0 && has_lightmap) {
+		float m = mix(road_spec.x, road_spec.y, spec_mask) + mix(road_spec.w, road_spec.z, spec_skid);
+		float gate = max(0.0, (texture(light_tex, UV2).r - road_gloss.z) / max(road_gloss.w - road_gloss.z, 1e-4));
+		vec3 l = normalize((VIEW_MATRIX * vec4(sun_dir, 0.0)).xyz);
+		vec3 h = normalize(VIEW + l);
+		float nh = max(dot(normalize(NORMAL), h), 0.0);
+		c += vec3(max(m, 0.0) * gate * pow(nh, max(mix(road_gloss.x, road_gloss.y, m), 1.0)));
+	}
 	if (mode == 7) {
 		vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
 		vec3 env = r.y > 0.0 ? mix(env_horizon, env_zenith, sqrt(r.y)) : mix(env_horizon, env_ground, sqrt(-r.y));

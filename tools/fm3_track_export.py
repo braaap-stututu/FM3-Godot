@@ -981,6 +981,18 @@ def main():
                 mo = re.search(r'<%s r="([-0-9.e]+)" g="([-0-9.e]+)" b="([-0-9.e]+)"' % tag, ts_text)
                 if mo:
                     light_[tag] = [float(mo.group(k)) for k in (1, 2, 3)]
+            # the road's sun specular (the road shaders' shadowed variants: c223 = RoadSpecular, RoadSpecular2, RoadSkid,
+            # RoadSkid2, c224 = RoadGlossiness, RoadGlossiness2, RoadLightmapDarkPoint, RoadLightmapLightPoint: read
+            # from a live capture of MapleValley's road draws, 2026-11-24)
+            mo = re.search(r'<RoadSpecular ([^>]*)/>', ts_text)
+            if mo:
+                at_ = dict(re.findall(r'(\w+)="([-0-9.e]+)"', mo.group(1)))
+                try:
+                    light_['RoadSpec'] = [float(at_[k]) for k in ('RoadSpecular', 'RoadSpecular2', 'RoadSkid', 'RoadSkid2')]
+                    light_['RoadGloss'] = [float(at_[k]) for k in ('RoadGlossiness', 'RoadGlossiness2', 'RoadLightmapDarkPoint',
+                                                                   'RoadLightmapLightPoint')]
+                except KeyError:
+                    pass
             if light_:
                 with open(os.path.splitext(out)[0] + '_track.json', 'w', newline='') as f_:
                     json.dump(light_, f_)
