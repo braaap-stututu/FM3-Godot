@@ -26,6 +26,13 @@ uniform float fresnel_scale = 1.0;  // c191
 uniform float fresnel_power = 1.5;  // c216
 uniform float cube_scale = 1.0;  // c217
 uniform float reflection_scaler = 1.0;  // c192
+// The sun's highlight (SpecularAmount / Power / Color: 0 on windows, 1-4 on lamp lenses), sun_dir = towards the sun.
+// Every glass's values come from the game's Media\Cars\ShaderSettings\Normal.xml + the car's shadersettings.xml
+// (fm3_track_export.py writes them per mesh, <gltf>_carmaterials.json): the defaults here are the window's.
+uniform float spec_amount = 0.0;
+uniform float spec_power = 70.0;
+uniform vec3 spec_color = vec3(1.0);
+uniform vec3 sun_dir = vec3(0.0, 1.0, 0.0);
 // The one number not from the game: the brightness of what is reflected. The game's cube (and its damping towards the
 // track lightmap, c180 / c119) is far darker than the viewer's live cube of its surroundings; with env_scale 1 the
 // CR-X's rear glass came out at 178 where the game has 15. Measured on the grid (tools/car_regions.py).
@@ -36,7 +43,6 @@ uniform float body_level = 0.0;
 uniform float refl_gain = 0.0;
 uniform float refl_f0 = 0.0;
 uniform float spec_gain = 0.0;
-uniform float spec_power = 0.0;
 uniform float metallic = 0.0;
 
 #include "res://viewer/fm3_livecube.gdshaderinc"
@@ -52,6 +58,9 @@ void fragment() {
 	float cosv = clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0);
 	float f = clamp(fresnel_scale * pow(1.0 - cosv, fresnel_power), fresnel_min, fresnel_max) * reflection_scaler;
 	float a = min(f + glass_color.a, max_opacity);
-	ALBEDO = to_linear(mix(glass_color.rgb, env, f));
-	ALPHA = a;
+	vec3 l = normalize((VIEW_MATRIX * vec4(sun_dir, 0.0)).xyz);
+	float spec = pow(max(dot(reflect(-l, NORMAL), VIEW), 0.0), spec_power) * spec_amount;
+	vec3 c = mix(glass_color.rgb, env, f) + spec_color * spec * 0.25;
+	ALBEDO = to_linear(c);
+	ALPHA = clamp(a + spec * 0.25, 0.0, 1.0);
 }

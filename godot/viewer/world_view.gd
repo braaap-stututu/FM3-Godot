@@ -44,6 +44,7 @@ var _car_inv := {}  # car -> its matrix at attach time, inverted
 var _wheels := {}  # car -> its latest four wheel matrices (glTF space)
 var _car_prev := {}  # car -> [position (game space), game time]: for its speed
 var _car_speed := {}  # car -> speed, m/s (smoothed)
+var _carmats := {}  # car mesh node name -> its glass parameters from the game's shader settings (<gltf>_carmaterials.json)
 var _needles := {}  # cockpit gauge needle node name -> {pivot, axis, mid, max, gauge, ticks} (<gltf>_needles.json)
 var _wheel_inv := {}  # car -> its four wheel matrices at attach time, inverted
 var _clock_off := INF  # Godot clock minus game clock (smallest seen)
@@ -97,6 +98,11 @@ func _init() -> void:
 		match args[i]:
 			"--gltf":
 				gltf_path = args[i + 1]; i += 1
+				var cm_ := gltf_path.get_basename() + "_carmaterials.json"
+				if FileAccess.file_exists(cm_):
+					var cparsed = JSON.parse_string(FileAccess.get_file_as_string(cm_))
+					if cparsed is Dictionary:
+						_carmats = cparsed
 				var np_ := gltf_path.get_basename() + "_needles.json"
 				if FileAccess.file_exists(np_):
 					var parsed = JSON.parse_string(FileAccess.get_file_as_string(np_))
@@ -177,6 +183,7 @@ func _init() -> void:
 	var meshes := 0
 	var baked := 0
 	var baked_no_tex := 0
+	var glass_set := 0
 	var baked_gain := 1.0  # (the baked shader evaluates FM3's own lightmap formula; 1 = as the game)
 	var grey_unshaded := StandardMaterial3D.new()
 	grey_unshaded.albedo_color = Color(0.5, 0.5, 0.5)
@@ -257,8 +264,20 @@ func _init() -> void:
 				continue
 			if lit and _blended(m) and m.roughness < 0.1 and m.albedo_texture == null:
 				# car glass: FM3's dark, reflective windows (fm3_carglass.gdshader), not a clear pane
-				mi.set_surface_override_material(s, _car_material(CARGLASS_SHADER, m, gltf_path, "FM3_CARGLASS",
-					["env_scale", "fresnel_min", "fresnel_power", "max_opacity"]))
+				var gm_ := _car_material(CARGLASS_SHADER, m, gltf_path, "FM3_CARGLASS",
+					["env_scale", "fresnel_min", "fresnel_power", "max_opacity"])
+				# this mesh's own glass (the game's Media\Cars\ShaderSettings + the car's overrides: lenses red / amber /
+				# clear, windows, mirrors); without an entry the shader's defaults = the window
+				var gp_: Dictionary = _carmats.get(String(mi.name), {})
+				for k_ in gp_:
+					var v_ = gp_[k_]
+					if v_ is Array:
+						gm_.set_shader_parameter(k_, Vector4(v_[0], v_[1], v_[2], v_[3]) if k_ == "glass_color" else Vector3(v_[0], v_[1], v_[2]))
+					else:
+						gm_.set_shader_parameter(k_, float(v_))
+				if not gp_.is_empty():
+					glass_set += 1
+				mi.set_surface_override_material(s, gm_)
 				continue
 			if lit and m.roughness >= 0.9:
 				m.metallic_specular = 0.04  # matte surfaces: almost no sky reflection (FM3's dark trim stays dark)
@@ -358,7 +377,16 @@ func _init() -> void:
 	sun.light_energy = (1.45 if filmic else 1.3) if lit else 1.0  # (linear tone mapping: calibrated on the grid's cars)
 	sun.light_color = Color(1.0, 0.97, 0.92)
 	sun.shadow_enabled = (lit or grey_shadow) and not no_shadows
+	# Edges: FM3 renders with MSAA (its 720p 2x, the recomp up to 4x); live, the main view does too (--msaa N, default 4,
+	# --msaa 1 = off)
+	if _live_port > 0 and _triple_layout == "":
+		root.msaa_3d = {1: Viewport.MSAA_DISABLED, 2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X, 8: Viewport.MSAA_8X}.get(_msaa if _msaa > 0 else 4, Viewport.MSAA_4X)
 	print("world_view: sun forward ", -sun.global_transform.basis.z if sun.is_inside_tree() else -sun.transform.basis.z, " shadows ", sun.shadow_enabled)
+	var sun_fwd := -sun.global_transform.basis.z if sun.is_inside_tree() else -sun.transform.basis.z
+	for cm in _car_mats:
+		(cm as ShaderMaterial).set_shader_parameter("sun_dir", -sun_fwd)  # (towards the sun: the glass highlight)
+	if glass_set:
+		print("world_view: %d car glass surfaces with the game's own glass settings" % glass_set)
 	sun.directional_shadow_max_distance = 250.0
 	root.add_child(sun)
 	print("world_view: camera ", cam.global_transform if cam.is_inside_tree() else cam.transform, " parent ", cam.get_parent().name)

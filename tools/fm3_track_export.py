@@ -71,6 +71,7 @@ CARBIN_DIRS = []  # --carbins DIR[;DIR]: whole cars from their .carbin files ins
 # by its matrix, also the far ones whose captured low-detail draws are not in the carbin (no fit possible).
 CAR_MATRICES = []
 CAR_FILE_DIRS = []  # --car-files DIR[;DIR]: <dir>/<car>/ = the car zip's contents (_lod0, _cockpit, textures, ...)
+CARMATS = {}  # car mesh node name -> its glass material's parameters (the game's shader settings), <out>_carmaterials.json
 NEEDLES = {}  # node name -> gauge needle data (cockpit gauges), written beside the glTF as <out>_needles.json
 CAR_GEOM = {}  # car -> (placed vertices sample): build_cars' cars, to drop their captured low-detail duplicates
 
@@ -268,6 +269,8 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                     continue
                 mname = sub['material'][:-5] if sub['material'].endswith('_lod0') else sub['material']
                 m_ = mat_of.get((sec['name'], mname))
+                if mname.startswith('mirror'):
+                    m_ = ('flat', 'window')  # (mirror glass: dark opaque glass, glass_params' MIRROR_GLASS)
                 if m_ is None and ('*', mname) in mat_of:
                     v_ = mat_of[('*', mname)]
                     m_ = max(v_, key=v_.get)  # the material most of this name's captured vertices had
@@ -283,7 +286,12 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                                       mname, cutout=mname in ('emblem', 'badge'))
                 if m_ is None:
                     unmapped[mname] = unmapped.get(mname, 0) + len(tris)
-                groups.setdefault((mname, m_), []).append((P, tris, sec['uv0'], Nf))
+                # baked brightness (vertex byte 20, as the cockpit's): dark cabin seen through the glass, dark underside
+                # and exhaust; used by plain materials only (paint and glass have their own shaders)
+                lit = None
+                if sec.get('light') is not None:
+                    lit = np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
+                groups.setdefault((mname, m_), []).append((P, tris, sec['uv0'], Nf, lit))
         mirrored = np.linalg.det(R) < 0
         normal_agree = []
 
@@ -332,6 +340,7 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                 prim['material'] = copy_mat(matidx)
             meshes.append({'name': f'{car}.{matname}', 'primitives': [prim]})
             nodes.append({'mesh': len(meshes) - 1, 'name': f'{prefix}{car}_{matname}_{len(meshes) - 1}'})
+        first_node = len(nodes)
         emit(groups, 'carbin_')
         # The cockpit (PLAN-CARS phase 4, 2026-11-23): <car>_cockpit.carbin, the in-car model (cabin with gauges,
         # seats, steering wheel, A-pillars, hood, mirrors, windscreen) in the same car space; nodes 'cockpit_<car>_...',
@@ -408,6 +417,18 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                             and nd['name'].startswith(f'cockpit_{car}_{k}_')), None)
                 if key is not None:
                     NEEDLES[nd['name']] = NEEDLES.pop(key)
+        # The game's glass parameters per mesh node (exterior and cockpit), for the viewer's glass shader
+        settings = car_settings(zdir)
+        for nd in nodes[first_node:]:
+            nm = nd['name']
+            for pre in ('carbin_' + car + '_', 'cockpit_' + car + '_cockpit_'):
+                if nm.startswith(pre):
+                    mname = nm[len(pre):].rsplit('_', 1)[0].split('-')[0]
+                    gp = glass_params(settings, ('cockpit_' + mname) if pre.startswith('cockpit') and
+                                      ('cockpit_' + mname) in settings else mname)
+                    if gp is not None:
+                        CARMATS[nm] = gp
+                    break
         built.add(car)
         allp = np.concatenate([q[0] for parts in groups.values() for q in parts])
         CAR_GEOM[car] = allp[np.linspace(0, len(allp) - 1, min(6000, len(allp))).astype(int)]
@@ -540,6 +561,63 @@ def car_attrib(path, name):
     import xml.etree.ElementTree as ET
     e = ET.parse(path).getroot().find(name)
     return float(e.get('value')) if e is not None and e.get('value') else None
+
+
+def shader_settings(path):
+    """An FM3 ShaderSettings XML (Media\\Cars\\ShaderSettings\\Normal.xml, every car material's parameters; or a car
+    zip's shadersettings.xml, its overrides): {material: {param: float or [r, g, b, a]}}."""
+    out = {}
+    if not path or not os.path.exists(path):
+        return out
+    import xml.etree.ElementTree as ET
+    try:
+        root = ET.parse(path).getroot()
+    except ET.ParseError:
+        return out
+    for m in root:
+        d = {}
+        for e in m:
+            if e.get('value') is not None:
+                d[e.tag] = float(e.get('value'))
+            elif e.get('r') is not None:
+                d[e.tag] = [float(e.get(k, 0)) for k in 'rgba']
+        out[m.tag] = d
+    return out
+
+
+_GLOBAL_SETTINGS = {}
+
+
+def car_settings(zdir):
+    """The game's material parameters for one car: Media\\Cars\\ShaderSettings\\Normal.xml (copied to
+    <car files>/../shadersettings/, game data) with the car's own shadersettings.xml over it."""
+    if not _GLOBAL_SETTINGS and CAR_FILE_DIRS:
+        _GLOBAL_SETTINGS.update(shader_settings(os.path.join(os.path.dirname(os.path.abspath(CAR_FILE_DIRS[0])),
+                                                             'shadersettings', 'Normal.xml')) or {'': {}})
+    merged = {k: dict(v) for k, v in _GLOBAL_SETTINGS.items()}
+    for k, v in shader_settings(os.path.join(zdir, 'shadersettings.xml') if zdir else None).items():
+        merged.setdefault(k, {}).update(v)
+    return merged
+
+
+GLASS_PARAMS = {'GlassColor': 'glass_color', 'GlassMaxOpacity': 'max_opacity', 'FresnelMin': 'fresnel_min',
+                'FresnelMax': 'fresnel_max', 'FresnelScale': 'fresnel_scale', 'FresnelPower': 'fresnel_power',
+                'CubeScale': 'cube_scale', 'SpecularAmount': 'spec_amount', 'SpecularPower': 'spec_power',
+                'SpecularColor': 'spec_color'}
+# The game's mirrors are render targets (what is behind): here a dark, opaque, reflective glass.
+MIRROR_GLASS = {'glass_color': [0.01, 0.012, 0.015, 1.0], 'max_opacity': 1.0, 'fresnel_min': 0.3, 'fresnel_max': 1.0,
+                'fresnel_power': 1.5, 'spec_amount': 0.0}
+
+
+def glass_params(settings, mname):
+    """The glass shader's parameters for a car material from the game's settings (only materials with a GlassColor),
+    or the mirror stand-in; None otherwise."""
+    if mname.startswith('mirror'):
+        return dict(MIRROR_GLASS)
+    g = settings.get(mname) or settings.get(mname[:-5] if mname.endswith('_lod0') else mname)
+    if not g or 'GlassColor' not in g:
+        return None
+    return {GLASS_PARAMS[k]: v for k, v in g.items() if k in GLASS_PARAMS}
 
 
 def gauge_ticks(path):
@@ -973,6 +1051,8 @@ def main():
         json.dump(gltf, f)
     with open(os.path.splitext(out)[0] + '_needles.json', 'w', newline='\n') as f:
         json.dump(NEEDLES, f, indent=1)
+    with open(os.path.splitext(out)[0] + '_carmaterials.json', 'w', newline='\n') as f:
+        json.dump(CARMATS, f, indent=1)
     print(f'{nfiles} model files -> {len(meshes)} meshes, {nv} vertices, {nt} triangles, {len(blob) / 1e6:.0f} MB: {out}')
     return 0
 
