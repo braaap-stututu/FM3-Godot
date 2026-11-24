@@ -77,6 +77,7 @@ const DYNLIT_LAYER := 32  # (the track's sun-lit surfaces, fm3_dynlit: lit by th
 # blue up), but the viewer 29 -> 23 fps (the static track in the second shadow map); the shader alone without the second
 # sun scored the same average as Godot's lighting.
 var DYNLIT := OS.get_environment("FM3_DYNLIT") != ""
+var DYNLIT_SHADOWS := OS.get_environment("FM3_DYNLIT") == "1"  # (2 = the shader on the main sun, no static shadows)
 var CABIN_K := float(OS.get_environment("FM3_CABIN_K")) if OS.get_environment("FM3_CABIN_K") != "" else 1.0
 const COCKPIT_GAIN := 1.0  # (fm3_cockpit.gdshader's light scale)
 # Cockpit mirrors (fm3_mirror.gdshader): one small viewport each, rendered only while the player's car is seen in-car.
@@ -423,7 +424,7 @@ func _init() -> void:
 				dynlit_set += 1
 				continue
 			mi.set_surface_override_material(s, m)
-	if lit and DYNLIT:
+	if lit and DYNLIT_SHADOWS:
 		# Static shadows for the sun-lit surfaces (fm3_dynlit): the lightmapped track casts for a second sun that lights only
 		# them (DYNLIT_LAYER, set below with the main sun); the main sun ignores static casters (their shadows are in the
 		# lightmaps). Meshes mixing both kinds stay with the main sun.
@@ -507,6 +508,8 @@ func _init() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.light_cull_mask = 0xFFFFF & ~COCKPIT_LAYER & ~DYNLIT_LAYER
 	sun.shadow_caster_mask = 0xFFFFF & ~STATIC_LAYER
+	if not DYNLIT_SHADOWS:
+		sun.light_cull_mask = 0xFFFFF & ~COCKPIT_LAYER
 	sun.rotation_degrees = Vector3(-sun_elev, sun_azim, 0)
 	var glights := scene.find_children("*", "DirectionalLight3D", true, false)
 	if not glights.is_empty():  # the capture's sun (fir_world.py writes FM3's sun direction)
@@ -530,7 +533,7 @@ func _init() -> void:
 		print("world_view: %d car glass surfaces with the game's own glass settings" % glass_set)
 	sun.directional_shadow_max_distance = 250.0
 	root.add_child(sun)
-	if lit and DYNLIT and dynlit_set > 0:
+	if lit and DYNLIT_SHADOWS and dynlit_set > 0:
 		# the sun of the track's sun-lit surfaces (fm3_dynlit), its shadows cast by everything incl. the static track
 		var sun2 := sun.duplicate() as DirectionalLight3D
 		sun2.light_cull_mask = DYNLIT_LAYER
