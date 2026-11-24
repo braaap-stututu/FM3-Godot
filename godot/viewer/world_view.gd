@@ -338,6 +338,7 @@ func _init() -> void:
 				sm.set_shader_parameter("light_tex", m.ao_texture)
 				sm.set_shader_parameter("albedo_color", m.albedo_color)
 				sm.set_shader_parameter("gain", baked_gain)
+				_apply_track_light(sm, gltf_path)
 				if m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
 					sm.set_shader_parameter("alpha_cut", m.alpha_scissor_threshold)
 				if _blended(m):
@@ -737,6 +738,7 @@ func _blend_material(m: BaseMaterial3D, f: Dictionary, gltf_path: String) -> Sha
 		sm.set_shader_parameter("debug_env_only", OS.get_environment("FM3_ENV_ONLY") != "")
 		if OS.get_environment("FM3_GLASS_PART") != "":
 			sm.set_shader_parameter("debug_part", int(OS.get_environment("FM3_GLASS_PART")))
+	_apply_track_light(sm, gltf_path)
 	sm.set_shader_parameter("albedo_tex", _load_tex(gltf_path, tex[0]))
 	sm.set_shader_parameter("tex1", _load_tex(gltf_path, tex[1]))
 	if tex.size() > 2:
@@ -1234,6 +1236,24 @@ func _poll_liveries() -> void:
 					n += 1
 		_livery_applied[car] = true
 		print("world_view: live car %08X (%s): livery from the game on %d paint surfaces" % [car, nm, n])
+
+
+var _track_light_cache := {}
+
+
+# The static world's ambient / sun (c247 / c248) from the track's TrackSettings DarkColor / LightColor, written by
+# fm3_track_export.py beside the glTF (<name>_track.json); without it the shaders keep CrownJewel's.
+func _apply_track_light(sm: ShaderMaterial, gltf_path: String) -> void:
+	if not _track_light_cache.has(gltf_path):
+		var f := gltf_path.get_basename() + "_track.json"
+		_track_light_cache[gltf_path] = JSON.parse_string(FileAccess.get_file_as_string(f)) if FileAccess.file_exists(f) else {}
+	var t = _track_light_cache[gltf_path]
+	if not (t is Dictionary):
+		return
+	if t.has("DarkColor"):
+		sm.set_shader_parameter("ambient", Vector3(t["DarkColor"][0], t["DarkColor"][1], t["DarkColor"][2]))
+	if t.has("LightColor"):
+		sm.set_shader_parameter("sun", Vector3(t["LightColor"][0], t["LightColor"][1], t["LightColor"][2]))
 
 
 func _cars_pending() -> bool:

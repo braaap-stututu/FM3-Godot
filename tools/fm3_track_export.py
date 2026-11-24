@@ -883,8 +883,8 @@ def main():
         return bix_cache[key]
 
     def mask_alpha_png(png, mask_png):
-        # A copy of a road line's picture whose alpha is its mask texture's red channel (rdline_blnd_spec_opac_3's material
-        # slot 2, resampled to the picture's size); the file name. CrownJewel's masks equal the picture's grey (red_alpha_png
+        # A copy of a road line's picture whose alpha is its red channel scaled by its mask texture's level
+        # (rdline_blnd_spec_opac_3's material slot 2); the file name. CrownJewel's masks equal the picture's grey (red_alpha_png
         # gives the same), Catalunya's grid boxes are fainter: mask red 0.49 under a 0.79 picture.
         key = ('mask_alpha', png, mask_png)
         if key not in bix_cache:
@@ -892,10 +892,16 @@ def main():
             a_ = np.frombuffer(bytes(px_), np.uint8).reshape(h_, w_, -1)
             mw, mh, mpx = fir_frame.read_png(os.path.join(tex_out, mask_png))
             m_ = np.frombuffer(bytes(mpx), np.uint8).reshape(mh, mw, -1)[:, :, 0]
-            m_ = m_[(np.arange(h_) * mh // h_)[:, None], (np.arange(w_) * mw // w_)[None, :]]
+            # (the mask's outline does not sit pixel for pixel on the picture's: used directly it thinned the paint,
+            # Catalunya's boxes p99 62 vs the game's 95; so the picture's own shape (its red), scaled by the mask's level
+            # over the picture's: p95 of each where painted)
+            red = a_[:, :, 0].astype(np.float32)
+            lvl_m = np.percentile(m_[m_ > 8], 95) if (m_ > 8).any() else 255.0
+            lvl_r = np.percentile(red[red > 8], 95) if (red > 8).any() else 255.0
+            k_ = min(1.0, float(lvl_m) / max(1.0, float(lvl_r)))
             rgba = np.empty((h_, w_, 4), np.uint8)
             rgba[:, :, :3] = a_[:, :, :3]
-            rgba[:, :, 3] = m_
+            rgba[:, :, 3] = np.clip(red * k_ + 0.5, 0, 255).astype(np.uint8)
             name_ = 'ma_' + png[:-4] + '_' + mask_png
             fr.write_png(os.path.join(tex_out, name_), w_, h_, rgba.tobytes())
             bix_cache[key] = name_
@@ -955,6 +961,17 @@ def main():
             mo = re.search(r'<ShadowLightDirection x="([-0-9.e]+)" y="([-0-9.e]+)" z="([-0-9.e]+)"', ts_text)
             if mo:
                 shadow_dir = np.array([float(mo.group(k)) for k in (1, 2, 3)])
+            # The static world's light (fm3_baked / fm3_blend: albedo x lerp(c247, c248, lightmap)): c247 / c248 are this
+            # track's DarkColor / LightColor (CrownJewel 0.14,0.14,0.18 / 1.58,1.57,1.5, the viewer's defaults); a side file
+            # the viewer reads beside the glTF
+            light_ = {}
+            for tag in ('DarkColor', 'LightColor'):
+                mo = re.search(r'<%s r="([-0-9.e]+)" g="([-0-9.e]+)" b="([-0-9.e]+)"' % tag, ts_text)
+                if mo:
+                    light_[tag] = [float(mo.group(k)) for k in (1, 2, 3)]
+            if light_:
+                with open(os.path.splitext(out)[0] + '_track.json', 'w', newline='') as f_:
+                    json.dump(light_, f_)
     sky_cam = sky_origin.copy()
     families_used = {}
     groups = {}
@@ -1056,6 +1073,10 @@ def main():
             if shader_.startswith('tree_') and me['stride'] == 24:
                 # tree card shaders read UV0 at byte 12 (where other layouts keep the normal): 12 of 13 captured draws
                 me = dict(me, uv0=fm3_track.uv_pair(me, 12))
+            if shader_.startswith('bush_') and me['stride'] == 20:
+                # tree walls (bush_diff_opac_2_2sd, Suzuka's Treewall): as the grass cards, the texture's UV at byte 12
+                # (0.06..1 across, repeating along the wall), byte 16 the 0..1 lightmap over the whole 300-600 m wall
+                me = dict(me, uv0=fm3_track.uv_pair(me, 12), uv1=fm3_track.uv_pair(me, 16))
             if shader_.startswith('grass_') and me['stride'] == 20:
                 # grass tuft cards: UV0 at byte 12 (0..1 across each card), the lightmap at 16
                 u12 = fm3_track.uv_pair(me, 12)
