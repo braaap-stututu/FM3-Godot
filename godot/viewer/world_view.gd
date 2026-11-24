@@ -457,6 +457,8 @@ func _init() -> void:
 	print("world_view: camera ", cam.global_transform if cam.is_inside_tree() else cam.transform, " parent ", cam.get_parent().name)
 	print("world_view: %d surfaces lit by FM3's baked lightmaps (%d without an albedo texture)" % [baked, baked_no_tex])
 	print("world_view: %d mesh instances, camera fov %.2f near %.3f" % [meshes, cam.fov, cam.near])
+	if args.has("--library-swap"):
+		_library_swap_test(args[args.find("--library-swap") + 1])
 	if lit and _live_cube_size > 0 and not _car_mats.is_empty():
 		# at the player car: the car meshes' centre nearest the camera, 0.8 m up (live: it follows that car)
 		var co: Vector3 = cam.global_transform.origin if cam.is_inside_tree() else cam.transform.origin
@@ -813,7 +815,7 @@ func _update_lights(player) -> void:
 
 # The glTF's textures, compressed (see the loader): each material's base colour, metallic-roughness, occlusion (FM3's
 # lightmaps, UV2), normal and emissive textures as Godot's glTF import binds them, from BC1 / BC3 ImageTextures.
-func _bind_textures(state: GLTFState, gltf_path: String) -> void:
+func _bind_textures(state: GLTFState, gltf_path: String, compress := true) -> void:
 	var j = JSON.parse_string(FileAccess.get_file_as_string(gltf_path))
 	if not (j is Dictionary):
 		return
@@ -838,7 +840,7 @@ func _bind_textures(state: GLTFState, gltf_path: String) -> void:
 			if img == null:
 				cache[uri] = null
 			else:
-				if img.get_width() >= 4 and img.get_height() >= 4 and img.get_width() % 4 == 0 and img.get_height() % 4 == 0:
+				if compress and img.get_width() >= 4 and img.get_height() >= 4 and img.get_width() % 4 == 0 and img.get_height() % 4 == 0:
 					img.generate_mipmaps()
 					img.compress(Image.COMPRESS_S3TC, Image.COMPRESS_SOURCE_GENERIC)
 				else:
@@ -927,12 +929,15 @@ func _attach_library_car(car) -> void:
 	if not FileAccess.file_exists(path) or not _cars.has(car) or not _wheels.has(car):
 		print("world_view: live car %08X is %s: no library model (%s) or no matrices yet" % [car, info["name"], path])
 		return
-	# (Godot's own texture loading: compressing a car's 2048 px textures here stalled the live view for seconds a car)
+	# (textures with mipmaps but not compressed: compressing a car's 2048 px textures stalled the live view for seconds
+	# a car; Godot's own glTF texture loading gives none, and a far car's paint then sampled black)
 	var t0 := Time.get_ticks_msec()
 	var doc := GLTFDocument.new()
 	var st := GLTFState.new()
+	st.handle_binary_image = 0
 	if doc.append_from_file(path, st) != OK:
 		return
+	_bind_textures(st, path, false)
 	var scene_ := doc.generate_scene(st)
 	root.add_child(scene_)
 	var base := path.get_basename()
@@ -947,6 +952,7 @@ func _attach_library_car(car) -> void:
 		wi.append((w_att[k] as Transform3D).affine_inverse())
 	_wheel_inv[car] = wi
 	var flip := a_att.basis.determinant() < 0.0
+	var fm := Transform3D(Basis.from_scale(Vector3(1, 1, -1)), Vector3.ZERO)
 	var paint_col := Color(1, 1, 1)
 	var metal := 0.0
 	var key := str(int(info["color"]))
@@ -976,9 +982,59 @@ func _attach_library_car(car) -> void:
 			needle["axis"] = [a2.x, a2.y, a2.z]
 		if nm.begins_with("cockpit_"):
 			m.visible = false
-		_register_part(m, car, (w_att[wk] as Transform3D) if wk >= 0 else a_att, wk, needle)
+		# (the library's vertices carry the game -> glTF mirror: placed by the matrix x that mirror, a proper rotation)
+		var off := ((w_att[wk] as Transform3D) if wk >= 0 else a_att) * fm
+		_register_part(m, car, off, wk, needle)
+		m.global_transform = off  # (now: offline renders; live moves it)
 		n += 1
 	print("world_view: live car %08X is %s colour %s: %d meshes from the car library (%d ms; paint %s)" % [car, info["name"], key, n, Time.get_ticks_msec() - t0, paint_col])
+
+
+# Debug (offline, the grid scene): --library-swap <car>:<colour>:<metallic 0|1> hides the scene's (captured) copy of a
+# car and puts its library model in the same place (its matrices from work/fir/grid-cars.json), so a render compares
+# the library car with the captured one in the same light.
+func _library_swap_test(spec: String) -> void:
+	var parts := spec.split(":")
+	var lname := parts[0].to_lower()
+	var centre := Vector3.ZERO
+	var cnt := 0
+	for mi in _scene.find_children("*", "MeshInstance3D", true, false):
+		var nm := String(mi.name)
+		if nm.contains("_" + lname + "_") or nm.begins_with("carbin_" + lname) or nm.begins_with("wheel_" + lname) or nm.begins_with("brake_" + lname) or nm.begins_with("cockpit_" + lname):
+			if nm.begins_with("carbin_"):
+				centre += (mi as MeshInstance3D).transform * (mi as MeshInstance3D).get_aabb().get_center()  # (glTF nodes at the root)
+				cnt += 1
+			(mi as MeshInstance3D).visible = false
+	if cnt == 0:
+		print("world_view: --library-swap: no %s in the scene" % lname)
+		return
+	centre /= cnt
+	var gc = JSON.parse_string(FileAccess.get_file_as_string(_gltf_path.get_base_dir().path_join("../../../work/fir/grid-cars.json").simplify_path()))
+	var best = null
+	var bd := INF
+	for c in gc["cars"]:
+		var mtx: Array = c["matrix"]
+		var o := Vector3(mtx[12], mtx[13], -float(mtx[14]))
+		if o.distance_to(centre) < bd:
+			bd = o.distance_to(centre)
+			best = c
+	var pkt := PackedByteArray()
+	pkt.resize(96)
+	for i in 16:
+		pkt.encode_float(16 + 4 * i, float(best["matrix"][i]))
+	var wpk := PackedByteArray()
+	wpk.resize(280)
+	for k in 4:
+		for i in 16:
+			wpk.encode_float(16 + 64 * k + 4 * i, float(best["wheels"][k][i]))
+	var ws := []
+	for k in 4:
+		ws.append(wheel_transform(wpk, k, _live_axes))
+	_cars[-7] = pkt
+	_wheels[-7] = ws
+	_car_names[-7] = {"name": parts[0], "color": int(parts[1]), "metallic": parts[2] == "1"}
+	_attach_library_car(-7)
+	print("world_view: --library-swap %s (matrix %.2f m from the captured car)" % [lname, bd])
 
 
 # A library car mesh's materials, as the scene's cars get them in the loader: paint (the game's colour), glass / lens

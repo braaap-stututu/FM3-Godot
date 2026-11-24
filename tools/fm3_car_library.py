@@ -74,17 +74,25 @@ class Gltf:
             self.mat_ids[key] = len(self.materials) - 1
         return self.mat_ids[key]
 
-    def mesh(self, node_name, P, T, U, N, lit, mat, flip=False):
+    def mesh(self, node_name, P, T, U, N, lit, mat, flip=True):
         if not len(T):
             return
-        # (no winding change: the viewer's car / wheel transforms mirror (world = F (p M)), and Godot reverses its
-        # culling for mirrored instances itself; reversing here too darkened the cars, tested 2026-11-24)
+        # The game -> glTF mirror (F = diag(1, 1, -1)) is baked in here, as the grid export bakes it into its world
+        # vertices: positions and normals z-mirrored, triangles reversed (flip; False where a second mirror cancels it:
+        # the right-side wheels). The viewer then places the car with car_transform x F, a proper rotation: with the
+        # mirror left in the node transform the library cars came out lit at about half (2026-11-24, --library-swap).
+        P = P * np.array([1.0, 1.0, -1.0])
+        if N is not None:
+            N = N * np.array([1.0, 1.0, -1.0])
         if flip:
             T = T[:, ::-1]
         P = P.astype(np.float32)
         prim = {'attributes': {'POSITION': self.acc(P, 'VEC3', minmax=True)}, 'material': mat}
         if N is None:
             N = smooth_normals(P, T)
+        else:
+            # (the file's 11:11:10 normals are not unit length: shorter ones lit the library cars too darkly)
+            N = N / np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-9)
         prim['attributes']['NORMAL'] = self.acc(N.astype(np.float32), 'VEC3')
         prim['attributes']['TEXCOORD_0'] = self.acc(U.astype(np.float32), 'VEC2')
         if lit is not None:
@@ -162,7 +170,13 @@ def build(car, cdir, wdir, db, outdir):
             return g.mat_ids[('paint',)]
         p = os.path.join(zdir, 'nodamage_lod0.xds')
         img = fm3_tex.load_xds(p) if os.path.exists(p) else np.full((4, 4, 4), 255, np.uint8)
-        ti = g.texture(img, 'nodamage_lod0.png')  # (the same file as the body's other parts)
+        # The zip's nodamage is the livery / badge layer over the paint (its alpha; 0 over plain paint). Godot zeroes
+        # the colour of fully transparent pixels on loading, which made the library paint black: composited over white
+        # here, alpha 255, so the viewer's paint colour x this = the colour on plain paint, the badges over it.
+        a_ = img[..., 3:4].astype(np.float32) / 255.0
+        over = np.concatenate([np.clip(img[..., :3] * a_ + 255.0 * (1.0 - a_), 0, 255).astype(np.uint8),
+                               np.full(img.shape[:2] + (1,), 255, np.uint8)], axis=2)
+        ti = g.texture(over, 'paint_over_white.png')
         # (the metallic-roughness texture only marks it as paint for the viewer, as fir_world.py's paint does)
         return g.material(('paint',), {'name': 'paint', 'doubleSided': True, 'pbrMetallicRoughness': {
             'baseColorTexture': {'index': ti}, 'metallicRoughnessTexture': {'index': ti}, 'baseColorFactor': [1, 1, 1, 1],
@@ -187,7 +201,7 @@ def build(car, cdir, wdir, db, outdir):
             return None
         return np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
 
-    def add(prefix, sec, P, Nf, mname, mat, lit, flip=False):
+    def add(prefix, sec, P, Nf, mname, mat, lit, flip=True):
         for sub in sec['subs']:
             if sub['material'] != mname and not (sub['material'].endswith('_lod0') and sub['material'][:-5] == mname):
                 continue
@@ -302,7 +316,7 @@ def build(car, cdir, wdir, db, outdir):
                 Nf = None if sec.get('normal') is None else sec['normal'] @ side
                 lit = None if sec.get('light') is None else np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
                 for mname in sorted({u['material'] for u in sec['subs']}):
-                    add(f'wheel_{car}_{k}_{mname}', sec, P, Nf, mname, wheel_mat(mname), lit)
+                    add(f'wheel_{car}_{k}_{mname}', sec, P, Nf, mname, wheel_mat(mname), lit, flip=k not in (1, 2))
                     nw += 1
             rp = os.path.join(zdir, f'{car}_rotor{corner[k]}.carbin')
             if os.path.exists(rp):

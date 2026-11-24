@@ -50,6 +50,7 @@ vec3 to_linear(vec3 c) {
 void fragment() {
 	vec4 t = texture(albedo_tex, UV);
 	// (the texture is read raw: gamma-space values, as the game's shader works with them)
+	// (library cars: their badge layer is composited over white by tools/fm3_car_library.py, so the same product)
 	ALBEDO = to_linear(t.rgb * albedo_color.rgb);
 }
 
