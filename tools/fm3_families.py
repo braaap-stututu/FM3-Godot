@@ -101,6 +101,19 @@ def recipe(shader, params, stride, slots):
         return {'mode': 'road2u' if uv3 else 'road2', 'src0': 'xz', 'src1': 16, 'mask': 16 if uv3 else 20,
                 'lm': 16 if uv3 else 20, 'vclr': False, 'scale0': [params[1][0]] * 2, 'scale1': list(params[1][1:3]),
                 'scale2': list(params[3][:2]), 'tint0': list(params[0][:3]), 'tint1': list(params[2][:3]), 'slots': slots[:3]}
+    if shader == 'rdedg_diff_opac_2' and len(slots) >= 2 and min(slots[:2]) >= 0 and len(params) >= 2 and stride >= 28:
+        # road-edge decals (disassembled): t0 at UV 16 * P[0].xy, opacity = t1.a at UV 24 * P[1].xy, the lightmap at 20;
+        # drawn as an opaque t0 they were solid strips along the track edges (fm3_blend_alpha.gdshader)
+        return {'mode': 'opac2', 'src0': 16, 'src1': 24, 'mask': None, 'lm': 20, 'vclr': False,
+                'scale0': list(params[0][:2]), 'scale1': list(params[1][:2]), 'tint0': [1.0, 1.0, 1.0],
+                'tint1': [1.0, 1.0, 1.0], 'slots': slots[:2]}
+    if shader in ('rdline_blnd_diff_opac_2', 'rdline_blnd_spec_opac_3') and len(slots) >= 2 and min(slots[:2]) >= 0 and len(params) >= 3 and stride >= 24:
+        # road lines (both disassembled, the same code): lerp(P[0].rgb, t0, t1) * P[1].z, t0 at UV 16 * P[1].xy (opacity
+        # t0.a), t1 (material slot 1, the road alpha) at UV 20 * P[2].xy, the lightmap at 20. (rdline_blnd_spec_opac_3 was
+        # fitted by eye before: alpha = the line's red, colour x 0.6 = what P[1].z is on Catalunya; CrownJewel's 0.8)
+        return {'mode': 'rdline2', 'src0': 16, 'src1': 20, 'mask': None, 'lm': 20, 'vclr': False,
+                'scale0': list(params[1][:2]), 'scale1': list(params[2][:2]), 'tint0': list(params[0][:3]),
+                'tint1': [params[1][2]] * 3, 'slots': slots[:2]}
     if ROAD3.match(shader) and len(slots) >= 2 and min(slots[:2]) >= 0 and len(params) >= 3 and stride >= 20:
         # road_3clr_blnd_2 (MapleValley's asphalt; disassembled): grain t0 at world (x, z) * P[1].x, v = t1.rgb * t1.a
         # (slot 1 at UV 16 * P[1].yz, the lightmap's UV); albedo = grain * P[0] + v * (grain + P[2] - grain * P[0]): dark
