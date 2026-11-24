@@ -181,7 +181,13 @@ The user's last question was whether to chase the remaining uneven steps or call
    highlight only), the cockpit unlit by the sun (FM3: SHCockpitDir 0; render layer COCKPIT_LAYER) and the in-car
    exposure x1.5 (the game shows the outside brighter from the cockpit), gauges at gain 0.25: capture-free CrownJewel
    34.8 / 36.3 / 36.7 -> 17.0 / 17.6 / 18.4, captured Ladera 37.6 / 38.6 / 37.5 -> 20.6 / 19.8 / 18.9. Left: the HUD,
-   the driver's hands, the mirror's picture, the cluster housing (bluish grey, the game's black). live_compare's picture waits (up to 10 s) for the library cars. Open: the player's
+   the driver's hands, the cluster housing (bluish grey, the game's black).
+   Mirrors (`fm3_mirror.gdshader`, `--mirrors 0` = dark glass): one 512x256 viewport per cockpit mirror, rendered
+   only in-car; the glass looks itself up through a camera at the reflected eye framing it, the picture comes from a
+   level rear camera (30 deg; the middle mirror straight back), as FM3 renders its mirror as a separate scene. The CR-X's
+   middle mirror then shows the stands and the run-off behind like the game's, framed a little lower; in-car vs game
+   17.4 / 17.8 / 18.6 (dark glass 16.8 / 17.4 / 18.3: a framing offset costs more pixel difference than flat glass).
+   Its cost in-car not measured yet. live_compare's picture waits (up to 10 s) for the library cars. Open: the player's
    custom paint (the livery layer: the car object holds only the database colour, +0x9A0 etc.,
    `FM3_LIVE_DUMP_CARS=1`), crowd sprites, the sky dome's seam line, the sea's colour.
 6. Then stage B: ReGPU skips what Godot draws.

@@ -70,6 +70,11 @@ var _library_queue := []  # cars waiting for their library model
 # its cockpit has no directional light (TrackSettings SHCockpitDir 0) and the view a higher exposure. Cockpit meshes
 # sit on their own render layer the sun leaves out, and the exposure rises in-car by IN_CAR_EXPOSURE.
 const COCKPIT_LAYER := 8
+# Cockpit mirrors (fm3_mirror.gdshader): one small viewport each, rendered only while the player's car is seen in-car.
+const MIRROR_SIZE := Vector2i(512, 256)
+const MIRROR_FOV := 30.0  # (vertical degrees of a mirror's picture)
+var _mirrors_on := true
+var _mirrors := []  # [{mesh, car, centre, normal, radius (mesh space), mat, vp, cam}]
 const IN_CAR_EXPOSURE := 1.5
 # The gauges (unshaded, seen in-car only): the game's daylight dials are grey markings (~150) on black; at gain 1 / 1.5
 # (the exposure undone) Godot's were white (~250) on grey, cluster p95 165 vs the game's 58. 0.25 fitted on the markings.
@@ -174,6 +179,8 @@ func _init() -> void:
 				_wheel_lock_arg = float(args[i + 1]); i += 1
 			"--live-cube":  # the live reflection cube's face size in pixels (0 = the layout's static cube)
 				_live_cube_size = int(args[i + 1]); i += 1
+			"--mirrors":  # 0 = the cockpit mirrors stay dark glass (no mirror viewports)
+				_mirrors_on = args[i + 1] != "0"; i += 1
 			"--live-cube-faces":  # live cube faces rendered per frame, round-robin (6 = all, every frame)
 				_live_cube_faces = clampi(int(args[i + 1]), 1, 6); i += 1
 			"--live-smooth":  # average the shown motion over this many game frames (0 = off)
@@ -923,6 +930,8 @@ func _bind_textures(state: GLTFState, gltf_path: String, compress := true) -> vo
 # One car mesh joins the live cars: it follows its car (wk -1) or wheel wk at <offset> (global = move * offset), with
 # its speed blur, cockpit flag, needle, paint / glass materials (the player's live cube) and brake / reverse lights.
 func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle = null) -> void:
+	if String(m.name).contains("_cockpit_mirror"):
+		_add_mirror(m, car)
 	if String(m.name).begins_with("cockpit_"):
 		m.layers = COCKPIT_LAYER  # (not lit by the sun: FM3's cockpit has no directional light, SHCockpitDir 0)
 	_car_parts.append([m, car, offset, wk, _wheel_blur_kind(m) if wk >= 0 else -1,
@@ -961,6 +970,111 @@ func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle
 # (tools/fm3_car_library.py: out/cars/<car>.gltf in its own car / wheel space), named by the game ("FM3N": media name,
 # Combo_Colors colour, paint type), placed by its streamed matrices like the others.
 # Streamed cars the scene lacks that have not had their library model yet (queued, or no FM3N name so far).
+func _add_mirror(m: MeshInstance3D, car) -> void:
+	var arr = m.mesh.surface_get_arrays(0)
+	var pall: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	# (only the vertices its triangles use: a library mesh carries its whole part's vertex buffer, the CR-X's middle
+	# mirror 23,687 vertices over the cabin)
+	var p := PackedVector3Array()
+	var idx = arr[Mesh.ARRAY_INDEX]
+	if idx != null and (idx as PackedInt32Array).size() > 0:
+		var seen := {}
+		for i_ in (idx as PackedInt32Array):
+			if not seen.has(i_):
+				seen[i_] = true
+				p.append(pall[i_])
+	else:
+		p = pall
+	if p.size() < 3:
+		return
+	var c := Vector3.ZERO
+	for v in p:
+		c += v
+	c /= p.size()
+	# the plane's normal: the direction of least spread (the smallest eigenvector of the covariance, by power iteration
+	# on its inverse's stand-in: the cross of the two widest directions)
+	var far_ := p[0]
+	for v in p:
+		if v.distance_to(c) > far_.distance_to(c):
+			far_ = v
+	var a := (far_ - c).normalized()
+	var best := Vector3.ZERO
+	for v in p:
+		var w := (v - c) - a * (v - c).dot(a)
+		if w.length() > best.length():
+			best = w
+	var n := a.cross(best.normalized()).normalized()
+	var r := 0.0
+	var bn := best.normalized()
+	var hw := 0.0
+	var hh := 0.0
+	for v in p:
+		r = maxf(r, v.distance_to(c))
+		hw = maxf(hw, absf((v - c).dot(a)))
+		hh = maxf(hh, absf((v - c).dot(bn)))
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://viewer/fm3_mirror.gdshader")
+	for s in m.mesh.get_surface_count():
+		m.set_surface_override_material(s, mat)
+	_mirrors.append({"mesh": m, "car": car, "centre": c, "normal": n, "radius": r, "hw": hw, "hh": maxf(hh, 0.01), "short": bn, "mat": mat, "vp": null, "cam": null})
+
+
+# Each frame: the player's mirrors while in-car (the driver's eye = the drawn camera, reflected in each mirror's plane;
+# near plane at the mirror so the dash in front of a reflected eye is cut away); other mirrors stop rendering.
+func _update_mirrors(player, in_car: bool, eye: Transform3D) -> void:
+	for mr in _mirrors:
+		var on: bool = _mirrors_on and in_car and mr["car"] == player and (mr["mesh"] as Node3D).visible
+		if not on:
+			if mr["vp"] != null and (mr["vp"] as SubViewport).render_target_update_mode != SubViewport.UPDATE_DISABLED:
+				(mr["vp"] as SubViewport).render_target_update_mode = SubViewport.UPDATE_DISABLED
+				(mr["mat"] as ShaderMaterial).set_shader_parameter("active", false)
+			continue
+		if mr["vp"] == null:
+			var vp := SubViewport.new()
+			vp.size = Vector2i(MIRROR_SIZE.x, clampi(int(MIRROR_SIZE.x * float(mr["hh"]) / maxf(float(mr["hw"]), 0.01)), 32, MIRROR_SIZE.x))
+			vp.positional_shadow_atlas_size = 0
+			vp.mesh_lod_threshold = 4.0
+			var c3 := Camera3D.new()
+			c3.cull_mask = 0xFFFFF & ~COCKPIT_LAYER
+			c3.far = 2000.0
+			vp.add_child(c3)
+			root.add_child(vp)
+			mr["vp"] = vp
+			mr["cam"] = c3
+			(mr["mat"] as ShaderMaterial).set_shader_parameter("view_tex", vp.get_texture())
+		var vp2: SubViewport = mr["vp"]
+		vp2.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		var gt := (mr["mesh"] as Node3D).global_transform
+		var c := gt * (mr["centre"] as Vector3)
+		var n := (gt.basis * (mr["normal"] as Vector3)).normalized()
+		var e := eye.origin
+		var e2 := e - n * (2.0 * (e - c).dot(n))
+		var d := e2.distance_to(c)
+		var cam3: Camera3D = mr["cam"]
+		var car_up := gt.basis.y.normalized()  # (cockpit meshes are placed with the car's transform)
+		# The lookup camera: from the reflected eye at the glass, framing its rectangle (half height hh, the viewport's
+		# aspect = its half width / half height), up along its short side: the whole picture lands on the glass.
+		var up := (gt.basis * (mr["short"] as Vector3)).normalized()
+		if up.dot(car_up) < 0.0:
+			up = -up
+		cam3.global_transform = Transform3D(Basis(), e2).looking_at(c, up)
+		cam3.fov = clampf(rad_to_deg(2.0 * atan(float(mr["hh"]) * 1.05 / maxf(d, 0.05))), 2.0, 120.0)
+		var vpm := cam3.get_camera_projection() * Projection(cam3.global_transform.affine_inverse())
+		(mr["mat"] as ShaderMaterial).set_shader_parameter("mirror_vp", vpm)
+		# The picture: FM3 draws its mirrors as a separate scene from a rear camera, level, a fixed field of view: the
+		# middle mirror straight back, the side mirrors along their reflection without its pitch. (Optically reflected,
+		# the CR-X's middle mirror, its glass tilted 11 deg down and the eye 4 cm below it, looked 14-22 deg down at the
+		# asphalt, magnified, where the game's shows the stands and the track behind.)
+		var ne := n if (e - c).dot(n) > 0.0 else -n
+		var dir := ne if String((mr["mesh"] as Node).name).contains("mirrorMiddle") else ((c - e) - n * (2.0 * (c - e).dot(n)))
+		var level := dir - car_up * dir.dot(car_up)
+		if level.length() > 0.01:
+			cam3.global_transform = Transform3D(Basis(), e2).looking_at(e2 + level.normalized(), car_up)
+		cam3.fov = MIRROR_FOV
+		cam3.near = 0.3
+		(mr["mat"] as ShaderMaterial).set_shader_parameter("active", true)
+
+
 func _cars_pending() -> bool:
 	if not _library_queue.is_empty():
 		return true
@@ -1474,6 +1588,7 @@ func _show_drawn(now: float) -> void:
 			if part[7] != null and (part[0] as Node3D).visible:
 				turn = needle_turn(part[7], part[1])
 			(part[0] as Node3D).global_transform = (moves[part[1]] as Transform3D) * turn * (part[2] as Transform3D)
+	_update_mirrors(player, in_car, cam)
 	if not _live_cube_cams.is_empty():
 		# the live reflection cube follows the player car (the car nearest the camera), 0.8 m above its origin
 		var pc := Vector3.ZERO
