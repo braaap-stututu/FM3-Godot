@@ -19,9 +19,14 @@ uniform vec3 env_flip = vec3(-1.0, 1.0, 1.0);  // (this scene's x is the game's 
 // Fitted on the grid (tools/car_regions.py, 7 cars). Refitted 2026-11-23 for the LOD 0 bodies with the file's own
 // normals (they face the sky more than the old rebuilt ones): sky 0.5 -> 0.24; CR-X mean colour then 135 vs the game's
 // 136. The highlights are still weaker than the game's (CR-X 90th percentile 150 vs 187).
-uniform vec3 ambient = vec3(0.216, 0.225, 0.243);  // gamma-space sky light on surfaces facing up (where the sun does not reach)
-uniform vec3 ambient_ground = vec3(0.036, 0.036, 0.036);  // ... and on surfaces facing down (bumpers, sills: the road's shade)
-uniform vec3 sun = vec3(0.9, 0.882, 0.846);
+uniform vec3 ambient = vec3(0.302, 0.315, 0.340);  // gamma-space sky light on surfaces facing up (where the sun does not reach)
+uniform vec3 ambient_ground = vec3(0.05, 0.05, 0.05);  // ... and on surfaces facing down (bumpers, sills: the road's shade)
+uniform vec3 sun = vec3(1.35, 1.323, 1.269);
+uniform float sun_pow = 2.0;  // the sun's diffuse falloff (pow(n.l, sun_pow))
+// (2026-11-24: the game's paint lighting by surface direction, from debug normal / albedo renders of the captured grid,
+// rises much faster with n.sun than a linear term: ~2.4x albedo facing the sun vs ours 1.1, and is darker at moderate
+// facing. n.l^2 with sun x1.5, ambient x1.4: per-car paint 16.0 -> 14.9, Mazda p10/50/90 19/37/163 (game 19/43/172),
+// Eclipse 7/17/63 (7/17/72).)
 uniform float shadow_strength = 0.85;
 // The game's paint constants (all cars on the grid): reflection c224 x c217/c218 = 1.5 x 0.3/0.5, Fresnel power c216 = 4,
 // the sun's highlight power c189 = 75 and strength c180 = 1.4. (The colour's c119.x scale is in the albedo: fir_world.)
@@ -81,7 +86,7 @@ void light() {
 		float sh = 1.0 - shadow_strength + shadow_strength * ATTENUATION;
 		float ndl = max(dot(NORMAL, LIGHT), 0.0);
 		float up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y * 0.5 + 0.5;
-		vec3 diff = mix(ambient_ground, ambient, up) + sun * ndl * sh;
+		vec3 diff = mix(ambient_ground, ambient, up) + sun * pow(ndl, sun_pow) * sh;
 		vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
 		vec3 env = has_live ? live_cube(r) : (has_env ? textureLod(env_cube, r * env_flip, env_lod).rgb : env_fallback);
 		float cosv = clamp(dot(NORMAL, VIEW), 0.0, 1.0);

@@ -182,6 +182,12 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
     101 -> 131 (game 172), Eclipse 43 -> 56 (72), whole frame 19.9/18.9/17.7 -> 19.6/18.7/17.7. Live capture-free grid
     20.4/20.1/18.4 -> 20.2/19.9/18.2 (Mazda 27.5 -> 24.1). Matching the bright end fully put highlights on the tops
     where the game's are softer; the game's sun-facing flanks are still brighter than ours (open).
+  - **Sun-facing sides (2026-11-24, evening):** debug renders of the captured grid (each paint pixel's world normal and its
+    albedo, via a temporary unshaded paint shader) give the game's lighting = brightness / albedo by surface direction:
+    it rises much faster with n.sun than our linear diffuse (~2.4x albedo facing the sun vs ours 1.1) and is darker at
+    moderate facing. Now sun x n.l^2 (sun 1.35, ambient 0.30): per-car paint 16.0 -> 14.9 (captured CR-X 23.4 -> 12.6,
+    Mazda 27.6 -> 20.7, p10/50/90 19/37/163 vs the game's 19/43/172); live capture-free grid 20.1 / 19.8 / 18.2, live
+    Mazda 24.1 -> 19.8.
   - *Highlights, tried offline on the captured grid (paint shader only, then reverted)*: env_scale 0.2 -> 0.4 / 0.7 /
     1.0 brightens everything (summary 16.9 -> 21.0 / 29.3 / 39.3); a sharper cube (env_lod 2.5 -> 1 / 0) changes nothing
     (17.1); a steeper Fresnel with no floor widens the spread (power 4, scale 1.0, min 0: Mazda p10/p90 14/117, summary
