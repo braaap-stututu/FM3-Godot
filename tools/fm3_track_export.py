@@ -860,6 +860,7 @@ def main():
     # them on its camera (world_view.gd), so the sky follows a flying or live camera on every track.
     sky_origin = np.zeros(3)
     sky_height = np.zeros(3)
+    shadow_dir = None  # TrackSettings.xml ShadowLightDirection (game space): the sun of a capture-free scene
     if '--camera-from' in sys.argv:
         ref_ = json.load(open(sys.argv[sys.argv.index('--camera-from') + 1]))
         for n_ in ref_['nodes']:
@@ -869,9 +870,13 @@ def main():
         ts = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[sys.argv.index('--pvs') + 1]))),
                           'TrackSettings.xml')
         if os.path.exists(ts):
-            mo = re.search(r'SkyboxHeightOffset value="([-0-9.]+)"', open(ts, errors='replace').read())
+            ts_text = open(ts, errors='replace').read()
+            mo = re.search(r'SkyboxHeightOffset value="([-0-9.]+)"', ts_text)
             if mo:
                 sky_height = np.array([0.0, float(mo.group(1)), 0.0])
+            mo = re.search(r'<ShadowLightDirection x="([-0-9.e]+)" y="([-0-9.e]+)" z="([-0-9.e]+)"', ts_text)
+            if mo:
+                shadow_dir = np.array([float(mo.group(k)) for k in (1, 2, 3)])
     sky_cam = sky_origin.copy()
     families_used = {}
     groups = {}
@@ -1208,6 +1213,22 @@ def main():
                                                                        'znear': 0.3, 'zfar': 20000.0}}]
             nodes.append({'name': 'capture_camera', 'camera': 0, 'matrix': M_.T.ravel().tolist()})
             print(f'camera at {np.round(eye, 1).tolist()} looking at {np.round(target, 1).tolist()} (no capture)')
+        if shadow_dir is not None and np.linalg.norm(shadow_dir) > 1e-6:
+            # The sun from TrackSettings.xml's ShadowLightDirection (the direction the light travels, game space), as
+            # fir_world.py writes the captured one: the node's +Z points at the sun, game -> glTF by F. CrownJewel's
+            # (0.714145, -0.680362, -0.164636) is exactly the captured grid's sun; without it the viewer's default sun
+            # lit the capture-free grid from the other side (the silver Mazda's back half as bright: 24.8 vs 45.8).
+            z = np.diag([1.0, 1.0, -1.0]) @ (-shadow_dir / np.linalg.norm(shadow_dir))
+            x = np.cross([0.0, 1.0, 0.0], z)
+            x /= np.linalg.norm(x)
+            y = np.cross(z, x)
+            L = np.eye(4)
+            L[:3, 0], L[:3, 1], L[:3, 2] = x, y, z
+            nodes.append({'extensions': {'KHR_lights_punctual': {'light': 0}}, 'matrix': L.T.ravel().tolist(), 'name': 'sun'})
+            gltf['extensions'] = {'KHR_lights_punctual': {'lights': [{'type': 'directional', 'color': [1.0, 0.95, 0.86],
+                                                                       'intensity': 3.0, 'name': 'sun'}]}}
+            gltf['extensionsUsed'] = gltf.get('extensionsUsed', []) + ['KHR_lights_punctual']
+            print(f'sun from TrackSettings.xml: ShadowLightDirection {shadow_dir.tolist()}')
     gltf['scenes'] = [{'nodes': list(range(len(nodes)))}]
     blob = b''.join(bin_parts)
     gltf['buffers'] = [{'byteLength': len(blob), 'uri': os.path.basename(os.path.splitext(out)[0]) + '.bin'}]
