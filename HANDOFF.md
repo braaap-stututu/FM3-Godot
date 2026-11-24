@@ -93,7 +93,7 @@ works as long as the two folders stay side by side. The table uses the first PC'
    **That PC's GPU is an RX 6650 XT (RDNA 2, gfx1032, driver 26.11.2), not the 7900 XTX**: fps and GPU times are not
    comparable with the first PC's numbers, and RGA runs need `-Asic gfx1032`.
 5. Check: `powershell -ExecutionPolicy Bypass -File frame-ir\tools\rebuild_ladera.ps1 -Compare` should end with
-   `compare: mean |diff| r 20.3 g 19.4 b 18.1`. Then `frame-ir\fly-track.cmd`.
+   `compare: mean |diff| r 20.0 g 18.9 b 17.8` (2026-11-24). Then `frame-ir\fly-track.cmd`.
 
 ## 4. Paths (relative since 2026-11-22)
 
