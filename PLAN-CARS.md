@@ -120,13 +120,21 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
   18.7). The baked track shader still gets its colour as a Color (track materials mostly 1.0; not changed, it would
   move the tuned track match). **Open:** the player's custom paint (profile); calipers (need the wheel's
   non-spinning frame) not in the library.
-- **Also 2026-11-24 afternoon:** the library's lamp list is the exporter's (LAMP_MATERIALS): reflectors are on the
+- **Also 2026-11-24 afternoon:** the library's lamp list is the exporter's (`LAMP_MATERIALS`): reflectors are on the
   lights texture (the CR-X's red CR-X VTEC panel came out white from nodamage; swap crop 12.3/24.4/9.7 ->
-  7.2/17.9/3.6). **The player's custom paint is the livery layer:** FM3_LIVE_DUMP_CARS=1 (FM3-ReGPU) dumped the
+  7.2/17.9/3.6). **The player's custom paint is the livery layer:** `FM3_LIVE_DUMP_CARS=1` (FM3-ReGPU) dumped the
   eight grid cars' objects: each holds its database colour (Combo_Colors RGB, float4) at +0x9A0, +0xA30, +0xAC0 and
   +0xC70, and the player's yellow CR-X holds red (its colour 1) there too. So the yellow is painted into the livery
   texture the game builds at run time; showing it needs that texture streamed (or read from the profile's livery),
   not a colour.
+- **Road lines (rdline_blnd_spec_opac_3, the largest shader without a recipe: 478 meshes on CrownJewel, 10.8% of all
+  meshes are such multi-texture shaders, `out\manifest\track_audit.md`):** Godot draws them as solid white (the grid
+  boxes), the game as worn grey lines. The captured ps 94e08de1 (`fir_disasm.py ..\work\fir\grid-single-1f.fir
+  94e08de1b572422d --pixel`, `fm3_shaders.py` on the Ladera capture: 44 draws) computes colour = lerp(c0, t0, t1):
+  c0 = material parameter 0 (0.157 grey, the asphalt), t0 = the line texture (material slot 0, UV0), t1 = a wear mask
+  at UVs built from constants c120-c122 (hardware slot 1; the capture study could not match it to a .pvs entry, its UV
+  transform differs per draw); the lightmap at UV1. Next for a recipe: identify c120-c122 (world-projected wear?) and
+  t1's texture; blending by t0's alpha alone changed nothing measurable (crop 21.4 -> 21.6, reverted).
 **Revised order from here:** phase 1 (structural reader) first, with LOD0 bodies and the file's normals as its first
 use (finding 1-2, and a likely cause of the paint's stripe on the Eclipse); then phase 0's fxobj and shadersettings
 reading to replace the fitted glass and paint numbers; then the cockpit (phase 4); wheel-zip models and lights after.
