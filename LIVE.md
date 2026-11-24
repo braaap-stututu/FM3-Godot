@@ -173,7 +173,12 @@ The user's last question was whether to chase the remaining uneven steps or call
    (captured Ladera: 20.7-20.8); then crowd cards without lightmaps, road lines blended by their mask (fitted colour 0.6),
    library wheels / calipers: **20.4 / 20.2 / 18.5** (game and Godot pictures line up within 1 px in all three views:
    the rest is shading and content: HUD, the player's paint, crowd, lighting); the crowd from the .crowd files (FM3-FORMATS) 20.4 / 20.1 / 18.5; the paint summed in gamma space with refitted
-   reflections (PLAN-CARS) 20.2 / 19.9 / 18.2.
+   reflections (PLAN-CARS) 20.2 / 19.9 / 18.2; the game's liveries (below) 19.9 / 18.6 / 18.2.
+   **Liveries (custom paint):** `tools/live_liveries.py <FM3 run dir> <gamedb.slt> out\cars\live_liveries <viewer log>`
+   while a race is loaded: one traced frame through the debug server, every car-paint draw's t0 read from guest memory
+   (peek) and decoded, named by its paint colour (c118 = the car's Combo_Colors RGB, the cars from the viewer's FM3N
+   log); the viewer polls the folder and lays each livery over its car's paint colour. 8 cars in ~8 s; the player's
+   yellow CR-X 35.0 -> 12.5. Needs ReGPU's debug server (play.cmd has it on).
    Viewer speed there (RX 6650 XT, 720p, MSAA 4x, game uncapped beside it; `live_smooth.ps1 -Gltf`, 30 s): 32 fps,
    the same as the captured Ladera (33); the live reflection cube costs ~40%: `--live-cube-faces 2` 40 fps, `1` 45,
    `--live-cube 0` 52 (faces not rendered keep their last picture: reflections lag; default stays 6). With the game

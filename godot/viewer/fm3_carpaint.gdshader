@@ -63,6 +63,9 @@ vec3 to_linear(vec3 c) {
 // game's is ~204 (a 0.5 lit paint + a 0.3 reflection), the cause of the grid cars' missing bright tenth. With
 // gamma_sum the albedo goes to light() as a varying (ALBEDO stays white) and the whole sum is linearised once.
 uniform bool gamma_sum = true;
+// A livery from the running game (tools/live_liveries.py: the paint draw's t0): laid over the paint colour by its alpha,
+// as the game's shader does (its custom paint is in there; albedo_color = the database colour x PaintScale).
+uniform bool livery = false;
 // TrackSettings SHLighting SHEnvMapTop / SHEnvMapBottom: the reflection weighted by how far the surface faces up
 uniform float env_top = 1.0;
 uniform float env_bottom = 0.0;
@@ -75,7 +78,7 @@ varying vec3 paint_gamma;
 
 void fragment() {
 	vec4 t = texture(albedo_tex, UV);
-	paint_gamma = t.rgb * albedo_color.rgb;
+	paint_gamma = livery ? mix(albedo_color.rgb, t.rgb, t.a) : t.rgb * albedo_color.rgb;
 	// (the texture is read raw: gamma-space values, as the game's shader works with them)
 	// (library cars: their badge layer is composited over white by tools/fm3_car_library.py, so the same product)
 	ALBEDO = gamma_sum ? vec3(1.0) : to_linear(paint_gamma);

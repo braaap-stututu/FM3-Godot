@@ -1128,6 +1128,53 @@ func _update_mirrors(player, in_car: bool, eye: Transform3D) -> void:
 		(mr["mat"] as ShaderMaterial).set_shader_parameter("active", true)
 
 
+# Liveries from the running game (tools/live_liveries.py -> out/cars/live_liveries/<car>.png + index.json): checked
+# about once a second; each car's body paint takes its livery (fm3_carpaint.gdshader livery) once it has a library
+# model. The player's custom paint lives only there (the car object holds the database colour, PLAN-CARS).
+var _livery_mtime := 0
+var _livery_next_ms := 0
+var _livery_applied := {}
+
+
+func _poll_liveries() -> void:
+	if Time.get_ticks_msec() < _livery_next_ms or _gltf_path == "":
+		return
+	_livery_next_ms = Time.get_ticks_msec() + 1000
+	var dir := _gltf_path.get_base_dir().path_join("../cars/live_liveries").simplify_path()
+	var idx := dir.path_join("index.json")
+	if not FileAccess.file_exists(idx):
+		return
+	var mt := FileAccess.get_modified_time(idx)
+	if mt != _livery_mtime:
+		_livery_mtime = mt
+		_livery_applied.clear()
+	var data = JSON.parse_string(FileAccess.get_file_as_string(idx))
+	if not (data is Dictionary):
+		return
+	for car in _car_names:
+		var nm := String(_car_names[car]["name"]).to_lower()
+		if _livery_applied.has(car) or not data.has(nm) or not _cars_with_parts.has(car):
+			continue
+		var img := Image.load_from_file(dir.path_join(nm + ".png"))
+		if img == null:
+			continue
+		img.generate_mipmaps()
+		var tex := ImageTexture.create_from_image(img)
+		var n := 0
+		for p in _car_parts:
+			if p[1] != car or not String((p[0] as Node).name).begins_with("carbin_"):
+				continue
+			var mi := p[0] as MeshInstance3D
+			for s in mi.get_surface_override_material_count():
+				var sm := mi.get_surface_override_material(s) as ShaderMaterial
+				if sm != null and sm.shader == CARPAINT_SHADER:
+					sm.set_shader_parameter("albedo_tex", tex)
+					sm.set_shader_parameter("livery", true)
+					n += 1
+		_livery_applied[car] = true
+		print("world_view: live car %08X (%s): livery from the game on %d paint surfaces" % [car, nm, n])
+
+
 func _cars_pending() -> bool:
 	if not _library_queue.is_empty():
 		return true
@@ -1530,6 +1577,7 @@ func _live_step() -> void:
 			latest = b
 	if not _library_queue.is_empty() and _car_attached:
 		_attach_library_car(_library_queue.pop_front())
+	_poll_liveries()
 	if not _car_attached and _car_first_ms > 0 and Time.get_ticks_msec() - _car_first_ms > 500:
 		_attach_cars()
 	var main_view := _live_dirs.is_empty() or _live_director == _live_dirs[0]
