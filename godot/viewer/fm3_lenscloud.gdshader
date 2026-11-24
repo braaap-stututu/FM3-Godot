@@ -5,7 +5,8 @@
 // lamp shines (glow: brake / reverse) so a lit lamp still glows through. Fitted on the grid's tail lamps (5 boxes: Eclipse,
 // Mazda, CR-X): 14.3 -> 10.9 with cloud 0.9, tint 0.15, grey 0.01 and the reflection pass at 0.01. (A blurred copy of
 // the lamp behind, from the screen texture, in the layer: 11.2-14.5, and a screen copy each frame: dropped. Open: the
-// Eclipse's amber signal areas show amber where the game's are dark red-grey.)
+// Eclipse's amber signal areas show amber where the game's are dark red-grey: amber_desat 0.6 brings the left one from
+// 34/24/8 to 26/23/16, game 24/13/12.)
 shader_type spatial;
 render_mode blend_mix, cull_back, depth_draw_never, unshaded, ambient_light_disabled, specular_disabled;
 
@@ -14,6 +15,7 @@ uniform float cloud = 0.9;  // opacity of the diffusing layer
 uniform float tint = 0.15;  // how much of the lens colour it carries ...
 uniform float grey = 0.01;  // ... over this grey (gamma)
 uniform float glow = 0.0;
+uniform float amber_desat = 0.6;  // amber lenses (green > 0.25): the plastic's colour towards grey
 
 vec3 to_linear(vec3 c) {
 	c = max(c, vec3(0.0));
@@ -21,6 +23,10 @@ vec3 to_linear(vec3 c) {
 }
 
 void fragment() {
-	ALBEDO = to_linear(glass_color.rgb * tint + vec3(grey));
+	vec3 gc = glass_color.rgb;
+	if (gc.g > 0.25 && gc.b < 0.2) {
+		gc = mix(gc, vec3(dot(gc, vec3(0.333))), amber_desat);
+	}
+	ALBEDO = to_linear(gc * tint + vec3(grey));
 	ALPHA = cloud * (1.0 - 0.8 * clamp(glow, 0.0, 1.0));
 }
