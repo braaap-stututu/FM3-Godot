@@ -33,6 +33,7 @@ import fm3_track  # noqa: E402
 import fm3_tex  # noqa: E402
 import fm3_pvs  # noqa: E402
 import fm3_families  # noqa: E402
+import fm3_trackshader  # noqa: E402
 import fm3_car  # noqa: E402
 import fm3_carbin  # noqa: E402
 import fir_read as fr  # noqa: E402
@@ -829,6 +830,8 @@ def main():
         for i in pv['instances']:
             by_model.setdefault(i['model'], []).append(i)
     bix_cache = {}
+    # the track's own shader files (shaders/track/<NAME>.fxobj), by lower-case name
+    shader_files = {os.path.basename(f_)[:-6].lower(): f_ for f_ in glob.glob(os.path.join(src, 'shaders', 'track', '*.fxobj'))}
 
     def bix_png(tid):
         # Decode _0x<tid>.bix (+ _B) to a PNG in tex_out; the file name, or None.
@@ -1068,6 +1071,8 @@ def main():
             name = me['material'] or 'unnamed'
             # (files without a material table, AmalfiGP's sea: the shader from the file's shader blocks, file_tex)
             shader_ = (mesh_mat.get(me['index_offset']) or ('',))[0] or (file_tex.get(name) or ('', ''))[1]
+            if (me['name'] or '').upper().startswith('OCCLUD') or name.upper().startswith('OCCLUD'):
+                continue  # occlusion geometry (RoadAmerica's OCCLUD_RdAm_*, Sebring, Mugello): never drawn, a grey wall
             if shader_.startswith('flare_') or (me['name'] or '').startswith('LGHT_'):
                 continue  # sun flare (a camera-facing effect) and light volumes/cookies (no material): not drawn as is
             if shader_.startswith('tree_') and me['stride'] == 24:
@@ -1112,10 +1117,19 @@ def main():
                         rec = {'factor': [0.6, 0.6, 0.6, 1], 'blend': 'BLEND'}
                     uv, base_png = me['uv0'].astype(np.float32), png
                     mm_p = mesh_mat.get(me['index_offset'])
-                    if sh.startswith('diff_spec_ovly') and mm_p and mm_p[1].get('params'):
-                        # diff_spec_ovly_2 (the grandstand canopy's burlap: 15 x 15; 60 x 60 on others): the base texture at
-                        # UV0 x parameter 0's xy; unscaled, its weave showed as big grey blotches
-                        uv = uv * np.array(mm_p[1]['params'][0][:2], np.float32)
+                    terms = fm3_trackshader.simple_terms(shader_files.get(sh, '')) if shader_files.get(sh) else {}
+                    pr_ = mm_p[1].get('params') if mm_p else None
+                    if pr_ and not sh.startswith('rdline_'):
+                        # The base texture's terms from the shader's own code (tools/fm3_trackshader.py): UV0 x P[k].xy (the
+                        # TextureMap uvOS scale; diff_spec_ovly_2's canopy burlap 15 x 15: unscaled, big grey blotches) and
+                        # the colour x P[k].c (diff_spec_1 & co: P[0].z, e.g. 0.8-0.9)
+                        if terms.get('uv0') is not None and terms['uv0'] < len(pr_):
+                            uv = uv * np.array(pr_[terms['uv0']][:2], np.float32)
+                        if terms.get('gain') and terms['gain'][0] < len(pr_):
+                            g_ = float(pr_[terms['gain'][0]][terms['gain'][1]])
+                            if 0.0 < g_ < 4.0:
+                                rec = dict(rec, factor=[rec['factor'][0] * g_, rec['factor'][1] * g_, rec['factor'][2] * g_,
+                                                        rec['factor'][3]])
                     from_files += 1
             if uv is None and texmap.get(name):
                 rec = texmap[name]

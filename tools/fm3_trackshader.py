@@ -67,6 +67,45 @@ def describe(c):
     return lines
 
 
+def plain_ps(cs):
+    """The plain pixel shader of a file's containers: no shadow-map variant, not a depth / lightmap-only pass."""
+    ps = [c for c in cs if c['kind'] == 'ps']
+    full = [c for c in ps if 'TimeGain' not in [k['name'] for k in c['constants']] and len(c['words']) >= 30]
+    return min(full, key=lambda c: len(c['constants'])) if full else None
+
+
+_SIMPLE = {}
+
+
+def simple_terms(path):
+    """The base texture's terms in a single-texture shader, read from its plain pixel shader's code: {'uv0': param
+    index (UV0 * P[k].xy: c120.zw * ck.xy, the TextureMap uvOS scale), 'gain': (param index, component) (the base
+    texture times P[k].c)}; {} when the code has neither. c0..cN are the material's parameter vectors."""
+    if path in _SIMPLE:
+        return _SIMPLE[path]
+    out = {}
+    try:
+        c = plain_ps(containers(open(path, 'rb').read()))
+        lines = fir_disasm.disasm(c['words']) if c else []
+    except Exception:
+        lines = []
+    import re
+    for ln in lines:
+        m = re.search(r'mul r\d+\.\w+ = c120\.\w+, c(\d+)\.\w+', ln)
+        if m and int(m.group(1)) < 100 and 'uv0' not in out:
+            out['uv0'] = int(m.group(1))
+    t0 = None
+    for ln in lines:
+        m = re.search(r'tfetch r(\d+)\.\w+ <- t0 ', ln)
+        if m:
+            t0 = m.group(1)
+        m = re.search(r'mul r\d+\.\w+ = r(\d+)\.xyzz, c(\d+)\.([xyzw])\3\3\3,', ln)
+        if t0 is not None and m and m.group(1) == t0 and int(m.group(2)) < 100 and 'gain' not in out:
+            out['gain'] = (int(m.group(2)), 'xyzw'.index(m.group(3)))
+    _SIMPLE[path] = out
+    return out
+
+
 def main():
     a = [x for x in sys.argv[1:] if not x.startswith('--')]
     if not a:

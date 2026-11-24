@@ -55,8 +55,21 @@ void fragment() {
 		if (vclr) {
 			t0 *= COLOR.rgb;
 			t1 *= mix(vec3(1.0), tint1, COLOR.a);
+		} else {
+			t1 *= tint1;  // (the second layer's own tint: shldr_blnd_3's P[1]; 1 in the older recipes)
 		}
 		a = mix(t0, t1, m);
+	} else if (mode == 11 || mode == 12) {
+		// road_2blnd_uv3_3 (11) / road_2blnd_3 (12), disassembled
+		vec4 g = texture(albedo_tex, UV * scale0);
+		vec3 c = texture(tex1, uv23.xy * scale1).rgb;
+		float v = texture(tex2, uv23.zw * scale2).g;
+		a = mode == 11 ? mix(g.a * tint0, (g.rgb + tint1) * c, v) : g.rgb * tint0 + v * c * (g.rgb + tint1 - g.rgb * tint0);
+	} else if (mode == 10) {
+		// road_3clr_blnd_2 (disassembled): grain * tint0 + v * (grain + tint1 - grain * tint0), v = t1.rgb * t1.a
+		vec3 g = texture(albedo_tex, UV * scale0).rgb;
+		vec4 t1 = texture(tex1, uv23.xy * scale1);
+		a = g * tint0 + t1.rgb * t1.a * (g + tint1 - g * tint0);
 	} else if (mode == 9) {
 		// three layers by a value texture (terr_blnd_spec_norm_5, disassembled): lerp(lerp(A, B, v.g), C, v.b) * v.r * tint0
 		vec3 v = texture(tex2, uv23.zw).rgb;

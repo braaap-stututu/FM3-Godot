@@ -41,6 +41,7 @@ PAINT = re.compile(r'^shldr_4clr_blnd_mask')
 REFL = re.compile(r'^diff_spec_refl_(norm_4|3)$')
 OVLY = re.compile(r'^road_diff_spec_ovly_2$')
 BLEND3 = re.compile(r'^terr_blnd_spec_norm_5$')
+ROAD3 = re.compile(r'^road_3clr_blnd_2$')
 SHEEN = (0.1, 0.13, 0.17)
 
 
@@ -78,6 +79,35 @@ def recipe(shader, params, stride, slots):
                 'scale0': list(params[0][1:3]), 'scale1': [1.0, 1.0], 'tint0': [params[0][0]] * 3,
                 'tint1': list(params[2][:3]) if len(params) > 2 else [1.0, 1.0, 1.0],  # reflection tint (teal glass)
                 'slots': [slots[0], slots[0]]}
+    if shader in ('shldr_blnd_3', 'terr_blnd_3', 'terr_blnduv2_spec_3') and len(slots) >= 3 and min(slots[:3]) >= 0             and len(params) >= 3 and stride >= 28:
+        # Disassembled (tools/fm3_trackshader.py): albedo = lerp(A, B, value) with per-shader parameters; UV pairs: A 16,
+        # B 20 (terr_blnduv2: 16), value 24 (terr_blnduv2: 20), lightmap 24
+        #   shldr_blnd_3: A * P[0].xy, B * P[2].xy tinted P[1].rgb, all x P[0].z (RoadAmerica, Sebring, Tsukuba, RoadAtlanta)
+        #   terr_blnd_3 / terr_blnduv2_spec_3: A * P[1].xy tinted P[0].rgb, B * P[2].xy (LagunaSeca, AmalfiGP, Motegi)
+        if shader == 'shldr_blnd_3':
+            g = params[0][2]
+            sc0, sc1, t0, t1 = params[0][:2], params[2][:2], [g] * 3, [params[1][i] * g for i in range(3)]
+        else:
+            sc0, sc1, t0, t1 = params[1][:2], params[2][:2], list(params[0][:3]), [1.0, 1.0, 1.0]
+        uv2 = shader == 'terr_blnduv2_spec_3'
+        return {'mode': 'blend', 'src0': 16, 'src1': 16 if uv2 else 20, 'mask': 20 if uv2 else 24, 'lm': 24, 'vclr': False,
+                'scale0': list(sc0), 'scale1': list(sc1), 'tint0': t0, 'tint1': t1, 'slots': slots[:3]}
+    if shader in ('road_2blnd_uv3_3', 'road_2blnd_3') and len(slots) >= 3 and min(slots[:3]) >= 0 and len(params) >= 4:
+        # Disassembled: grain g (slot 0) at world (x, z) * P[1].x, colour c (slot 1) at UV 16 * P[1].yz, value v = slot
+        # 2's green at the lightmap's UV * P[3].xy (uv3_3: 16, else 20)
+        #   road_2blnd_uv3_3 (RoadAmerica): lerp(g.a * P[0], (g + P[2]) * c, v)
+        #   road_2blnd_3 (RoadAtlanta, Sebring, Sunset): g * P[0] + v * c * (g + P[2] - g * P[0])
+        uv3 = shader == 'road_2blnd_uv3_3'
+        return {'mode': 'road2u' if uv3 else 'road2', 'src0': 'xz', 'src1': 16, 'mask': 16 if uv3 else 20,
+                'lm': 16 if uv3 else 20, 'vclr': False, 'scale0': [params[1][0]] * 2, 'scale1': list(params[1][1:3]),
+                'scale2': list(params[3][:2]), 'tint0': list(params[0][:3]), 'tint1': list(params[2][:3]), 'slots': slots[:3]}
+    if ROAD3.match(shader) and len(slots) >= 2 and min(slots[:2]) >= 0 and len(params) >= 3 and stride >= 20:
+        # road_3clr_blnd_2 (MapleValley's asphalt; disassembled): grain t0 at world (x, z) * P[1].x, v = t1.rgb * t1.a
+        # (slot 1 at UV 16 * P[1].yz, the lightmap's UV); albedo = grain * P[0] + v * (grain + P[2] - grain * P[0]): dark
+        # asphalt (P[0] 0.15) with lighter patches; drawn as the bare grain it was a garish leaf-litter picture
+        return {'mode': 'road3', 'src0': 'xz', 'src1': 16, 'mask': None, 'lm': 16, 'vclr': False,
+                'scale0': [params[1][0]] * 2, 'scale1': list(params[1][1:3]), 'tint0': list(params[0][:3]),
+                'tint1': list(params[2][:3]), 'slots': slots[:2]}
     if BLEND3.match(shader) and len(slots) >= 4 and min(slots[:4]) >= 0 and len(params) >= 2 and stride >= 28:
         # terr_blnd_spec_norm_5 (AmalfiGP's cliffs and slopes; disassembled from TERR_BLND_SPEC_NORM_5.fxobj): v = the
         # blend value texture (slot 2) at UV byte 20; albedo = lerp(lerp(A, B, v.g), C, v.b) * v.r * P[0].rgb * P[2].z,
