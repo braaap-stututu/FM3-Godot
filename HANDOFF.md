@@ -1,4 +1,4 @@
-# HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-23)
+# HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-24)
 
 Read this first on a new machine or in a new session. Then **`LIVE.md`** (the current work: running the game live
 into Godot), `M1.md` (the detailed log of the offline pipeline, newest work at the end of stage 2), `FM3-FORMATS.md`
@@ -23,12 +23,27 @@ without a capture (`tools/build_track.ps1 -Track <Name>`), and cars come from a 
 (FM3N, `tools/fm3_car_library.py`): the live mirror runs on a capture-free scene. Afternoon of 2026-11-24: library
 cars match the captured ones (mirrored nodes + Color-to-vec4 linearisation, PLAN-CARS), capture-free tracks get the
 game's sky textures and sun (TrackSettings `ShadowLightDirection`), and the live capture-free CrownJewel grid
-measures **20.4 / 20.1 / 18.5** against the game (the captured Ladera scene now 20.0 / 19.2 / 18.1; road lines blended
-and fitted, crowd cards unlit by lightmaps and the .crowd people, library wheels / calipers fixed); the in-car view
-17.5 / 17.9 / 17.3 (was 34.8 / 36.3 / 36.7: cockpit glass, cockpit light, in-car exposure, gauges; live mirrors). Open: the player's custom paint is the livery
-layer (a texture, not a colour: FM3N can't carry it), the crowd's 3D figures near the camera (sprite cards from the
-.crowd files now), the sea's colour (AmalfiGP, not
-fitted), the other multi-texture shaders without a recipe (shoulders, terrain blends: track_audit.md). Keep the physical monitor on (a virtual display alone gives Vulkan -13 on this PC).
+measured 20.4 / 20.1 / 18.5 against the game by the afternoon.
+
+**Evening of 2026-11-24 (where we stopped):** the live capture-free CrownJewel grid **19.9 / 18.4 / 18.0**, the captured
+Ladera live **19.8 / 18.8 / 17.7** (in-car 19.2 / 18.9 / 17.6). Done that evening (details in PLAN-CARS "Paint
+research" and LIVE.md stage A item 5):
+- car paint: the light summed in gamma space like the game, the reflection weighted by how far a surface faces up, the
+  sun's diffuse as n.l^2 (fitted from debug normal / albedo renders), metallic's second highlight; per-car paint 16.8 ->
+  14.9 offline;
+- the player's custom paint: `tools/live_liveries.py` reads every car's livery texture from the running game through
+  the debug server and the viewer lays it over the car's colour (the CR-X yellow, 35.0 -> 10.4 live);
+- tail-light lenses cloudy (`fm3_lenscloud.gdshader`), the reflection pass at 0.01;
+- glass: blended in gamma space (screen texture: ~10% viewer fps, 32 -> 29), the player's glass with the dim
+  reflection of the game's per-frame cube, AI glass 0.25;
+- **the frozen grid skipped the per-car update** (no drawn-camera frames there): has_live, brake lights, the in-car
+  switch and wheel blur now run on both paths (`_update_live_cars`);
+- track paint stripes x1.1; plastic2 matte.
+Open: the AI cars' windows lack the game's sky blue (the Eclipse 26), the Eclipse's amber signal areas, the pit wall
+(barr_*_nolm: face brighter and warmer in the game, cap darker), the distant scene brighter than the game's in the
+darks (not the fog: TrackSettings' fog is light blue), the crowd's 3D figures near the camera, the sea's colour
+(AmalfiGP), the other multi-texture shaders without a recipe (track_audit.md). Keep the physical monitor on (a virtual
+display alone gives Vulkan -13 on this PC).
 
 ## 1. What the project is
 
