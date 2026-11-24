@@ -70,6 +70,13 @@ var _library_queue := []  # cars waiting for their library model
 # its cockpit has no directional light (TrackSettings SHCockpitDir 0) and the view a higher exposure. Cockpit meshes
 # sit on their own render layer the sun leaves out, and the exposure rises in-car by IN_CAR_EXPOSURE.
 const COCKPIT_LAYER := 8
+const STATIC_LAYER := 16  # (the lightmapped track: casts shadows only for the DYNLIT sun)
+const DYNLIT_LAYER := 32  # (the track's sun-lit surfaces, fm3_dynlit: lit by their own sun)
+# fm3_dynlit for the track's unlightmapped surfaces with static shadows from a second sun: opt-in (FM3_DYNLIT=1). Measured
+# 2026-11-24: offline grid 19.5/18.6/17.6 -> 18.7/18.4/18.2, live 19.9/18.4/18.1 -> 19.1/18.2/18.7 (sunlit walls right,
+# blue up), but the viewer 29 -> 23 fps (the static track in the second shadow map); the shader alone without the second
+# sun scored the same average as Godot's lighting.
+var DYNLIT := OS.get_environment("FM3_DYNLIT") != ""
 var CABIN_K := float(OS.get_environment("FM3_CABIN_K")) if OS.get_environment("FM3_CABIN_K") != "" else 1.0
 const COCKPIT_GAIN := 1.0  # (fm3_cockpit.gdshader's light scale)
 # Cockpit mirrors (fm3_mirror.gdshader): one small viewport each, rendered only while the player's car is seen in-car.
@@ -254,6 +261,7 @@ func _init() -> void:
 	var baked_no_tex := 0
 	var glass_set := 0
 	var rim_set := 0
+	var dynlit_set := 0
 	var baked_gain := 1.0  # (the baked shader evaluates FM3's own lightmap formula; 1 = as the game)
 	var grey_unshaded := StandardMaterial3D.new()
 	grey_unshaded.albedo_color = Color(0.5, 0.5, 0.5)
@@ -305,6 +313,7 @@ func _init() -> void:
 				# FM3 multi-texture shader family (tools/fm3_families.py, fm3_blend.gdshader)
 				mi.set_surface_override_material(s, _blend_material(m, fm3_extras, gltf_path))
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				mi.set_meta("fm3_static", true)
 				baked += 1
 				continue
 			m = m.duplicate()
@@ -330,6 +339,7 @@ func _init() -> void:
 					mi.sorting_offset = -1.0  # (decals over the ground they lie on)
 				mi.set_surface_override_material(s, sm)
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				mi.set_meta("fm3_static", true)
 				baked += 1
 				if m.albedo_texture == null:
 					baked_no_tex += 1
@@ -397,7 +407,32 @@ func _init() -> void:
 				gm.set_shader_parameter("gain", GAUGE_GAIN)
 				mi.set_surface_override_material(s, gm)
 				continue
+			if lit and DYNLIT and m.albedo_texture != null and m.shading_mode == BaseMaterial3D.SHADING_MODE_PER_PIXEL and not _blended(m) \
+					and not _is_car_mesh(mi) and not String(mi.name).begins_with("draw") and not String(mi.name).begins_with("skydome_") \
+					and m.resource_name != "fm3_shadow_blob":
+				# the track's sun-lit surfaces without a lightmap: the game's formula (fm3_dynlit.gdshader)
+				var dm := ShaderMaterial.new()
+				dm.shader = load("res://viewer/fm3_dynlit.gdshader")
+				dm.set_shader_parameter("albedo_tex", m.albedo_texture)
+				dm.set_shader_parameter("albedo_color", _vec4(m.albedo_color))
+				dm.set_shader_parameter("use_vcol", m.vertex_color_use_as_albedo)
+				if m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
+					dm.set_shader_parameter("alpha_cut", m.alpha_scissor_threshold)
+				mi.set_surface_override_material(s, dm)
+				mi.set_meta("fm3_dyn", true)
+				dynlit_set += 1
+				continue
 			mi.set_surface_override_material(s, m)
+	if lit and DYNLIT:
+		# Static shadows for the sun-lit surfaces (fm3_dynlit): the lightmapped track casts for a second sun that lights only
+		# them (DYNLIT_LAYER, set below with the main sun); the main sun ignores static casters (their shadows are in the
+		# lightmaps). Meshes mixing both kinds stay with the main sun.
+		for mi2 in scene.find_children("*", "MeshInstance3D", true, false):
+			if mi2.has_meta("fm3_static"):
+				mi2.layers = STATIC_LAYER
+				mi2.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			elif mi2.has_meta("fm3_dyn"):
+				mi2.layers = DYNLIT_LAYER
 	if id_mode:
 		var fa := FileAccess.open(_out + ".ids.txt", FileAccess.WRITE)
 		fa.store_string("
@@ -470,7 +505,8 @@ func _init() -> void:
 		probe.position = cam_o + Vector3(cam_f.x, 0, cam_f.z).normalized() * 15.0 + Vector3(0, 6.0, 0)
 		root.add_child(probe)
 	var sun := DirectionalLight3D.new()
-	sun.light_cull_mask = 0xFFFFF & ~COCKPIT_LAYER
+	sun.light_cull_mask = 0xFFFFF & ~COCKPIT_LAYER & ~DYNLIT_LAYER
+	sun.shadow_caster_mask = 0xFFFFF & ~STATIC_LAYER
 	sun.rotation_degrees = Vector3(-sun_elev, sun_azim, 0)
 	var glights := scene.find_children("*", "DirectionalLight3D", true, false)
 	if not glights.is_empty():  # the capture's sun (fir_world.py writes FM3's sun direction)
@@ -494,6 +530,13 @@ func _init() -> void:
 		print("world_view: %d car glass surfaces with the game's own glass settings" % glass_set)
 	sun.directional_shadow_max_distance = 250.0
 	root.add_child(sun)
+	if lit and DYNLIT and dynlit_set > 0:
+		# the sun of the track's sun-lit surfaces (fm3_dynlit), its shadows cast by everything incl. the static track
+		var sun2 := sun.duplicate() as DirectionalLight3D
+		sun2.light_cull_mask = DYNLIT_LAYER
+		sun2.shadow_caster_mask = 0xFFFFF & ~COCKPIT_LAYER
+		root.add_child(sun2)
+		print("world_view: %d sun-lit track surfaces (fm3_dynlit) with static shadows" % dynlit_set)
 	print("world_view: camera ", cam.global_transform if cam.is_inside_tree() else cam.transform, " parent ", cam.get_parent().name)
 	print("world_view: %d surfaces lit by FM3's baked lightmaps (%d without an albedo texture)" % [baked, baked_no_tex])
 	print("world_view: %d mesh instances, camera fov %.2f near %.3f" % [meshes, cam.fov, cam.near])
