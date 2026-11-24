@@ -963,7 +963,8 @@ def main():
             if not np.all(np.isfinite(P0)):
                 continue
             name = me['material'] or 'unnamed'
-            shader_ = (mesh_mat.get(me['index_offset']) or ('',))[0]
+            # (files without a material table, AmalfiGP's sea: the shader from the file's shader blocks, file_tex)
+            shader_ = (mesh_mat.get(me['index_offset']) or ('',))[0] or (file_tex.get(name) or ('', ''))[1]
             if shader_.startswith('flare_') or (me['name'] or '').startswith('LGHT_'):
                 continue  # sun flare (a camera-facing effect) and light volumes/cookies (no material): not drawn as is
             if shader_.startswith('tree_') and me['stride'] == 24:
@@ -995,11 +996,13 @@ def main():
             # FM3 shader families (fm3_families.py): multi-texture terrain, road, paint, curbs, from the files; they replace
             # the capture's single (composited) texture too, so the area the frame saw looks like the rest of the track.
             fam, fam_ex = None, None
-            if shader_.startswith('lake_'):
-                # Animated reflective water (lake_anim_norm_opac_refl_5): a dark glossy surface reflecting the sky.
+            if shader_.startswith(('lake_', 'ocean_')):
+                # Animated reflective water (lake_anim_norm_opac_refl_5; the sea: ocean_anim_norm_refl_5, AmalfiGP, whose
+                # base slot holds a small reflection snapshot, pale cyan as a texture): a dark glossy surface reflecting
+                # the sky. (The sea's colour not fitted against the game yet.)
                 rec = {'factor': [0.06, 0.09, 0.09, 0.92], 'blend': 'BLEND', 'roughness': 0.05, 'water': True}
                 uv, base_png = None, None
-            mm_ = None if shader_.startswith('lake_') else mesh_mat.get(me['index_offset'])
+            mm_ = None if shader_.startswith(('lake_', 'ocean_')) else mesh_mat.get(me['index_offset'])
             if mm_ is not None:
                 r_ = fm3_families.recipe(mm_[0], mm_[1]['params'], me['stride'], mm_[1]['slots'])
                 captured = texmesh.get(f"{os.path.basename(path)}@{me['index_offset']}") is not None
