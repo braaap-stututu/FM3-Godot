@@ -15,6 +15,15 @@ the in-car camera shows the car's cockpit model with working-looking gauges (CR-
 frame-ir repo now has a remote: GitHub `braaap-stututu/FM3-Godot`, branch `live-mirror` (pushing it is allowed);
 FM3-ReGPU and ReGPU are still local only.
 
+**2026-11-24 (second PC), see `PLAN-CARS.md` "Progress, 2026-11-24" and `LIVE.md`:** car materials from the game's
+own table (`Media\Cars\ShaderSettings`), brake / reverse lights, wheels and brakes from the files, steering wheel
+modes (F7), rpm and steering / brake input in the stream (FM3E); the viewer loads textures GPU-compressed (8 GB card)
+and FM3 runs at 1280x720. Other tracks: all 17 parse completely (`tools/fm3_track_audit.py`), any track builds
+without a capture (`tools/build_track.ps1 -Track <Name>`), and cars come from a car library named by the game
+(FM3N, `tools/fm3_car_library.py`): the live mirror runs on a capture-free scene. Open first: library cars render too
+dark (PLAN-CARS), the sky of capture-free tracks is grey. Keep the physical monitor on (a virtual display alone gives
+Vulkan -13 on this PC).
+
 ## 1. What the project is
 
 A system that runs as little of an old console game as possible and hands its rendering to a modern renderer through

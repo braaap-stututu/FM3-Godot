@@ -97,6 +97,20 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
   (AmalfiGP, New York, Suzuka, Le Mans rendered); the sky dome follows the camera (`skydome_` nodes) but draws grey
   without a capture: its textures are not in its model's slots (the .pvs texture table starts with the sun flare
   and a pale strip; not settled).
+- **Cars without the capture (2026-11-24 afternoon):** each car object's **+0xC44** points at its shader settings
+  list `...ShaderSettings\<Normal|Metallic>.xml;...\Cars\<CAR>\ShaderSettings.xml;...\Cars\<CAR>\ColorShaderSettings<n>.xml`:
+  media name, paint type and colour (n = `Sequence` in the database's `Combo_Colors` WHERE `Ordinal` = `Data_Car.Id`;
+  `gamedb.slt` is plain SQLite; the game's query is `SELECT RGB, Metallic, Sequence FROM Combo_Colors WHERE Ordinal = %d
+  ORDER BY Sequence`). Checked: the captured paint textures are exactly that RGB x PaintScale (Mazda colour 7 silver
+  x 0.6 = 102/100/107, Eclipse colour 2 x 0.6 = 44/52/44). A player's custom paint is not in the database (the CR-X
+  is yellow in the profile, its colour 1 is red). FM3-ReGPU streams it as **"FM3N"**. `tools/fm3_car_library.py`
+  builds each car alone (`out\cars\<car>.gltf`, raw car / wheel space + colours, glass, needles sidecars);
+  `world_view.gd` attaches a library car to any streamed car the scene lacks (`_attach_library_car`, one a frame).
+  Checked on the capture-free CrownJewel: all eight cars where the game has them. **Open:** library cars come out
+  too dark although colour and shader match the captured cars' (so: orientation: the library keeps raw car space
+  and leaves the mirror to the node transform; reversing the winding swapped which cars looked dark: compare one
+  car captured vs library in one controlled render next); the player's custom paint (profile); calipers (need the
+  wheel's non-spinning frame) not in the library.
 
 **Revised order from here:** phase 1 (structural reader) first, with LOD0 bodies and the file's normals as its first
 use (finding 1-2, and a likely cause of the paint's stripe on the Eclipse); then phase 0's fxobj and shadersettings

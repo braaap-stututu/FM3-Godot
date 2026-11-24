@@ -163,4 +163,9 @@ The user's last question was whether to chase the remaining uneven steps or call
 3. The crowd and people: animated in the game, static captured silhouettes here.
 4. The player car's interior parts (gauges, driver) for the in-car views.
 5. Props for the other layouts (another `.pvs`), other tracks; attaching cars without starting at the capture's grid.
+   **Done in a first form (2026-11-24):** `tools/build_track.ps1 -Track <Name> [-Ribbon NN]` builds any track's scene
+   from its files; "FM3N" names each car (media name, Combo_Colors colour, paint type: car object +0xC44) and the
+   viewer attaches the car library's model (`tools/fm3_car_library.py` -> `out\cars`) to any car the scene lacks.
+   Test: `tools\live\live_compare.ps1 -Gltf out\world\crownjewel.gltf` (capture-free CrownJewel: all eight cars from
+   the library). Open: library cars too dark (PLAN-CARS), grey sky without a capture, the player's custom paint.
 6. Then stage B: ReGPU skips what Godot draws.
