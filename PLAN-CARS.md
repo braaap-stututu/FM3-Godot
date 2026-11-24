@@ -129,6 +129,32 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
   +0xC70, and the player's yellow CR-X holds red (its colour 1) there too. So the yellow is painted into the livery
   texture the game builds at run time; showing it needs that texture streamed (or read from the profile's livery),
   not a colour.
+- **Paint research (2026-11-24, evening):**
+  - *Measured per car* (`car_regions.py`, grid): the library cars score the same as the captured ones for every AI car
+    (PT Cruiser 7.0 vs 7.2, Mazda 27.5 vs 27.6, Eclipse 13.7 vs 13.9): the database colours reproduce the capture.
+    What both lack: the bright end. Middle tones match, the brightest tenth does not (Mazda p90 game 172 vs 101,
+    Eclipse 72 vs 43, CR-X captured 189 vs 136). The CR-X library car is red where the game's is the player's yellow.
+  - *The game's paint shader* (ps e41e183a423e6f1b, 155 instructions, `fir_disasm.py --pixel`): t0 = the car's livery
+    layer (1024x1024), laid over c118 x c119.x by its alpha; t6 / t7 = the static / per-frame reflection cubes
+    (boolean 130: the player's draws have bool word 4 = 0x13, the others 0x14), reflection x c224 (1.5) blended by
+    c217 / c218 (0.3 / 0.5); the sun highlight against c136, power c189 75 x c180 1.4; t13 = the shadow map (9 taps);
+    t2 / t3 / t4 / t10 damage and dirt layers. Constants per car (scratch script over the capture): all eight c118 are
+    exactly the database colours, **the player's CR-X included (c118 = colour 1, red)**; c119 0.8 solid / 0.6
+    metallic, c191 4 = metallic; everything else equal across cars.
+  - *So the player's custom paint is t0*: the game builds a car's livery on the GPU as an 8888 1024x1024 image (2048 for
+    close-ups), FM3-ReGPU already writes it back to guest memory (`src/gpu_host.cpp` "livery writeback", logged with
+    its base address), and the game's CPU then compresses it to the DXT texture the paint draw reads as t0.
+    **Plan:** (1) FM3-ReGPU: once a livery write-back has landed, copy the 1024x1024 RGBA image from guest memory to a
+    file in out\run and announce it on the stream (a new packet: base address, size, file); (2) map it to its car: find
+    the car object's pointer to its t0 texture (the car-object dump `FM3_LIVE_DUMP_CARS=1` searched for the DXT base
+    address of that car's paint draw), and add it to FM3N; (3) Godot: that image as the car's paint texture (over the
+    database colour by its alpha, as the captured composite does). For AI cars the stock t0 is their nodamage layer,
+    which the library already uses.
+  - *Highlights, tried offline on the captured grid (paint shader only, then reverted)*: env_scale 0.2 -> 0.4 / 0.7 /
+    1.0 brightens everything (summary 16.9 -> 21.0 / 29.3 / 39.3); a sharper cube (env_lod 2.5 -> 1 / 0) changes nothing
+    (17.1); a steeper Fresnel with no floor widens the spread (power 4, scale 1.0, min 0: Mazda p10/p90 14/117, summary
+    19.1; power 6: 17.8) but the bright end stays far below the game's. Next: compare our static cube's brightness with
+    the game's reflection (the player's per-frame cube t7 and the AI cars' t6), then fit the Fresnel shape.
 - **Lamp lenses (2026-11-24):** `fm3_lensrefl.gdshader`, an additive pass (static cube x Fresnel x 0.05) over the lens's
   multiply filter: CR-X amber corners 80/46/0 -> 85/62/27 (game 90/56/44). Open: the red tails 83/0/0 vs 51/8/8 (not
   reached by the pass). Cockpit: cockpit_glass windows, no sun, `fm3_cockpit.gdshader` light, gauges 0.25, mirrors (LIVE.md).
