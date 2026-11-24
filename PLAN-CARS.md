@@ -134,7 +134,13 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
   c0 = material parameter 0 (0.157 grey, the asphalt), t0 = the line texture (material slot 0, UV0), t1 = a wear mask
   at UVs built from constants c120-c122 (hardware slot 1; the capture study could not match it to a .pvs entry, its UV
   transform differs per draw); the lightmap at UV1. Next for a recipe: identify c120-c122 (world-projected wear?) and
-  t1's texture; blending by t0's alpha alone changed nothing measurable (crop 21.4 -> 21.6, reverted).
+  t1's texture; blending by t0's alpha alone changed nothing measurable (crop 21.4 -> 21.6, reverted). Reading the
+  disassembly further: c120-c122 are the streams' UV decode transforms; t0 (and hardware slot 2) at UV0 x P1.xy, t1
+  at the lightmap's UV x P2.xy. The start boxes (file 00099): slot 0 = id 634 (a worn grey line, mean 183 = 0.72,
+  alpha 255 everywhere), slot 1 = id 632 (tyre marks / dirt, mostly white), slot 2 = id 636 (as 634). So lerp(c0, t0,
+  t1) is close to t0 and the export's plain t0 is the right colour; yet Godot's lines are ~3.1x the asphalt's
+  brightness where the game's are ~1.8x (live CrownJewel grid): look at the lighting (the baked shader's gain on a
+  0.72 albedo) and the asphalt recipe's 0.34, not at the line texture.
 **Revised order from here:** phase 1 (structural reader) first, with LOD0 bodies and the file's normals as its first
 use (finding 1-2, and a likely cause of the paint's stripe on the Eclipse); then phase 0's fxobj and shadersettings
 reading to replace the fitted glass and paint numbers; then the cockpit (phase 4); wheel-zip models and lights after.
