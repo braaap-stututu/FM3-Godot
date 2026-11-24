@@ -11,7 +11,7 @@ uniform samplerCube env_cube : filter_linear_mipmap;
 uniform bool has_env = false;
 uniform vec3 env_fallback = vec3(0.45, 0.52, 0.56);
 uniform vec3 env_flip = vec3(-1.0, 1.0, 1.0);
-uniform float refl = 0.02;  // (fitted: red wants less, amber more; see above)
+uniform float refl = 0.01;  // (with the cloudy layer, fm3_lenscloud: lamp boxes 10.9)
 uniform float fresnel_power = 1.5;
 
 void fragment() {

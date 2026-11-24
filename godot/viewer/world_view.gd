@@ -345,6 +345,7 @@ func _init() -> void:
 						gm_.set_shader_parameter(k_, float(v_))
 				if not gp_.is_empty():
 					glass_set += 1
+				_lens_sync(gm_)
 				mi.set_surface_override_material(s, gm_)
 				continue
 			if lit and m.roughness >= 0.9:
@@ -545,6 +546,12 @@ static func _vec4(c: Color) -> Vector4:
 # A car paint / glass ShaderMaterial from the glTF's material: its colour (and texture), the layout's static car cube.
 # Fitting: <env> = comma-separated values for <names> (e.g. FM3_CARPAINT=0.9,0.06,0.8,60,0.85); FM3_CARPAINT_AMB /
 # FM3_CARPAINT_SUN = r,g,b override the paint's ambient and sun light.
+# A lens's cloudy pass takes the lens's own GlassColor (set after _car_material).
+static func _lens_sync(m: ShaderMaterial) -> void:
+	if m.shader == CARLENS_SHADER and m.next_pass is ShaderMaterial:
+		(m.next_pass as ShaderMaterial).set_shader_parameter("glass_color", m.get_shader_parameter("glass_color"))
+
+
 func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: String, names: Array) -> ShaderMaterial:
 	var sm := ShaderMaterial.new()
 	sm.shader = shader
@@ -574,8 +581,13 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 		rp.set_shader_parameter("has_env", cube != null)
 		if cube != null:
 			rp.set_shader_parameter("env_cube", cube)
-		rp.render_priority = 1  # (after every lens filter: a later multiply took the reflection out again)
-		sm.next_pass = rp
+		rp.render_priority = 2  # (after every lens filter: a later multiply took the reflection out again)
+		# the diffusing plastic between them (fm3_lenscloud.gdshader; its colour copied in _lens_sync)
+		var cl := ShaderMaterial.new()
+		cl.shader = load("res://viewer/fm3_lenscloud.gdshader")
+		cl.render_priority = 1
+		cl.next_pass = rp
+		sm.next_pass = cl
 	return sm
 
 
@@ -861,6 +873,8 @@ func _update_lights(player) -> void:
 		for e in _light_mats[car]:
 			if e[1] == "lens":
 				(e[0] as ShaderMaterial).set_shader_parameter("glow", shown)
+				if (e[0] as ShaderMaterial).next_pass is ShaderMaterial:
+					((e[0] as ShaderMaterial).next_pass as ShaderMaterial).set_shader_parameter("glow", shown)
 				continue
 			var lm := e[0] as BaseMaterial3D
 			if e[1] == "brake":
@@ -1294,6 +1308,7 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 				else:
 					gm.set_shader_parameter(k, float(v))
 			gm.set_shader_parameter("sun_dir", _sun_to)
+			_lens_sync(gm)
 			mi.set_surface_override_material(s, gm)
 			continue
 		if nm.contains("gauge") and m.albedo_texture != null:
