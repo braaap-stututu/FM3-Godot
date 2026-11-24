@@ -74,6 +74,8 @@ CAR_MATRIX_WHEELS = []  # per CAR_MATRICES entry: its four wheels' matrices as d
 WHEEL_DIRS = []  # --wheel-files DIR: <dir>/<car>/ = the car's stock wheel zip (Media\\Wheels\\<car>.zip, DLC packs)
 WHEELS_BUILT = set()  # cars whose wheels were built from their wheel carbin (their captured wheel draws are dropped)
 CAR_FILE_DIRS = []  # --car-files DIR[;DIR]: <dir>/<car>/ = the car zip's contents (_lod0, _cockpit, textures, ...)
+LAMP_MATERIALS = ('tail_light', 'reverse_light', 'head_light', 'brake_light', 'signal', 'reflector', 'textured_reflector',
+                  'white_brake')
 CARMATS = {}  # car mesh node name -> its glass material's parameters (the game's shader settings), <out>_carmaterials.json
 NEEDLES = {}  # node name -> gauge needle data (cockpit gauges), written beside the glTF as <out>_needles.json
 CAR_GEOM = {}  # car -> (placed vertices sample): build_cars' cars, to drop their captured low-detail duplicates
@@ -294,7 +296,9 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                 # baked brightness (vertex byte 20, as the cockpit's): dark cabin seen through the glass, dark underside
                 # and exhaust; used by plain materials only (paint and glass have their own shaders)
                 lit = None
-                if sec.get('light') is not None:
+                # (not the lamps: they sit in the housings' dark cavities, but the game shows their reflectors bright
+                # through the lenses)
+                if sec.get('light') is not None and not mname.startswith(LAMP_MATERIALS):
                     lit = np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
                 groups.setdefault((mname, m_), []).append((P, tris, sec['uv0'], Nf, lit))
         mirrored = np.linalg.det(R) < 0

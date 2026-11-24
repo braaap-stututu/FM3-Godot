@@ -91,6 +91,7 @@ const BAKED_BLEND_SHADER = preload("res://viewer/fm3_baked_blend.gdshader")
 const GLASS_SHADER = preload("res://viewer/fm3_glass.gdshader")
 const CARPAINT_SHADER = preload("res://viewer/fm3_carpaint.gdshader")
 const CARGLASS_SHADER = preload("res://viewer/fm3_carglass.gdshader")
+const CARLENS_SHADER = preload("res://viewer/fm3_carlens.gdshader")
 const BLEND_SHADER = preload("res://viewer/fm3_blend.gdshader")
 
 
@@ -186,10 +187,22 @@ func _init() -> void:
 	root.mesh_lod_threshold = 0.0  # full detail: merged meshes span the whole track, their LOD pick would drop parts
 	var doc := GLTFDocument.new()
 	var state := GLTFState.new()
+	# Textures GPU-compressed (2026-11-24): uncompressed, Ladera's 2,072 textures took ~2.8 GB of video memory (RGBA8 +
+	# mips); with FM3 beside it (3.7 GB at 720p) and the desktop (~1.7 GB) the 8 GB RX 6650 XT ran out and the viewer died
+	# loading. The glTF is read with its textures left out, then each is decoded, given mipmaps, compressed to BC1 / BC3
+	# (as the game keeps them, DXT) and bound to its materials (_bind_textures): nothing uncompressed reaches the GPU.
+	# --no-texture-compression = Godot's own loading.
+	var compress_tex := not OS.get_cmdline_user_args().has("--no-texture-compression")
+	if compress_tex:
+		state.handle_binary_image = 0  # (discard: _bind_textures loads them)
+	var t_load := Time.get_ticks_msec()
 	if doc.append_from_file(gltf_path, state) != OK:
 		push_error("cannot read " + gltf_path)
 		quit(1)
 		return
+	if compress_tex:
+		_bind_textures(state, gltf_path)
+		print("world_view: textures GPU-compressed, loaded in %.1f s" % ((Time.get_ticks_msec() - t_load) / 1000.0))
 	var scene := doc.generate_scene(state)
 	root.add_child(scene)
 	_scene = scene
@@ -280,7 +293,8 @@ func _init() -> void:
 				continue
 			if lit and _blended(m) and m.roughness < 0.1 and m.albedo_texture == null:
 				# car glass: FM3's dark, reflective windows (fm3_carglass.gdshader), not a clear pane
-				var gm_ := _car_material(CARGLASS_SHADER, m, gltf_path, "FM3_CARGLASS",
+				var lens_ := String(mi.name).contains("detail_glass") or String(mi.name).contains("red_glass")
+				var gm_ := _car_material(CARLENS_SHADER if lens_ else CARGLASS_SHADER, m, gltf_path, "FM3_CARGLASS",
 					["env_scale", "fresnel_min", "fresnel_power", "max_opacity"])
 				# this mesh's own glass (the game's Media\Cars\ShaderSettings + the car's overrides: lenses red / amber /
 				# clear, windows, mirrors); without an entry the shader's defaults = the window
@@ -766,6 +780,76 @@ func _update_lights(player) -> void:
 				lm.albedo_color = Color(1.0, 1.0 - 0.85 * shown, 1.0 - 0.85 * shown)
 			else:
 				lm.emission_energy_multiplier = 1.5 if back else 0.0
+
+
+# The glTF's textures, compressed (see the loader): each material's base colour, metallic-roughness, occlusion (FM3's
+# lightmaps, UV2), normal and emissive textures as Godot's glTF import binds them, from BC1 / BC3 ImageTextures.
+func _bind_textures(state: GLTFState, gltf_path: String) -> void:
+	var j = JSON.parse_string(FileAccess.get_file_as_string(gltf_path))
+	if not (j is Dictionary):
+		return
+	var base := gltf_path.get_base_dir()
+	var cache := {}
+	var images: Array = j.get("images", [])
+	var textures: Array = j.get("textures", [])
+	var load_tex := func(info) -> Texture2D:
+		if not (info is Dictionary):
+			return null
+		var ti := int(info.get("index", -1))
+		if ti < 0 or ti >= textures.size():
+			return null
+		var ii := int(textures[ti].get("source", -1))
+		if ii < 0 or ii >= images.size():
+			return null
+		var uri := String(images[ii].get("uri", ""))
+		if uri == "":
+			return null
+		if not cache.has(uri):
+			var img := Image.load_from_file(base.path_join(uri.uri_decode()))
+			if img == null:
+				cache[uri] = null
+			else:
+				if img.get_width() >= 4 and img.get_height() >= 4 and img.get_width() % 4 == 0 and img.get_height() % 4 == 0:
+					img.generate_mipmaps()
+					img.compress(Image.COMPRESS_S3TC, Image.COMPRESS_SOURCE_GENERIC)
+				else:
+					img.generate_mipmaps()
+				cache[uri] = ImageTexture.create_from_image(img)
+		return cache[uri]
+	var mats := state.get_materials()
+	var jm: Array = j.get("materials", [])
+	for i in mini(mats.size(), jm.size()):
+		var m := mats[i] as BaseMaterial3D
+		if m == null:
+			continue
+		var d: Dictionary = jm[i]
+		var pbr: Dictionary = d.get("pbrMetallicRoughness", {})
+		var t: Texture2D = load_tex.call(pbr.get("baseColorTexture"))
+		if t != null:
+			m.albedo_texture = t
+		t = load_tex.call(pbr.get("metallicRoughnessTexture"))
+		if t != null:
+			m.roughness_texture = t
+			m.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_GREEN
+			m.metallic_texture = t
+			m.metallic_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_BLUE
+		if d.has("occlusionTexture"):
+			t = load_tex.call(d["occlusionTexture"])
+			if t != null:
+				m.ao_enabled = true
+				m.ao_texture = t
+				m.ao_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
+				m.ao_on_uv2 = int(d["occlusionTexture"].get("texCoord", 0)) == 1
+		if d.has("normalTexture"):
+			t = load_tex.call(d["normalTexture"])
+			if t != null:
+				m.normal_enabled = true
+				m.normal_texture = t
+		if d.has("emissiveTexture"):
+			t = load_tex.call(d["emissiveTexture"])
+			if t != null:
+				m.emission_enabled = true
+				m.emission_texture = t
 
 
 func _attach_cars() -> void:
