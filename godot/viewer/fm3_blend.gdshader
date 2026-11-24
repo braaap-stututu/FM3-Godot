@@ -23,6 +23,10 @@ uniform vec2 scale1 = vec2(1.0);
 uniform vec3 tint0 = vec3(1.0);
 uniform vec3 tint1 = vec3(1.0);
 uniform float grain_mean = 0.5;
+// mode 3 (track paint): the game's stripes are brighter than tint1 (CrownJewel pit lane white 232 vs 210, orange 231 vs
+// 220); x1.1 fitted on the grid (stripe crop 24.0 -> 23.0; coverage below 1 or the asphalt grain through the paint
+// scored worse)
+uniform float paint_gain = 1.1;
 uniform vec3 ambient = vec3(0.14, 0.14, 0.18);  // FM3 PS c247
 uniform vec3 sun = vec3(1.58, 1.57, 1.5);  // FM3 PS c248
 uniform float unlit_level = 0.6;  // without a lightmap
@@ -69,7 +73,7 @@ void fragment() {
 			float m = texture(tex3, uv23.zw).r;
 			a = mix(dirt, s.rgb * 0.34 * grain, m);
 		} else {
-			a = mix(vec3(0.16) * grain, tint1, s.a);
+			a = mix(vec3(0.16) * grain, tint1 * paint_gain, s.a);
 		}
 	}
 	vec3 light = has_lightmap ? mix(ambient, sun, texture(light_tex, UV2).rgb) : vec3(unlit_level);
