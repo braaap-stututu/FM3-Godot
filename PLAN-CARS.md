@@ -58,6 +58,35 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
   the drawn needle's transform. Not done: steering wheel turning (carattribs SteeringWheelAngleOverride), driver's hands / arms, mirror
   render targets.
 
+### Progress, 2026-11-24 (second PC; commits 2a0bcd4 .. b5ac978 on `live-mirror`)
+
+- **Steering wheel** turns (`--steering-wheel game|input|off`, F7; LIVE.md); FM3E v2/v3 carry player 1's steer and
+  brake input and the wheel lock.
+- **Materials from the game's own table:** `Media\Cars\ShaderSettings\Normal.xml` (every car material's parameters;
+  copied to `work\assets\shadersettings`) + each car's `shadersettings.xml` over it (`fm3_track_export.py
+  car_settings`). Glass meshes get their own GlassColor / Fresnel / opacity / highlight (`<out>_carmaterials.json`);
+  lamp lenses (`detail_glass_*`, `red_glass`) are a multiply-blend colour filter over the lamp (`fm3_carlens.gdshader`).
+  Paint uses the game's Fresnel (min 0.15, power 1.5, CubeScale 1.5) at the windows' env_scale 0.2: grid paint per
+  car 18.3 -> 16.6 (`car_regions.py`). Still flat: the CR-X's and Mazda's brightest tenth (p90 136 vs 189, 101 vs 172).
+- **Baked vertex brightness** (byte 20; wheels byte 16) on the exterior and wheels too: dark cabin through the glass,
+  dark underside; not on the lamps (they sit in dark cavities but show bright).
+- **Reflections:** car chrome and rims at the game's (darker) cube level (CHROME_SCALE 0.25, rims RIM_SCALE 0.5 +
+  metallic_specular 0.1); the live cube is the player car's only (the game's t6 / t7), the others the static cube
+  blurred (env_lod 2.5): no more streaks on the Eclipse.
+- **Brake / reverse lights:** tail_light meshes glow by the player's brake input (exact) or, for the other cars, their
+  deceleration (> 2.5 m/s2, an approximation: the per-car brakeReverseAmount source was not found: not in the car
+  presentation object's first 0xA000 bytes, nor near the physics object); reverse when moving backwards.
+- **Phase 2 wheels and brakes:** every grid car's wheels from its stock wheel carbin (`work\assets\wheelzips\<car>`:
+  `Media\Wheels\<car>.zip`, DLC ones from the DLC packs; LOD 0 rims + LOD 1 tyre), placed by the streamed wheel
+  matrices (`live_listen.py --save-cars` records them in `grid-cars.json`); the right-side models mirrored (all four
+  matrices keep +x); rotors and calipers from the car zip; captured wheel draws dropped. Speed blur fades only the
+  sharp rim / lip. Not done: database tyre sizes, upgrade rims, variants.
+- **Viewer memory:** textures loaded GPU-compressed (BC1/BC3, `_bind_textures`): the 8 GB card ran out with FM3 beside
+  it. FM3 now renders at 1280x720 like the viewer (`out\user\settings.ini`; backup `.bak-2560x1440`): new baseline
+  grid 20.7-20.8, chase 21.4.
+- **Open:** driver's hands (Granny `.gr2`, `Media\Cars\Driver`: not readable yet); mirror render targets; lit lens
+  look in shade (the Eclipse's amber); exhaust tips' shape of light; paint gradients.
+
 **Revised order from here:** phase 1 (structural reader) first, with LOD0 bodies and the file's normals as its first
 use (finding 1-2, and a likely cause of the paint's stripe on the Eclipse); then phase 0's fxobj and shadersettings
 reading to replace the fitted glass and paint numbers; then the cockpit (phase 4); wheel-zip models and lights after.
