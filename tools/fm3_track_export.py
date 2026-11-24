@@ -1021,8 +1021,8 @@ def main():
                     # grass_* cards are soft decals (flat tuft shadows, upright tufts): alpha-blended; other opac: cut out
                     rec = {'factor': [1, 1, 1, 1], 'blend': 'BLEND' if sh.startswith('grass') else
                            ('MASK' if ('opac' in sh or 'tree' in sh) else False)}
-                    if sh.startswith('rdline') and 'opac' in sh:
-                        # Road lines (rdline_blnd_spec_opac_3, captured ps 94e08de1): the game blends the line over the
+                    if sh.startswith('rdline_blnd_spec_opac'):
+                        # Road lines (rdline_blnd_spec_opac_3 only, the shader analysed; captured ps 94e08de1): the game blends the line over the
                         # asphalt by a mask texture (material slot 2, the line's own picture: its red channel = the
                         # line texture's grey, ~0.72 in the paint, 0 around it); the line texture's alpha is 255
                         # everywhere. Baked here as the line with alpha = its red channel, blended: cut out opaque,
@@ -1039,7 +1039,7 @@ def main():
                 rec = texmap[name]
                 uv = apply_uv(rec['chan'], rec['a'], rec['b'], me)
                 base_png = rec['base'] if uv is not None else None
-            if base_png and shader_.startswith('rdline') and 'opac' in shader_ and not base_png.startswith('ra_'):
+            if base_png and shader_.startswith('rdline_blnd_spec_opac') and not base_png.startswith('ra_'):
                 # (a captured road line too: the same line picture, blended and dimmed as above)
                 base_png = red_alpha_png(base_png)
                 rec = dict(rec, factor=[0.6, 0.6, 0.6, 1], blend='BLEND')
