@@ -36,6 +36,7 @@ $out = Join-Path $repo "out\world\$name.gltf"
 $py = if (Get-Command python -ErrorAction SilentlyContinue) { 'python' } else { "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe" }
 $args_ = @((Join-Path $repo 'tools\fm3_track_export.py'), $src, $out, '--pvs', $pvs.FullName)
 if ($CameraAt) { $args_ += @('--camera-at', $CameraAt) }
+$ErrorActionPreference = 'Continue'  # (numpy warnings on stderr)
 & $py @args_
 if ($LASTEXITCODE) { throw 'fm3_track_export.py failed' }
 if ($Render) {

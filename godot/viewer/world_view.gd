@@ -61,6 +61,12 @@ var _car_shader_mats := {}  # car -> its paint / glass ShaderMaterials
 var _live_player := -2
 const BRAKE_DECEL := 2.5
 const BRAKE_ENERGY := 2.0  # emission at full brake (gamma-space look fitted by eye; the game's BrakeColor is HDR 7)
+var _gltf_path := ""
+var _car_names := {}  # car -> {name, color, metallic} ("FM3N")
+var _library_tried := {}  # cars a library model was tried for
+var _library_queue := []  # cars waiting for their library model
+var _cars_with_parts := {}  # cars with meshes attached
+var _sun_to := Vector3(0, 1, 0)  # towards the sun (glass highlights)
 var _carmats := {}  # car mesh node name -> its glass parameters from the game's shader settings (<gltf>_carmaterials.json)
 var _needles := {}  # cockpit gauge needle node name -> {pivot, axis, mid, max, gauge, ticks} (<gltf>_needles.json)
 var _wheel_inv := {}  # car -> its four wheel matrices at attach time, inverted
@@ -116,6 +122,7 @@ func _init() -> void:
 		match args[i]:
 			"--gltf":
 				gltf_path = args[i + 1]; i += 1
+				_gltf_path = gltf_path
 				var cm_ := gltf_path.get_basename() + "_carmaterials.json"
 				if FileAccess.file_exists(cm_):
 					var cparsed = JSON.parse_string(FileAccess.get_file_as_string(cm_))
@@ -441,6 +448,7 @@ func _init() -> void:
 	var sun_fwd := -sun.global_transform.basis.z if sun.is_inside_tree() else -sun.transform.basis.z
 	for cm in _car_mats:
 		(cm as ShaderMaterial).set_shader_parameter("sun_dir", -sun_fwd)  # (towards the sun: the glass highlight)
+	_sun_to = -sun_fwd
 	print("world_view: %d wheel rim surfaces dimmed, %d sky dome meshes (kept on the camera)" % [rim_set, _sky_nodes.size()])
 	if glass_set:
 		print("world_view: %d car glass surfaces with the game's own glass settings" % glass_set)
@@ -873,6 +881,159 @@ func _bind_textures(state: GLTFState, gltf_path: String) -> void:
 				m.emission_texture = t
 
 
+# One car mesh joins the live cars: it follows its car (wk -1) or wheel wk at <offset> (global = move * offset), with
+# its speed blur, cockpit flag, needle, paint / glass materials (the player's live cube) and brake / reverse lights.
+func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle = null) -> void:
+	_car_parts.append([m, car, offset, wk, _wheel_blur_kind(m) if wk >= 0 else -1,
+		String(m.name).begins_with("cockpit_"), m.cast_shadow, needle if needle != null else _needles.get(String(m.name))])
+	_cars_with_parts[car] = true
+	for si2_ in m.get_surface_override_material_count():
+		var sm2_ = m.get_surface_override_material(si2_)
+		if sm2_ is ShaderMaterial and _car_mats.has(sm2_):
+			if not _car_shader_mats.has(car):
+				_car_shader_mats[car] = []
+			_car_shader_mats[car].append(sm2_)
+	var nm_ := String(m.name)
+	var kind_ := "brake" if nm_.contains("tail_light") or nm_.contains("brake_light") else ("reverse" if nm_.contains("reverse_light") else "")
+	if nm_.contains("detail_glass_red") or nm_.contains("red_glass"):
+		for si_ in m.get_surface_override_material_count():
+			var gl_ = m.get_surface_override_material(si_)
+			if gl_ is ShaderMaterial:
+				if not _light_mats.has(car):
+					_light_mats[car] = []
+				_light_mats[car].append([gl_, "lens"])
+	if kind_ != "":
+		for si_ in m.get_surface_override_material_count():
+			var lm_ = m.get_surface_override_material(si_)
+			if lm_ is BaseMaterial3D and (lm_ as BaseMaterial3D).albedo_texture != null:
+				var bm_ := lm_ as BaseMaterial3D
+				bm_.emission_enabled = true
+				bm_.emission_texture = bm_.albedo_texture
+				bm_.emission = Color(1.0, 0.0, 0.0) if kind_ == "brake" else Color(1.0, 1.0, 0.95)
+				bm_.emission_energy_multiplier = 0.0
+				if not _light_mats.has(car):
+					_light_mats[car] = []
+				_light_mats[car].append([bm_, kind_])
+
+
+# Cars the glTF does not hold (any track but the capture's grid, or a car not in it): built from the car library
+# (tools/fm3_car_library.py: out/cars/<car>.gltf in its own car / wheel space), named by the game ("FM3N": media name,
+# Combo_Colors colour, paint type), placed by its streamed matrices like the others.
+func _attach_library_car(car) -> void:
+	_library_tried[car] = true
+	var info: Dictionary = _car_names[car]
+	var lname := String(info["name"]).to_lower()
+	var path := _gltf_path.get_base_dir().path_join("../cars/%s.gltf" % lname).simplify_path()
+	if not FileAccess.file_exists(path) or not _cars.has(car) or not _wheels.has(car):
+		print("world_view: live car %08X is %s: no library model (%s) or no matrices yet" % [car, info["name"], path])
+		return
+	# (Godot's own texture loading: compressing a car's 2048 px textures here stalled the live view for seconds a car)
+	var t0 := Time.get_ticks_msec()
+	var doc := GLTFDocument.new()
+	var st := GLTFState.new()
+	if doc.append_from_file(path, st) != OK:
+		return
+	var scene_ := doc.generate_scene(st)
+	root.add_child(scene_)
+	var base := path.get_basename()
+	var cm = JSON.parse_string(FileAccess.get_file_as_string(base + "_carmaterials.json")) if FileAccess.file_exists(base + "_carmaterials.json") else {}
+	var nd = JSON.parse_string(FileAccess.get_file_as_string(base + "_needles.json")) if FileAccess.file_exists(base + "_needles.json") else {}
+	var cols = JSON.parse_string(FileAccess.get_file_as_string(base + "_colors.json")) if FileAccess.file_exists(base + "_colors.json") else {}
+	var a_att := car_transform(_cars[car], _live_axes)
+	_car_inv[car] = a_att.affine_inverse()
+	var w_att: Array = _wheels[car]
+	var wi := []
+	for k in 4:
+		wi.append((w_att[k] as Transform3D).affine_inverse())
+	_wheel_inv[car] = wi
+	var flip := a_att.basis.determinant() < 0.0
+	var paint_col := Color(1, 1, 1)
+	var metal := 0.0
+	var key := str(int(info["color"]))
+	if cols is Dictionary and cols.has(key):
+		var c: Array = cols[key]
+		var scale := 0.6 if bool(info["metallic"]) else 0.8  # (ShaderSettings PaintScale: Metallic.xml 0.6, Normal.xml 0.8)
+		paint_col = Color(float(c[0]) * scale, float(c[1]) * scale, float(c[2]) * scale)
+		metal = 1.0 if int(c[3]) == 1 else 0.0
+	var n := 0
+	for mi in scene_.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		var nm := String(m.name)
+		_setup_library_mesh(m, cm if cm is Dictionary else {}, paint_col, metal)
+		var wk := -1
+		var mk := RegEx.create_from_string("^(wheel|brake)_[a-z0-9_]+?_([0-3])_").search(nm)
+		if mk != null:
+			wk = int(mk.get_string(2))
+		var needle = null
+		if nd is Dictionary and nd.has(nm):
+			# the turn in the attach frame (car space -> a_att), its axis flipped if that frame is mirrored
+			needle = (nd[nm] as Dictionary).duplicate()
+			var pv: Array = needle["pivot"]
+			var ax: Array = needle["axis"]
+			var p2 := a_att * Vector3(pv[0], pv[1], pv[2])
+			var a2 := (a_att.basis * Vector3(ax[0], ax[1], ax[2])).normalized() * (-1.0 if flip else 1.0)
+			needle["pivot"] = [p2.x, p2.y, p2.z]
+			needle["axis"] = [a2.x, a2.y, a2.z]
+		if nm.begins_with("cockpit_"):
+			m.visible = false
+		_register_part(m, car, (w_att[wk] as Transform3D) if wk >= 0 else a_att, wk, needle)
+		n += 1
+	print("world_view: live car %08X is %s colour %s: %d meshes from the car library (%d ms; paint %s)" % [car, info["name"], key, n, Time.get_ticks_msec() - t0, paint_col])
+
+
+# A library car mesh's materials, as the scene's cars get them in the loader: paint (the game's colour), glass / lens
+# (the game's settings), gauges, plain parts (vertex brightness, chrome and rim levels).
+func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, metal: float) -> void:
+	mi.layers = 2
+	var nm := String(mi.name)
+	for s in mi.mesh.get_surface_count():
+		var m0 := mi.mesh.surface_get_material(s) as BaseMaterial3D
+		if m0 == null:
+			continue
+		var m := m0.duplicate() as BaseMaterial3D
+		if m.roughness_texture != null and m.albedo_texture != null:
+			m.albedo_color = paint_col
+			m.metallic = metal
+			var pm := _car_material(CARPAINT_SHADER, m, _gltf_path, "FM3_CARPAINT",
+				["refl_gain", "refl_f0", "spec_gain", "spec_power", "shadow_strength", "refl_metal"])
+			pm.set_shader_parameter("sun_dir", _sun_to)
+			mi.set_surface_override_material(s, pm)
+			continue
+		if _blended(m) and m.roughness < 0.1 and m.albedo_texture == null:
+			var lens := nm.contains("detail_glass") or nm.contains("red_glass")
+			var gm := _car_material(CARLENS_SHADER if lens else CARGLASS_SHADER, m, _gltf_path, "FM3_CARGLASS",
+				["env_scale", "fresnel_min", "fresnel_power", "max_opacity"])
+			var gp: Dictionary = cm.get(nm, {})
+			for k in gp:
+				var v = gp[k]
+				if v is Array:
+					gm.set_shader_parameter(k, Vector4(v[0], v[1], v[2], v[3]) if k == "glass_color" else Vector3(v[0], v[1], v[2]))
+				else:
+					gm.set_shader_parameter(k, float(v))
+			gm.set_shader_parameter("sun_dir", _sun_to)
+			mi.set_surface_override_material(s, gm)
+			continue
+		if nm.contains("gauge") and m.albedo_texture != null:
+			var gg := ShaderMaterial.new()
+			gg.shader = load("res://viewer/fm3_gauge.gdshader")
+			gg.set_shader_parameter("tex", m.albedo_texture)
+			mi.set_surface_override_material(s, gg)
+			continue
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+		if m.roughness >= 0.9:
+			m.metallic_specular = 0.04
+		if m.metallic >= 0.9:
+			m.albedo_color = Color(m.albedo_color.r * CHROME_SCALE, m.albedo_color.g * CHROME_SCALE, m.albedo_color.b * CHROME_SCALE, m.albedo_color.a)
+		elif nm.begins_with("wheel_"):
+			m.albedo_color = Color(m.albedo_color.r * RIM_SCALE, m.albedo_color.g * RIM_SCALE, m.albedo_color.b * RIM_SCALE, m.albedo_color.a)
+			m.metallic_specular = RIM_SPECULAR
+		if mi.mesh.surface_get_format(s) & Mesh.ARRAY_FORMAT_COLOR:
+			m.vertex_color_use_as_albedo = true
+		mi.set_surface_override_material(s, m)
+
+
 func _attach_cars() -> void:
 	_car_attached = true
 	var inv := _car_inv
@@ -912,36 +1073,8 @@ func _attach_cars() -> void:
 						if d < best_d:
 							best_d = d
 							wk = k
-				_car_parts.append([m, car, m.global_transform, wk, _wheel_blur_kind(m) if wk >= 0 else -1,
-					String(m.name).begins_with("cockpit_"), m.cast_shadow, _needles.get(String(m.name))])
+				_register_part(m, car, m.global_transform, wk)
 				per_car[car] = per_car.get(car, 0) + 1
-				for si2_ in m.get_surface_override_material_count():
-					var sm2_ = m.get_surface_override_material(si2_)
-					if sm2_ is ShaderMaterial and _car_mats.has(sm2_):
-						if not _car_shader_mats.has(car):
-							_car_shader_mats[car] = []
-						_car_shader_mats[car].append(sm2_)
-				var nm_ := String(m.name)
-				var kind_ := "brake" if nm_.contains("tail_light") or nm_.contains("brake_light") else ("reverse" if nm_.contains("reverse_light") else "")
-				if nm_.contains("detail_glass_red") or nm_.contains("red_glass"):
-					for si_ in m.get_surface_override_material_count():
-						var gl_ = m.get_surface_override_material(si_)
-						if gl_ is ShaderMaterial:
-							if not _light_mats.has(car):
-								_light_mats[car] = []
-							_light_mats[car].append([gl_, "lens"])
-				if kind_ != "":
-					for si_ in m.get_surface_override_material_count():
-						var lm_ = m.get_surface_override_material(si_)
-						if lm_ is BaseMaterial3D and (lm_ as BaseMaterial3D).albedo_texture != null:
-							var bm_ := lm_ as BaseMaterial3D
-							bm_.emission_enabled = true
-							bm_.emission_texture = bm_.albedo_texture
-							bm_.emission = Color(1.0, 0.0, 0.0) if kind_ == "brake" else Color(1.0, 1.0, 0.95)
-							bm_.emission_energy_multiplier = 0.0
-							if not _light_mats.has(car):
-								_light_mats[car] = []
-							_light_mats[car].append([bm_, kind_])
 				if wk >= 0:
 					per_wheel[car] = per_wheel.get(car, 0) + 1
 				break
@@ -994,8 +1127,18 @@ func _live_step() -> void:
 	var pred := _view_t + _view_dt
 	_view_t = raw_now if _view_t == 0.0 or absf(raw_now - pred) > 0.03 else pred + 0.05 * (raw_now - pred)
 	var now := _view_t
-	while _udp.get_available_packet_count() > 0:
+	var budget := 4000  # (a frame always ends: after a stall the backlog is caught up over a few frames)
+	while _udp.get_available_packet_count() > 0 and budget > 0:
+		budget -= 1
 		var b := _udp.get_packet()
+		if b.size() == 72 and b.slice(0, 4).get_string_from_ascii() == "FM3N":
+			# which car (media name, Combo_Colors colour, paint type): cars the glTF lacks come from the car library
+			var ncar := int(b.decode_u32(8))
+			_car_names[ncar] = {"name": b.slice(20, 64).get_string_from_ascii(), "color": int(b.decode_u32(12)),
+				"metallic": b.decode_u32(16) == 1}
+			if _car_attached and not _cars_with_parts.has(ncar) and not _library_tried.has(ncar) and not _library_queue.has(ncar):
+				_library_queue.append(ncar)  # (loaded after the packets, one a frame: a load takes ~0.3 s)
+			continue
 		if b.slice(0, 4).get_string_from_ascii() == "FM3E" and b.size() >= 32:
 			# The player's engine speed (rpm) and redline: only the player's cockpit is shown, so its tach takes this;
 			# v2 also player 1's steering input and the racing wheel's lock (the cockpit steering wheel).
@@ -1079,6 +1222,8 @@ func _live_step() -> void:
 			_live_director = director
 		if director == _live_director:
 			latest = b
+	if not _library_queue.is_empty() and _car_attached:
+		_attach_library_car(_library_queue.pop_front())
 	if not _car_attached and _car_first_ms > 0 and Time.get_ticks_msec() - _car_first_ms > 500:
 		_attach_cars()
 	var main_view := _live_dirs.is_empty() or _live_director == _live_dirs[0]

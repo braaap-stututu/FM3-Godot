@@ -9,7 +9,7 @@
 # RB N times (the next camera view each) and compare each view. Output: frame-ir\out\live\compare\<name>-{game,godot,cmp}.png
 # -NoFreeze: take each step's pictures while the race runs (the game's and Godot's then differ by milliseconds; for
 # what freezing hides, e.g. the wheels' motion blur, which the viewer takes from the cars' speed).
-param([switch]$AiPlayer, [string]$Steps = '', [int]$Cameras = 0, [switch]$NoFreeze)
+param([switch]$AiPlayer, [string]$Steps = '', [int]$Cameras = 0, [switch]$NoFreeze, [string]$Gltf = '')
 $ErrorActionPreference = 'Stop'
 $g = (Resolve-Path "$PSScriptRoot\..\..\..").Path
 $r = (Resolve-Path "$g\..\FM3-ReGPU recomp").Path
@@ -31,9 +31,10 @@ if (-not $frozen) { throw "the grid did not freeze (see $log; a sleeping monitor
 . "$r\tools\fm3ctl.ps1"
 $godot = "$g\Godot_v4.7.2-stable_win64_console.exe"
 $liveOut = "$out\godot.png"
+$gltfPath = if ($Gltf) { (Resolve-Path $Gltf).Path } else { "$g\frame-ir\out\world\ladera.gltf" }  # -Gltf: another scene (a capture-free track: its cars come from the car library)
 $glog = "$out\godot.log"
 $p = Start-Process $godot -ArgumentList @('--path', "`"$g\frame-ir\godot`"", '-s', 'res://viewer/world_view.gd', '--', '--gltf',
-    "`"$g\frame-ir\out\world\ladera.gltf`"", '--lit', '--live', '7342', '--size', '1280x720', '--out', "`"$liveOut`"") `
+    "`"$gltfPath`"", '--lit', '--live', '7342', '--size', '1280x720', '--out', "`"$liveOut`"") `
     -RedirectStandardOutput $glog -RedirectStandardError "$out\godot.err.log" -PassThru -WindowStyle Normal
 for ($i = 0; $i -lt 90 -and -not (Select-String -Path $glog -Pattern 'meshes attached' -Quiet -ErrorAction SilentlyContinue); $i++) { Start-Sleep 1 }
 Start-Sleep 2
