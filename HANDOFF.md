@@ -25,8 +25,8 @@ cars match the captured ones (mirrored nodes + Color-to-vec4 linearisation, PLAN
 game's sky textures and sun (TrackSettings `ShadowLightDirection`), and the live capture-free CrownJewel grid
 measured 20.4 / 20.1 / 18.5 against the game by the afternoon.
 
-**Evening of 2026-11-24 (where we stopped):** the live capture-free CrownJewel grid **19.9 / 18.4 / 18.0**, the captured
-Ladera live **19.8 / 18.8 / 17.7** (in-car 19.2 / 18.9 / 17.6). Done that evening (details in PLAN-CARS "Paint
+**Evening of 2026-11-24 (where we stopped, 21:00):** the live capture-free CrownJewel grid **19.8 / 18.3 / 17.9** (in-car
+17.1 / 17.5 / 17.0), the captured Ladera live **19.8 / 18.8 / 17.7** (in-car 19.2 / 18.9 / 17.6). Done that evening (details in PLAN-CARS "Paint
 research" and LIVE.md stage A item 5):
 - car paint: the light summed in gamma space like the game, the reflection weighted by how far a surface faces up, the
   sun's diffuse as n.l^2 (fitted from debug normal / albedo renders), metallic's second highlight; per-car paint 16.8 ->
@@ -38,7 +38,12 @@ research" and LIVE.md stage A item 5):
   reflection of the game's per-frame cube, AI glass 0.25;
 - **the frozen grid skipped the per-car update** (no drawn-camera frames there): has_live, brake lights, the in-car
   switch and wheel blur now run on both paths (`_update_live_cars`);
-- track paint stripes x1.1; plastic2 matte.
+- track paint stripes x1.1; plastic2 matte; amber lens cloud desaturated;
+- track textures from their own CAFF `_0x<id>.bin` (full size; the `.stx` copy is smaller) and `diff_spec_ovly`'s UV
+  scale (the grandstand canopy: smooth fabric instead of blotches); the crowd shaded by TrackSettings' Crowds colour;
+- `fm3_dynlit` (the game's formula for unlightmapped track surfaces, with static shadows from a second sun): better
+  but 29 -> 23 fps, so opt-in (`FM3_DYNLIT=1`; `=2` the shader alone);
+- found: the moving in-car view's cockpit drifts against the camera (not a timing gap, `--live-car-lead`).
 Open: the AI cars' windows lack the game's sky blue (the Eclipse 26), the Eclipse's amber signal areas, the pit wall
 (barr_*_nolm: face brighter and warmer in the game, cap darker), the distant scene brighter than the game's in the
 darks (not the fog: TrackSettings' fog is light blue), the crowd's 3D figures near the camera, the sea's colour
