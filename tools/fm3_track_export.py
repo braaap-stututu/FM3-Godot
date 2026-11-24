@@ -1031,7 +1031,7 @@ def main():
                 ft_sh = (mesh_tex.get(me['index_offset']) or file_tex.get(name) or ('', ''))[1]
                 if fam is not None:
                     luv = lm_png = None  # (captured lightmap fits are for the single-texture path)
-                if luv is None and uv is not None and lm_e is not None and 'nolm' not in ft_sh:
+                if luv is None and uv is not None and lm_e is not None and 'nolm' not in ft_sh and name != 'crowds':
                     src_uv = me.get('uv1') if me.get('uv1') is not None else me.get('uv0')
                     if fam_ex is not None and fam_ex['lmsrc'] is not None:
                         src_uv = fam_ex['lmsrc']
