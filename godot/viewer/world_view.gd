@@ -572,6 +572,7 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 		rp.set_shader_parameter("has_env", cube != null)
 		if cube != null:
 			rp.set_shader_parameter("env_cube", cube)
+		rp.render_priority = 1  # (after every lens filter: a later multiply took the reflection out again)
 		sm.next_pass = rp
 	return sm
 

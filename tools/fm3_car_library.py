@@ -208,7 +208,7 @@ def build(car, cdir, wdir, db, outdir):
                        cutout=mname in ('emblem', 'badge'))
 
     def lit_of(sec, mname):
-        if sec.get('light') is None or mname.startswith(tx.LAMP_MATERIALS) or mname.startswith('gauge'):
+        if sec.get('light') is None or mname.startswith('gauge') or (mname.startswith(tx.LAMP_MATERIALS) and not mname.startswith('tail_light')):
             return None
         return np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
 

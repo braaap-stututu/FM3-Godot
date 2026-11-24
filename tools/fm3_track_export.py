@@ -300,7 +300,7 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                 lit = None
                 # (not the lamps: they sit in the housings' dark cavities, but the game shows their reflectors bright
                 # through the lenses)
-                if sec.get('light') is not None and not mname.startswith(LAMP_MATERIALS):
+                if sec.get('light') is not None and (not mname.startswith(LAMP_MATERIALS) or mname.startswith('tail_light')):
                     lit = np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
                 groups.setdefault((mname, m_), []).append((P, tris, sec['uv0'], Nf, lit))
         mirrored = np.linalg.det(R) < 0
