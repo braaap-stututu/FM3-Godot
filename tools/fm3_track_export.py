@@ -35,6 +35,7 @@ import fm3_families  # noqa: E402
 import fm3_car  # noqa: E402
 import fm3_carbin  # noqa: E402
 import fir_read as fr  # noqa: E402
+import fir_frame  # noqa: E402
 import re  # noqa: E402
 from fir_world import smooth_normals  # noqa: E402
 
@@ -835,6 +836,20 @@ def main():
         bix_cache[tid] = name
         return name
 
+    def red_alpha_png(png):
+        # A copy of a decoded texture whose alpha is its red channel (road lines); the file name.
+        key = ('red_alpha', png)
+        if key not in bix_cache:
+            w_, h_, px_ = fir_frame.read_png(os.path.join(tex_out, png))
+            a_ = np.frombuffer(bytes(px_), np.uint8).reshape(h_, w_, -1)
+            rgba = np.empty((h_, w_, 4), np.uint8)
+            rgba[:, :, :3] = a_[:, :, :3]
+            rgba[:, :, 3] = a_[:, :, 0]
+            name_ = 'ra_' + png
+            fr.write_png(os.path.join(tex_out, name_), w_, h_, rgba.tobytes())
+            bix_cache[key] = name_
+        return bix_cache[key]
+
     stx_path = glob.glob(os.path.join(src, '*.stx.bin'))
     stx = fm3_tex.load_stx(stx_path[0]) if (pv is not None and stx_path) else None
     stx_data = open(stx_path[0], 'rb').read() if stx else None
@@ -987,6 +1002,18 @@ def main():
                     # grass_* cards are soft decals (flat tuft shadows, upright tufts): alpha-blended; other opac: cut out
                     rec = {'factor': [1, 1, 1, 1], 'blend': 'BLEND' if sh.startswith('grass') else
                            ('MASK' if ('opac' in sh or 'tree' in sh) else False)}
+                    if sh.startswith('rdline') and 'opac' in sh:
+                        # Road lines (rdline_blnd_spec_opac_3, captured ps 94e08de1): the game blends the line over the
+                        # asphalt by a mask texture (material slot 2, the line's own picture: its red channel = the
+                        # line texture's grey, ~0.72 in the paint, 0 around it); the line texture's alpha is 255
+                        # everywhere. Baked here as the line with alpha = its red channel, blended: cut out opaque,
+                        # the CrownJewel grid boxes were 254 (clipped) where the game's are 188. Blended alone they
+                        # stayed clipped (the game's line shader lights them less than a plain lightmapped surface), so
+                        # a colour factor fitted on the live CrownJewel grid: 0.5 / 0.6 / 0.7 -> start-box line p95
+                        # 134 / 159 / 185 (game 188), whole frame 20.3/20.0/18.4, 20.4/20.2/18.5, 20.7/20.4/18.7
+                        # (opaque white: 21.2/21.0/19.3); 0.6 between the two measures.
+                        png = red_alpha_png(png)
+                        rec = {'factor': [0.6, 0.6, 0.6, 1], 'blend': 'BLEND'}
                     uv, base_png = me['uv0'].astype(np.float32), png
                     from_files += 1
             if uv is None and texmap.get(name):
