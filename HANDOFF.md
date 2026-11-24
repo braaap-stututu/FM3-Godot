@@ -25,7 +25,15 @@ cars match the captured ones (mirrored nodes + Color-to-vec4 linearisation, PLAN
 game's sky textures and sun (TrackSettings `ShadowLightDirection`), and the live capture-free CrownJewel grid
 measured 20.4 / 20.1 / 18.5 against the game by the afternoon.
 
-**Evening of 2026-11-24 (where we stopped, 21:00):** the live capture-free CrownJewel grid **19.8 / 18.3 / 17.9** (in-car
+**Night of 2026-11-24/25 (where we stopped): the other tracks** (LIVE.md "Other tracks"). All 15 Free Play tracks
+build and run live (`tools\live\live_track.ps1`); the car library has all 500 cars incl. Disc 2; track shaders are read
+from the game's own `.fxobj` files (`tools/fm3_trackshader.py`) and many recipes written from that code; re-survey
+16.8 (Catalunya) to 41.4 (LagunaSeca). Found and decoded the game's auto-exposure / tone curve / bloom (final pass:
+desat(scene + bloom) / W with W from the track's tone curve by adapted luminance): the next step, as a full-screen
+pass in the viewer. The road's sun specular is in, opt-in (`FM3_ROAD_SPEC=1`) until then. FM3-ReGPU has one more local
+commit (FM3N names cars without a colour file).
+
+**Evening of 2026-11-24 (21:00):** the live capture-free CrownJewel grid **19.8 / 18.3 / 17.9** (in-car
 17.1 / 17.5 / 17.0), the captured Ladera live **19.8 / 18.8 / 17.7** (in-car 19.2 / 18.9 / 17.6). Done that evening (details in PLAN-CARS "Paint
 research" and LIVE.md stage A item 5):
 - car paint: the light summed in gamma space like the game, the reflection weighted by how far a surface faces up, the

@@ -175,7 +175,10 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
 - First survey (before most of the fixes): AmalfiGP 49.3, Catalunya 16.6 (fixed first), LeMans 22.6, MapleValley 46.0,
   LagunaSeca 40.3, RoadAmerica 68.0, RoadAtlanta 44.5, Sebring 39.2, Silverstone 24.0, SunsetInfield 26.4, Suzuka
   25.1, Tsukuba 20.2, Motegi 49.0 (player car unnamed); Mugello (viewer stalled) and NewYork (boot route stuck before
-  the pre-race menu) gave no picture.
+  the pre-race menu) gave no picture. **Re-survey (2026-11-24/25, all recipes so far; each boot a new grid slot):**
+  AmalfiGP 27.3, Catalunya 16.8, LeMans 22.2, MapleValley 37.7, LagunaSeca 41.4, Mugello 26.3, NewYork 34.2,
+  RoadAmerica 26.2, RoadAtlanta 37.3, Sebring 25.3, Silverstone 30.0, SunsetInfield 24.4, Suzuka 25.1, Tsukuba 21.6,
+  Motegi 36.2 (r channel; the palette props, LeMans' dual-mix verges and the base-slot fix came during it).
 - **Road sun specular (opt-in `FM3_ROAD_SPEC=1`):** the road shaders' shadowed variants add a sun highlight, read
   exactly by running their code in `tools/fir_vs.py` with a live capture's constants (debug server `capture`, boot with
   `REGPU_NO_PACKED_CONSTANTS=1`): c223/c224 are TrackSettings' RoadSpecular/2, RoadSkid/2, RoadGlossiness/2,
