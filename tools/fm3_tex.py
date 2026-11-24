@@ -130,7 +130,12 @@ def decode(data, w, h, fmt, endian, tiled=True, pitch=None):
         px = np.stack([x_, y_, np.full_like(x_, 255), np.full_like(x_, 255)], 2)
     elif kind == 'argb8':
         b = blocks.astype(np.int32)  # A R G B after the swap
-        px = np.stack([b[:, 1], b[:, 2], b[:, 3], b[:, 0]], 1)[:, None, :]
+        if endian == 2:
+            # (32-bit reversed: B G R A; the tracks' 32 x 1 colour palettes, e.g. Silverstone 0x7: read as A R G B they
+            # came out (g, r, 255) with alpha = blue: bright blue walls)
+            px = np.stack([b[:, 2], b[:, 1], b[:, 0], b[:, 3]], 1)[:, None, :]
+        else:
+            px = np.stack([b[:, 1], b[:, 2], b[:, 3], b[:, 0]], 1)[:, None, :]
     elif kind == 'l8':
         b = blocks[:, 0].astype(np.int32)
         px = np.stack([b, b, b, np.full_like(b, 255)], 1)[:, None, :]

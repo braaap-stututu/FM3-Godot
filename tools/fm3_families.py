@@ -113,6 +113,12 @@ def recipe(shader, params, stride, slots):
         return {'mode': 'rdline2', 'src0': 16, 'src1': 20, 'mask': None, 'lm': 20, 'vclr': False,
                 'scale0': list(params[1][:2]), 'scale1': list(params[2][:2]), 'tint0': list(params[0][:3]),
                 'tint1': [params[1][2]] * 3, 'slots': slots[:2]}
+    if shader in ('diff_clr_spec_2', 'barr_shad_diff_clr_spec_2') and len(slots) >= 3 and min(slots[:3]) >= 0 and params:
+        # palette-tinted props (tyre walls, wall pieces; disassembled): t0 * P[0].z * lerp(t0, palette, mask.a), t0 at UV 16
+        # * P[0].xy, the paint mask (slot 1) at UV 16, the palette colour per instance (fm3_track_export: tint1)
+        return {'mode': 'palette', 'src0': 16, 'src1': 16, 'mask': None, 'lm': 20 if stride >= 24 else None, 'vclr': False,
+                'scale0': list(params[0][:2]), 'scale1': [1.0, 1.0], 'tint0': [params[0][2]] * 3, 'tint1': [1.0, 1.0, 1.0],
+                'slots': slots[:2], 'palette_slot': slots[2]}
     if ROAD3.match(shader) and len(slots) >= 2 and min(slots[:2]) >= 0 and len(params) >= 3 and stride >= 20:
         # road_3clr_blnd_2 (MapleValley's asphalt; disassembled): grain t0 at world (x, z) * P[1].x, v = t1.rgb * t1.a
         # (slot 1 at UV 16 * P[1].yz, the lightmap's UV); albedo = grain * P[0] + v * (grain + P[2] - grain * P[0]): dark

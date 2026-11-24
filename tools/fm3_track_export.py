@@ -868,6 +868,15 @@ def main():
         bix_cache[tid] = name
         return name
 
+    def palette_colours(tid):
+        # A 32 x 1 palette texture's colours (0..1, gamma space as stored), or None.
+        png = bix_png(tid)
+        if not png:
+            return None
+        w_, h_, px_ = fir_frame.read_png(os.path.join(tex_out, png))
+        a_ = np.frombuffer(bytes(px_), np.uint8).reshape(h_, w_, -1)
+        return [(a_[0, min(w_ - 1, (i * w_) // 32), :3] / 255.0).tolist() for i in range(32)]
+
     def red_alpha_png(png):
         # A copy of a decoded texture whose alpha is its red channel (road lines); the file name.
         key = ('red_alpha', png)
@@ -1050,14 +1059,16 @@ def main():
                     if sl and 0 <= sl[0] < n_sky:
                         mesh_tex[me_['index_offset']] = (ones[len(ones) - n_sky + sl[0]], 'sky_diff_1')
         # Placements: (3x3, translation, lightmap entry or None); world-space files once, as they are.
-        places = [(np.eye(3), np.zeros(3), None)]
+        places = [(np.eye(3), np.zeros(3), None, 0)]
         if is_sky:
-            places = [(np.eye(3), sky_height, None)]
+            places = [(np.eye(3), sky_height, None, 0)]
         if pv is not None and mm and int(mm.group(1)) in by_model:
             places = []
             for ins in by_model[int(mm.group(1))]:
                 e = pv['textures'][ins['lightmap']] if ins['lightmap'] < len(pv['textures']) else None
-                places.append((F @ ins['rot'].T, F @ np.array(ins['pos']), e if (e and e['rect'][0] < 0.9) else None))
+                # (the 4th: the instance's palette row, flags bits 9-13: diff_clr_spec_2's ModelData.x, see below)
+                places.append((F @ ins['rot'].T, F @ np.array(ins['pos']), e if (e and e['rect'][0] < 0.9) else None,
+                               (ins['flags'] >> 9) & 31))
             placed += len(places)
         for me in model['meshes']:
             if me['indices'] is None:
@@ -1164,13 +1175,17 @@ def main():
                             return me['positions'][:, [0, 2]] if o == 'xz' else fm3_track.uv_pair(me, o)
                         base_png, uv = pngs[0], uv_src(r_['src0']).astype(np.float32)
                         fam = dict(r_, tex=pngs, slots=None)
+                        if r_['mode'] == 'palette':
+                            fam.pop('palette_slot', None)
+                            ps_ = r_.get('palette_slot', -1)
+                            pal_ = palette_colours(pv['textures'][texl_[ps_]]['id']) if 0 <= ps_ < len(texl_) else None
                         fam_ex = {'uv2': uv_src(r_['src1']).astype(np.float32),
                                   'uv3': (uv_src(r_['mask']) if r_['mask'] is not None else uv_src(r_['src1'])).astype(np.float32),
                                   'col': fm3_track.vertex_colour(me) if r_['vclr'] else None,
                                   'lmsrc': uv_src(r_['lm']) if r_['lm'] is not None else None}
                         rec = {'factor': [1, 1, 1, 1], 'blend': False}
                         families_used[r_['mode']] = families_used.get(r_['mode'], 0) + 1
-            for M3, t, inst_lm in places:
+            for M3, t, inst_lm, pal_idx in places:
                 P = (P0 @ M3.T + t).astype(np.float32)
                 luv = lm_png = None
                 if len(places) == 1 and inst_lm is None:  # captured lightmap fits are per file mesh (world-space)
@@ -1193,7 +1208,14 @@ def main():
                     elif png:
                         sx, sy, ox, oy = lm_e['rect']
                         luv, lm_png = (src_uv * np.array([sx, sy]) + np.array([ox, oy])).astype(np.float32), png
-                key = (name + ('#sky' if is_sky else ''), base_png, lm_png, json.dumps(fam, sort_keys=True) if fam else None)
+                fam_k = fam
+                if fam is not None and fam['mode'] == 'palette':
+                    # diff_clr_spec_2 / barr_shad_diff_clr_spec_2 (disassembled): the palette (material slot 2, 32 x 1) at
+                    # u = ModelData.x / 32, a per-instance row (the .pvs instance flags' bits 9-13: Silverstone's tyre
+                    # walls 4, 5, 8, 16, 24; world-space pieces 0)
+                    c_ = pal_[pal_idx] if pal_ else [1.0, 1.0, 1.0]
+                    fam_k = dict(fam, tint1=[round(float(v), 4) for v in c_])
+                key = (name + ('#sky' if is_sky else ''), base_png, lm_png, json.dumps(fam_k, sort_keys=True) if fam_k else None)
                 textured += uv is not None
                 lit += luv is not None
                 ex = None

@@ -59,6 +59,10 @@ void fragment() {
 			t1 *= tint1;  // (the second layer's own tint: shldr_blnd_3's P[1]; 1 in the older recipes)
 		}
 		a = mix(t0, t1, m);
+	} else if (mode == 15) {
+		// palette props (diff_clr_spec_2, disassembled): t0 * gain * lerp(t0, palette colour, mask.a)
+		vec3 t0 = texture(albedo_tex, UV * scale0).rgb;
+		a = t0 * tint0.x * mix(t0, tint1, texture(tex1, uv23.xy * scale1).a);
 	} else if (mode == 13) {
 		// rdedg_diff_opac_2 (road-edge decals, disassembled): t0 at UV * scale0, opacity = t1.a at CUSTOM0.xy * scale1
 		a = texture(albedo_tex, UV * scale0).rgb;
