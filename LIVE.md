@@ -184,7 +184,7 @@ The user's last question was whether to chase the remaining uneven steps or call
    the driver's hands, the cluster housing (bluish grey, the game's black).
    Mirrors (`fm3_mirror.gdshader`, `--mirrors 0` = dark glass): one 512x256 viewport per cockpit mirror, rendered
    only in-car; the glass looks itself up through a camera at the reflected eye framing it, the picture comes from a
-   level rear camera (30 deg; the middle mirror straight back), as FM3 renders its mirror as a separate scene. The CR-X's
+   rear camera (40 deg, 6 deg up from level, fitted; the middle mirror straight back), as FM3 renders its mirror as a separate scene. The CR-X's
    middle mirror then shows the stands and the run-off behind like the game's, framed a little lower; in-car vs game
    17.4 / 17.8 / 18.6 (dark glass 16.8 / 17.4 / 18.3: a framing offset costs more pixel difference than flat glass).
    Their cost in-car (`live_smooth.ps1 -Cameras 2`, capture-free CrownJewel, 30 s): no mirrors 33 fps, three every frame

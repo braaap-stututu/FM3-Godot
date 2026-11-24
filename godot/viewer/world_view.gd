@@ -73,7 +73,9 @@ const COCKPIT_LAYER := 8
 const COCKPIT_GAIN := 1.0  # (fm3_cockpit.gdshader's light scale)
 # Cockpit mirrors (fm3_mirror.gdshader): one small viewport each, rendered only while the player's car is seen in-car.
 const MIRROR_SIZE := Vector2i(512, 256)
-const MIRROR_FOV := 30.0  # (vertical degrees of a mirror's picture)
+# (fitted on the CR-X's middle mirror, live: 30 deg level 37.4, 6 deg up 33.8, 40 deg + 6 up 31.5 mean |diff| in its crop)
+const MIRROR_FOV := 40.0  # (vertical degrees of a mirror's picture)
+const MIRROR_PITCH := 6.0  # (degrees up from level)
 const MIRROR_FAR := 300.0  # (metres: a mirror's far scene is a few pixels; drawn to 2 km, in-car 29 fps, now 30)
 var _mirrors_on := true
 var _mirror_turn := 0
@@ -1105,7 +1107,8 @@ func _update_mirrors(player, in_car: bool, eye: Transform3D) -> void:
 		var dir := ne if String((mr["mesh"] as Node).name).contains("mirrorMiddle") else ((c - e) - n * (2.0 * (c - e).dot(n)))
 		var level := dir - car_up * dir.dot(car_up)
 		if level.length() > 0.01:
-			cam3.global_transform = Transform3D(Basis(), e2).looking_at(e2 + level.normalized(), car_up)
+			var ln := level.normalized()
+			cam3.global_transform = Transform3D(Basis(), e2).looking_at(e2 + ln * cos(deg_to_rad(MIRROR_PITCH)) + car_up * sin(deg_to_rad(MIRROR_PITCH)), car_up)
 		cam3.fov = MIRROR_FOV
 		cam3.near = 0.3
 		(mr["mat"] as ShaderMaterial).set_shader_parameter("active", true)
