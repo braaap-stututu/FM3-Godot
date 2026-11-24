@@ -19,9 +19,9 @@ uniform vec3 env_flip = vec3(-1.0, 1.0, 1.0);  // (this scene's x is the game's 
 // Fitted on the grid (tools/car_regions.py, 7 cars). Refitted 2026-11-23 for the LOD 0 bodies with the file's own
 // normals (they face the sky more than the old rebuilt ones): sky 0.5 -> 0.24; CR-X mean colour then 135 vs the game's
 // 136. The highlights are still weaker than the game's (CR-X 90th percentile 150 vs 187).
-uniform vec3 ambient = vec3(0.24, 0.25, 0.27);  // gamma-space sky light on surfaces facing up (where the sun does not reach)
-uniform vec3 ambient_ground = vec3(0.04, 0.04, 0.04);  // ... and on surfaces facing down (bumpers, sills: the road's shade)
-uniform vec3 sun = vec3(1.0, 0.98, 0.94);
+uniform vec3 ambient = vec3(0.216, 0.225, 0.243);  // gamma-space sky light on surfaces facing up (where the sun does not reach)
+uniform vec3 ambient_ground = vec3(0.036, 0.036, 0.036);  // ... and on surfaces facing down (bumpers, sills: the road's shade)
+uniform vec3 sun = vec3(0.9, 0.882, 0.846);
 uniform float shadow_strength = 0.85;
 // The game's paint constants (all cars on the grid): reflection c224 x c217/c218 = 1.5 x 0.3/0.5, Fresnel power c216 = 4,
 // the sun's highlight power c189 = 75 and strength c180 = 1.4. (The colour's c119.x scale is in the albedo: fir_world.)
@@ -40,11 +40,11 @@ uniform float spec2_gain = 0.1;
 uniform float spec2_power = 4.0;
 uniform float fresnel_power = 4.0;
 uniform bool game_fresnel = true;
-uniform float game_fresnel_power = 1.5;
-uniform float fresnel_min = 0.15;
+uniform float game_fresnel_power = 4.0;
+uniform float fresnel_min = 0.0;
 uniform float fresnel_max = 1.0;
 uniform float cube_scale = 1.5;
-uniform float env_scale = 0.2;
+uniform float env_scale = 1.5;
 
 #include "res://viewer/fm3_livecube.gdshaderinc"
 
@@ -53,11 +53,27 @@ vec3 to_linear(vec3 c) {
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
 }
 
+// The sum in gamma space (2026-11-24): the game adds paint x light, the reflection and the highlight in gamma space and
+// the screen shows that; linearised one by one and added in linear light, a bright surface came out at ~146 where the
+// game's is ~204 (a 0.5 lit paint + a 0.3 reflection), the cause of the grid cars' missing bright tenth. With
+// gamma_sum the albedo goes to light() as a varying (ALBEDO stays white) and the whole sum is linearised once.
+uniform bool gamma_sum = true;
+// TrackSettings SHLighting SHEnvMapTop / SHEnvMapBottom: the reflection weighted by how far the surface faces up
+uniform float env_top = 1.0;
+uniform float env_bottom = 0.0;
+uniform float env_up_power = 3.0;
+// Fitted with gamma_sum on the captured grid (2026-11-24): reflection 1.5 x Fresnel pow(1 - cos, 4) (no floor) x up^3,
+// diffuse x 0.9: per-car paint 16.8 -> 16.0, brightest tenth Mazda 101 -> 131 (game 172), Eclipse 43 -> 56 (72).
+// Matching the game's bright end fully (up^4, env 1.5, pow 2: Mazda p90 155, Eclipse 75) put highlights where the game
+// has none (20.5): the game's sun-facing flanks are brighter and its top surfaces softer than ours.
+varying vec3 paint_gamma;
+
 void fragment() {
 	vec4 t = texture(albedo_tex, UV);
+	paint_gamma = t.rgb * albedo_color.rgb;
 	// (the texture is read raw: gamma-space values, as the game's shader works with them)
 	// (library cars: their badge layer is composited over white by tools/fm3_car_library.py, so the same product)
-	ALBEDO = to_linear(t.rgb * albedo_color.rgb);
+	ALBEDO = gamma_sum ? vec3(1.0) : to_linear(paint_gamma);
 }
 
 void light() {
@@ -65,7 +81,7 @@ void light() {
 		float sh = 1.0 - shadow_strength + shadow_strength * ATTENUATION;
 		float ndl = max(dot(NORMAL, LIGHT), 0.0);
 		float up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y * 0.5 + 0.5;
-		DIFFUSE_LIGHT += to_linear(mix(ambient_ground, ambient, up) + sun * ndl * sh);
+		vec3 diff = mix(ambient_ground, ambient, up) + sun * ndl * sh;
 		vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
 		vec3 env = has_live ? live_cube(r) : (has_env ? textureLod(env_cube, r * env_flip, env_lod).rgb : env_fallback);
 		float cosv = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
@@ -76,6 +92,12 @@ void light() {
 			: refl_f0 + (1.0 - refl_f0) * pow(1.0 - cosv, fresnel_power);
 		float rl = max(dot(reflect(-LIGHT, NORMAL), VIEW), 0.0);
 		float spec = pow(rl, spec_power) * sh + pow(rl, spec2_power) * sh * spec2_gain / spec_gain * metallic;
-		SPECULAR_LIGHT += to_linear(env * fres * mix(refl_gain, refl_metal, metallic) * mix(1.0, sh, 0.3) + sun * spec * spec_gain);
+		vec3 add = env * fres * mix(env_bottom, env_top, pow(up, env_up_power)) * mix(refl_gain, refl_metal, metallic) * mix(1.0, sh, 0.3) + sun * spec * spec_gain;
+		if (gamma_sum) {
+			DIFFUSE_LIGHT += to_linear(paint_gamma * diff + add);
+		} else {
+			DIFFUSE_LIGHT += to_linear(diff);
+			SPECULAR_LIGHT += to_linear(add);
+		}
 	}
 }

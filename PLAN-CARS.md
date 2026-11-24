@@ -173,6 +173,15 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
     angle-dependent tint above is this "Metal" flake term, off), TwoTonePower 20 = c229, MinShadowValue 0.25 = c238,
     SHTransition / Width 0.5 / 0.3 = c232 / c233. fm3_carpaint.gdshader now has the second highlight (scaled 0.1:
     the game's amount saturated ours) instead of a fitted reflection boost for metallics (summary 16.9 -> 16.8).
+  - **Highlights fixed (2026-11-24, late):** the cause was where the light is added. `fm3_carpaint.gdshader` linearised
+    diffuse and reflection separately and added them in linear light; the game adds paint x light + reflection +
+    highlight in gamma space (a 0.5 lit paint + a 0.3 reflection: ours ~146, the game's ~204). Now the whole sum is
+    linearised once (`gamma_sum`; the albedo goes to light() as a varying). The reflection also takes TrackSettings'
+    SHEnvMapTop / Bottom idea (weighted by how far the surface faces up, here up^3, bottom 0) and is refitted: x1.5,
+    Fresnel pow(1 - cos, 4), no floor; diffuse x0.9. Captured grid: per-car paint 16.8 -> 16.0, Mazda brightest tenth
+    101 -> 131 (game 172), Eclipse 43 -> 56 (72), whole frame 19.9/18.9/17.7 -> 19.6/18.7/17.7. Live capture-free grid
+    20.4/20.1/18.4 -> 20.2/19.9/18.2 (Mazda 27.5 -> 24.1). Matching the bright end fully put highlights on the tops
+    where the game's are softer; the game's sun-facing flanks are still brighter than ours (open).
   - *Highlights, tried offline on the captured grid (paint shader only, then reverted)*: env_scale 0.2 -> 0.4 / 0.7 /
     1.0 brightens everything (summary 16.9 -> 21.0 / 29.3 / 39.3); a sharper cube (env_lod 2.5 -> 1 / 0) changes nothing
     (17.1); a steeper Fresnel with no floor widens the spread (power 4, scale 1.0, min 0: Mazda p10/p90 14/117, summary
