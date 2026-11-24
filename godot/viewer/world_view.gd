@@ -70,6 +70,7 @@ var _library_queue := []  # cars waiting for their library model
 # its cockpit has no directional light (TrackSettings SHCockpitDir 0) and the view a higher exposure. Cockpit meshes
 # sit on their own render layer the sun leaves out, and the exposure rises in-car by IN_CAR_EXPOSURE.
 const COCKPIT_LAYER := 8
+const COCKPIT_GAIN := 1.0  # (fm3_cockpit.gdshader's light scale)
 # Cockpit mirrors (fm3_mirror.gdshader): one small viewport each, rendered only while the player's car is seen in-car.
 const MIRROR_SIZE := Vector2i(512, 256)
 const MIRROR_FOV := 30.0  # (vertical degrees of a mirror's picture)
@@ -934,6 +935,10 @@ func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle
 		_add_mirror(m, car)
 	if String(m.name).begins_with("cockpit_"):
 		m.layers = COCKPIT_LAYER  # (not lit by the sun: FM3's cockpit has no directional light, SHCockpitDir 0)
+		for s_ in m.get_surface_override_material_count():
+			var bm_ := m.get_surface_override_material(s_) as BaseMaterial3D
+			if bm_ != null and bm_.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA:
+				m.set_surface_override_material(s_, _cockpit_material(bm_))
 	_car_parts.append([m, car, offset, wk, _wheel_blur_kind(m) if wk >= 0 else -1,
 		String(m.name).begins_with("cockpit_"), m.cast_shadow, needle if needle != null else _needles.get(String(m.name))])
 	_cars_with_parts[car] = true
@@ -970,6 +975,20 @@ func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle
 # (tools/fm3_car_library.py: out/cars/<car>.gltf in its own car / wheel space), named by the game ("FM3N": media name,
 # Combo_Colors colour, paint type), placed by its streamed matrices like the others.
 # Streamed cars the scene lacks that have not had their library model yet (queued, or no FM3N name so far).
+# A cockpit plain surface as fm3_cockpit.gdshader (FM3's cabin hemisphere light, no sun, no sky reflection).
+func _cockpit_material(bm: BaseMaterial3D) -> ShaderMaterial:
+	var sm := ShaderMaterial.new()
+	sm.shader = load("res://viewer/fm3_cockpit.gdshader")
+	if bm.albedo_texture != null:
+		sm.set_shader_parameter("albedo_tex", bm.albedo_texture)
+	sm.set_shader_parameter("albedo_color", _vec4(bm.albedo_color))
+	sm.set_shader_parameter("use_vcol", bm.vertex_color_use_as_albedo)
+	sm.set_shader_parameter("gain", COCKPIT_GAIN)
+	if bm.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
+		sm.set_shader_parameter("alpha_cut", bm.alpha_scissor_threshold)
+	return sm
+
+
 func _add_mirror(m: MeshInstance3D, car) -> void:
 	var arr = m.mesh.surface_get_arrays(0)
 	var pall: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
