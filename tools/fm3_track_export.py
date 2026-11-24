@@ -1043,7 +1043,7 @@ def main():
     def image(png):
         if png not in img_ids:
             os.makedirs(tex_out, exist_ok=True)
-            if os.path.exists(os.path.join(capdir, png)):  # (capture textures may change under the same name)
+            if capdir and os.path.exists(os.path.join(capdir, png)):  # (capture textures may change under the same name)
                 shutil.copyfile(os.path.join(capdir, png), os.path.join(tex_out, png))
             images.append({'uri': os.path.basename(tex_out) + '/' + png})
             textures.append({'source': len(images) - 1, 'sampler': 0})
@@ -1120,6 +1120,8 @@ def main():
         # the layout's static environment cube (window glass, car paint): envcube_0..5.png next to the textures
         cube_path = os.path.join(os.path.dirname(os.path.abspath(sys.argv[sys.argv.index('--pvs') + 1])),
                                  'staticcarcubemap.xpr')
+        if not os.path.exists(cube_path):  # (most tracks keep one cube for all layouts, in the track's folder)
+            cube_path = os.path.join(os.path.dirname(os.path.dirname(cube_path)), 'staticcarcubemap.xpr')
         faces = fm3_tex.load_xpr_cube(cube_path) if os.path.exists(cube_path) else None
         if faces:
             os.makedirs(tex_out, exist_ok=True)
@@ -1159,6 +1161,33 @@ def main():
         if 'KHR_lights_punctual' in ref.get('extensions', {}):
             gltf['extensions'] = {'KHR_lights_punctual': ref['extensions']['KHR_lights_punctual']}
             gltf['extensionsUsed'] = gltf.get('extensionsUsed', []) + ['KHR_lights_punctual']
+    else:
+        # Capture-free (PLAN-CARS phase 5): a camera from --camera-at x,y,z:tx,ty,tz (glTF space), else above the middle
+        # of the track's placed objects (the .pvs instances), looking down at it; the viewer needs one (--fly from it).
+        eye = target = None
+        if '--camera-at' in sys.argv:
+            e_, t_ = sys.argv[sys.argv.index('--camera-at') + 1].split(':')
+            eye, target = np.array([float(x) for x in e_.split(',')]), np.array([float(x) for x in t_.split(',')])
+        else:
+            # the middle of everything exported (the accessors' bounds), seen from above and to the side
+            # (the median of the meshes' centres: the sky dome and the horizon planes span kilometres)
+            c_ = np.array([(np.array(a_['min']) + np.array(a_['max'])) / 2 for a_ in accessors
+                           if 'min' in a_ and len(a_['min']) == 3])
+            target = np.median(c_, axis=0)
+            spread = np.percentile(np.linalg.norm(c_ - target, axis=1), 60)
+            eye = target + np.array([0.0, 0.5, 0.9]) * spread
+        if eye is not None:
+            fwd = target - eye
+            fwd /= np.linalg.norm(fwd)
+            right = np.cross(fwd, [0.0, 1.0, 0.0])
+            right /= np.linalg.norm(right)
+            up = np.cross(right, fwd)
+            M_ = np.eye(4)
+            M_[:3, 0], M_[:3, 1], M_[:3, 2], M_[:3, 3] = right, up, -fwd, eye
+            gltf['cameras'] = [{'type': 'perspective', 'perspective': {'yfov': 0.9250, 'aspectRatio': 16 / 9,
+                                                                       'znear': 0.3, 'zfar': 20000.0}}]
+            nodes.append({'name': 'capture_camera', 'camera': 0, 'matrix': M_.T.ravel().tolist()})
+            print(f'camera at {np.round(eye, 1).tolist()} looking at {np.round(target, 1).tolist()} (no capture)')
     gltf['scenes'] = [{'nodes': list(range(len(nodes)))}]
     blob = b''.join(bin_parts)
     gltf['buffers'] = [{'byteLength': len(blob), 'uri': os.path.basename(os.path.splitext(out)[0]) + '.bin'}]
