@@ -160,6 +160,19 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
     and does not explain the missing highlights; it matters for special paints (the player's paint booth choices,
     other races). To support it: the term in fm3_carpaint.gdshader, and its values per car on the stream (from the
     draw's constants c231 / c234-c236, or the paint data next to the livery).
+  - *What a car's paint is in the data (pearlescent, finishes, names):* a Combo_Colors row holds only the car, the
+    sequence, a metallic flag, the RGB, a colour class (Gray, Olive, Red, Blue, OffWhite, Black, YellowLt, ... 24
+    classes) and the base / damage texture names: no manufacturer paint name, no gloss / matte / candy / pearl field.
+    List_ColorFinish has three finishes only: Normal, Metallic, CarbonFiber; the special paints are all Metallic.
+    Pearl appears only as base-texture names on a few colours (e.g. 'nodamagePearl_Polar.tga', the livery layer).
+    ShaderSettings has Normal / Metallic (the files the cars use, FM3N names one) and Pearl / Opalescent / Silver /
+    Gold / Bronze / Copper / Pewter / Platinum: those eight are identical to each other, in an older key set, and
+    nothing names them (leftovers). Normal vs Metallic differ only in PaintScale (0.8 / 0.6) and SpecularAmount2 (0 /
+    4: a broad second sun highlight, power 4; the capture's c191 / c216). Their keys map onto the paint shader's
+    constants: MetalColor (0, 0, 1) = c234, MetalPower 5 = c235, MetalBias 0 = c236, MetalScale 0 = c231 (the
+    angle-dependent tint above is this "Metal" flake term, off), TwoTonePower 20 = c229, MinShadowValue 0.25 = c238,
+    SHTransition / Width 0.5 / 0.3 = c232 / c233. fm3_carpaint.gdshader now has the second highlight (scaled 0.1:
+    the game's amount saturated ours) instead of a fitted reflection boost for metallics (summary 16.9 -> 16.8).
   - *Highlights, tried offline on the captured grid (paint shader only, then reverted)*: env_scale 0.2 -> 0.4 / 0.7 /
     1.0 brightens everything (summary 16.9 -> 21.0 / 29.3 / 39.3); a sharper cube (env_lod 2.5 -> 1 / 0) changes nothing
     (17.1); a steeper Fresnel with no floor widens the spread (power 4, scale 1.0, min 0: Mazda p10/p90 14/117, summary

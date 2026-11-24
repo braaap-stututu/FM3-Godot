@@ -26,12 +26,18 @@ uniform float shadow_strength = 0.85;
 // The game's paint constants (all cars on the grid): reflection c224 x c217/c218 = 1.5 x 0.3/0.5, Fresnel power c216 = 4,
 // the sun's highlight power c189 = 75 and strength c180 = 1.4. (The colour's c119.x scale is in the albedo: fir_world.)
 uniform float refl_gain = 1.0;  // environment reflection at grazing angles (x Fresnel), solid paint
-uniform float refl_metal = 1.6;  // ... metallic paint (the game's c191.x > 0: the Mazda, the Eclipse; glTF metallic 1;
+uniform float refl_metal = 1.0;  // ... metallic paint (the game's c191.x > 0: the Mazda, the Eclipse; glTF metallic 1;
                                  // 2.5 fitted the grid's highlights but striped the Eclipse's doors with the low-res cube)
 uniform float metallic = 0.0;
 uniform float refl_f0 = 0.02;  // ... and looking straight at the paint (the game's black paint stays black head-on)
 uniform float spec_gain = 1.4;  // the sun's highlight
 uniform float spec_power = 75.0;
+// Metallic paint's second, broad sun highlight (Metallic.xml SpecularAmount2 4 / SpecularPower2 4 = the capture's c191.x /
+// c216.x; Normal.xml has none): the game's amount saturated our cars (p90 255), so scaled: 0.1 fitted on the captured
+// grid (summary 16.8, with the metallic reflection boost refl_metal 1.6 -> 1.0; before 16.9). The game's reflection is
+// the same for both finishes.
+uniform float spec2_gain = 0.1;
+uniform float spec2_power = 4.0;
 uniform float fresnel_power = 4.0;
 uniform bool game_fresnel = true;
 uniform float game_fresnel_power = 1.5;
@@ -68,7 +74,8 @@ void light() {
 		// power 4, under which the grid's paint lacked its bright top tenth (CR-X p90 138 where the game has 189)
 		float fres = game_fresnel ? clamp(pow(1.0 - cosv, game_fresnel_power), fresnel_min, fresnel_max) * cube_scale * env_scale
 			: refl_f0 + (1.0 - refl_f0) * pow(1.0 - cosv, fresnel_power);
-		float spec = pow(max(dot(reflect(-LIGHT, NORMAL), VIEW), 0.0), spec_power) * sh;
+		float rl = max(dot(reflect(-LIGHT, NORMAL), VIEW), 0.0);
+		float spec = pow(rl, spec_power) * sh + pow(rl, spec2_power) * sh * spec2_gain / spec_gain * metallic;
 		SPECULAR_LIGHT += to_linear(env * fres * mix(refl_gain, refl_metal, metallic) * mix(1.0, sh, 0.3) + sun * spec * spec_gain);
 	}
 }
