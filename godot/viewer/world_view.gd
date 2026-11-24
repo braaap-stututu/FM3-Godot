@@ -65,6 +65,18 @@ var _gltf_path := ""
 var _car_names := {}  # car -> {name, color, metallic} ("FM3N")
 var _library_tried := {}  # cars a library model was tried for
 var _library_queue := []  # cars waiting for their library model
+# The in-car view (2026-11-24, capture-free CrownJewel, RB twice): the game shows the outside brighter from the cockpit
+# than from the chase camera (sky 209 vs 178; Godot 166 = as in its chase view) and its cabin dark (dash 19; Godot 30):
+# its cockpit has no directional light (TrackSettings SHCockpitDir 0) and the view a higher exposure. Cockpit meshes
+# sit on their own render layer the sun leaves out, and the exposure rises in-car by IN_CAR_EXPOSURE.
+const COCKPIT_LAYER := 8
+const IN_CAR_EXPOSURE := 1.5
+# The gauges (unshaded, seen in-car only): the game's daylight dials are grey markings (~150) on black; at gain 1 / 1.5
+# (the exposure undone) Godot's were white (~250) on grey, cluster p95 165 vs the game's 58. 0.25 fitted on the markings.
+const GAUGE_GAIN := 0.25
+var _world_env: WorldEnvironment = null
+var _base_exposure := 1.0
+var _was_in_car := false
 var _shot_held_since := -1  # (ms: a requested picture waiting for the library cars)
 var _cars_with_parts := {}  # cars with meshes attached
 var _sun_to := Vector3(0, 1, 0)  # towards the sun (glass highlights)
@@ -361,6 +373,7 @@ func _init() -> void:
 				var gm := ShaderMaterial.new()
 				gm.shader = load("res://viewer/fm3_gauge.gdshader")
 				gm.set_shader_parameter("tex", m.albedo_texture)
+				gm.set_shader_parameter("gain", GAUGE_GAIN)
 				mi.set_surface_override_material(s, gm)
 				continue
 			mi.set_surface_override_material(s, m)
@@ -420,6 +433,8 @@ func _init() -> void:
 			env.environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 			env.environment.tonemap_exposure = 1.0
 	root.add_child(env)
+	_world_env = env
+	_base_exposure = env.environment.tonemap_exposure
 	if lit:
 		# Reflections of the real scene (FM3 renders a dynamic environment map for its car paint and glass): one probe
 		# around the grid, rendered once from just above the cars.
@@ -434,6 +449,7 @@ func _init() -> void:
 		probe.position = cam_o + Vector3(cam_f.x, 0, cam_f.z).normalized() * 15.0 + Vector3(0, 6.0, 0)
 		root.add_child(probe)
 	var sun := DirectionalLight3D.new()
+	sun.light_cull_mask = 0xFFFFF & ~COCKPIT_LAYER
 	sun.rotation_degrees = Vector3(-sun_elev, sun_azim, 0)
 	var glights := scene.find_children("*", "DirectionalLight3D", true, false)
 	if not glights.is_empty():  # the capture's sun (fir_world.py writes FM3's sun direction)
@@ -572,7 +588,7 @@ func _make_live_cube(at: Vector3) -> void:
 		c.keep_aspect = Camera3D.KEEP_HEIGHT
 		c.near = 0.05
 		c.far = 3000.0
-		c.cull_mask = 0xFFFFF & ~2  # (not layer 2: the cars)
+		c.cull_mask = 0xFFFFF & ~2 & ~COCKPIT_LAYER  # (not layer 2: the cars; nor the cockpits)
 		vp.add_child(c)
 		root.add_child(vp)
 		_live_cube_cams.append(c)
@@ -907,6 +923,8 @@ func _bind_textures(state: GLTFState, gltf_path: String, compress := true) -> vo
 # One car mesh joins the live cars: it follows its car (wk -1) or wheel wk at <offset> (global = move * offset), with
 # its speed blur, cockpit flag, needle, paint / glass materials (the player's live cube) and brake / reverse lights.
 func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle = null) -> void:
+	if String(m.name).begins_with("cockpit_"):
+		m.layers = COCKPIT_LAYER  # (not lit by the sun: FM3's cockpit has no directional light, SHCockpitDir 0)
 	_car_parts.append([m, car, offset, wk, _wheel_blur_kind(m) if wk >= 0 else -1,
 		String(m.name).begins_with("cockpit_"), m.cast_shadow, needle if needle != null else _needles.get(String(m.name))])
 	_cars_with_parts[car] = true
@@ -1129,6 +1147,7 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 			var gg := ShaderMaterial.new()
 			gg.shader = load("res://viewer/fm3_gauge.gdshader")
 			gg.set_shader_parameter("tex", m.albedo_texture)
+			gg.set_shader_parameter("gain", GAUGE_GAIN)
 			mi.set_surface_override_material(s, gg)
 			continue
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
@@ -1417,6 +1436,9 @@ func _show_drawn(now: float) -> void:
 			pdist = o.distance_to(cam.origin)
 			player = car
 	var in_car := _live_vtable == 0x8200206C or _live_vtable == 0x82034FC4
+	if in_car != _was_in_car and _world_env != null:
+		_was_in_car = in_car
+		_world_env.environment.tonemap_exposure = _base_exposure * (IN_CAR_EXPOSURE if in_car else 1.0)
 	_update_lights(player)
 	if player != _live_player and not _live_cube_cams.is_empty():
 		_live_player = player
