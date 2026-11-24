@@ -904,6 +904,7 @@ def main():
     sky_origin = np.zeros(3)
     sky_height = np.zeros(3)
     shadow_dir = None  # TrackSettings.xml ShadowLightDirection (game space): the sun of a capture-free scene
+    crowd_shade = [1.0, 1.0, 1.0]  # TrackSettings <Crowds> dark_x/y/z: the crowd under the stands' roofs
     if '--camera-from' in sys.argv:
         ref_ = json.load(open(sys.argv[sys.argv.index('--camera-from') + 1]))
         for n_ in ref_['nodes']:
@@ -917,6 +918,9 @@ def main():
             mo = re.search(r'SkyboxHeightOffset value="([-0-9.]+)"', ts_text)
             if mo:
                 sky_height = np.array([0.0, float(mo.group(1)), 0.0])
+            mo = re.search(r'<Crowds [^>]*dark_x="([-0-9.]+)" dark_y="([-0-9.]+)" dark_z="([-0-9.]+)"', ts_text)
+            if mo:
+                crowd_shade = [float(mo.group(k)) for k in (1, 2, 3)]
             mo = re.search(r'<ShadowLightDirection x="([-0-9.e]+)" y="([-0-9.e]+)" z="([-0-9.e]+)"', ts_text)
             if mo:
                 shadow_dir = np.array([float(mo.group(k)) for k in (1, 2, 3)])
@@ -1053,6 +1057,10 @@ def main():
                 rec = texmap[name]
                 uv = apply_uv(rec['chan'], rec['a'], rec['b'], me)
                 base_png = rec['base'] if uv is not None else None
+            if base_png and name == 'crowds' and rec is not None:
+                # the crowd cards: the game shades its crowd by TrackSettings' Crowds dark / light colours; the stands sit
+                # under their roofs (CrownJewel stand crowd 42 in the game, 57 unshaded here)
+                rec = dict(rec, factor=crowd_shade + [1.0])
             if base_png and shader_.startswith('rdline_blnd_spec_opac') and not base_png.startswith('ra_'):
                 # (a captured road line too: the same line picture, blended and dimmed as above)
                 base_png = red_alpha_png(base_png)
@@ -1180,7 +1188,7 @@ def main():
         Tq = np.concatenate([np.stack([b4, b4 + 1, b4 + 2], 1), np.stack([b4, b4 + 2, b4 + 3], 1)])
         groups.setdefault(('crowd_people', crowd_png, None, None), []).append(
             (Pq.astype(np.float32), Tq.astype(np.int64), Uq.astype(np.float32), None,
-             {'factor': [1, 1, 1, 1], 'blend': 'MASK'}, None))
+             {'factor': crowd_shade + [1.0], 'blend': 'MASK'}, None))
         print(f'crowd: {npeople} people in {ncell} cells from {os.path.basename(crowd_file)}')
 
     nv = nt = 0
