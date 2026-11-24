@@ -842,6 +842,15 @@ def main():
                     os.makedirs(tex_out, exist_ok=True)
                     name = 'bix_%05x.png' % tid
                     fr.write_png(os.path.join(tex_out, name), img.shape[1], img.shape[0], img.tobytes())
+        if name is None and os.path.exists(os.path.join(src, '_0x%08X.bin' % tid)):
+            # a texture in its own CAFF container (no .bix pair; 290 on CrownJewel): its full size, where the .stx
+            # stream holds a smaller copy (the grandstand canopy: 64 x 64 vs 32 x 32)
+            got = fm3_tex.load_caff_texture(os.path.join(src, '_0x%08X.bin' % tid))
+            img = fm3_tex.decode_stx(*got) if got else None
+            if img is not None:
+                os.makedirs(tex_out, exist_ok=True)
+                name = 'bin_%05x.png' % tid
+                fr.write_png(os.path.join(tex_out, name), img.shape[1], img.shape[0], img.tobytes())
         if name is None and stx is not None and tid in stx['stream']:
             # textures without a .bix live only in the stx (77 on Ladera, some full size: the grass tufts' cards)
             img = fm3_tex.decode_stx(stx_data, stx, stx['stream'][tid])
@@ -1034,6 +1043,11 @@ def main():
                         png = red_alpha_png(png)
                         rec = {'factor': [0.6, 0.6, 0.6, 1], 'blend': 'BLEND'}
                     uv, base_png = me['uv0'].astype(np.float32), png
+                    mm_p = mesh_mat.get(me['index_offset'])
+                    if sh.startswith('diff_spec_ovly') and mm_p and mm_p[1].get('params'):
+                        # diff_spec_ovly_2 (the grandstand canopy's burlap: 15 x 15; 60 x 60 on others): the base texture at
+                        # UV0 x parameter 0's xy; unscaled, its weave showed as big grey blotches
+                        uv = uv * np.array(mm_p[1]['params'][0][:2], np.float32)
                     from_files += 1
             if uv is None and texmap.get(name):
                 rec = texmap[name]

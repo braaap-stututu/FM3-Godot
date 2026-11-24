@@ -202,6 +202,26 @@ def load_stx(path):
     return out
 
 
+def load_caff_texture(path):
+    r"""One texture in its own CAFF container (a track's _0x<id>.bin, where the texture has no .bix pair: 290 on
+    CrownJewel, e.g. the grandstand canopy's burlap, whose .stx stream copy is 32 x 32): (data, stx-like dict, entry)
+    for decode_stx, or None. Record as in load_stx (format word at +0x18, width / height at +0x24); the GPU data
+    follows the .data section, at offset 0."""
+    import re
+    b = open(path, 'rb').read()
+    if b[:4] != b'CAFF':
+        return None
+    dsize = struct.unpack_from('>I', b, 0x60)[0]
+    d = b[0x190:0x190 + dsize]
+    m = re.search(rb'texture\x0004\.05', d)
+    if not m:
+        return None
+    r = m.start()
+    word = struct.unpack_from('>I', d, r + 0x18)[0]
+    w, h = struct.unpack_from('>HH', d, r + 0x24)
+    return b, {'gpu': 0x190 + dsize}, {'w': w, 'h': h, 'format': word & 63, 'endian': (word >> 6) & 3, 'offset': 0}
+
+
 def decode_stx(data, stx, ent):
     """Pixels of one stx entry (data = the whole .stx.bin)."""
     o = stx['gpu'] + ent['offset']
