@@ -150,6 +150,16 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
     address of that car's paint draw), and add it to FM3N; (3) Godot: that image as the car's paint texture (over the
     database colour by its alpha, as the captured composite does). For AI cars the stock t0 is their nodamage layer,
     which the library already uses.
+  - *Second hues (two-tone sheen, second colours, stripes):* the game supports them. ShaderSettings' body materials
+    carry TwoToneColor / TwoTonePower / TwoToneBias / TwoToneScale; the database's List_SpecialColors (102 paints, 99
+    with a two-tone sheen) gives each special paint a primary and a secondary colour with scale / bias / power (e.g.
+    a dark red with a green sheen, scale 0.25, power 20); Combo_Colors_Exceptions (224 rows) gives some cars' colours a
+    stripe colour (209) or a second body colour (none). The paint shader has the term: instructions 36-45 lerp the
+    colour towards c234 by a weight from the view angle (log / exp with c229 / c235, offset c236), scaled by c231. On
+    the captured grid c231 = 0 for all eight cars and none of them has an exception row, so the sheen is off there
+    and does not explain the missing highlights; it matters for special paints (the player's paint booth choices,
+    other races). To support it: the term in fm3_carpaint.gdshader, and its values per car on the stream (from the
+    draw's constants c231 / c234-c236, or the paint data next to the livery).
   - *Highlights, tried offline on the captured grid (paint shader only, then reverted)*: env_scale 0.2 -> 0.4 / 0.7 /
     1.0 brightens everything (summary 16.9 -> 21.0 / 29.3 / 39.3); a sharper cube (env_lod 2.5 -> 1 / 0) changes nothing
     (17.1); a steeper Fresnel with no floor widens the spread (power 4, scale 1.0, min 0: Mazda p10/p90 14/117, summary
