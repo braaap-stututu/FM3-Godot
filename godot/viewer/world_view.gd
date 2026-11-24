@@ -6,6 +6,7 @@ var _out := ""
 var _frames := 0
 var _scene: Node
 var _cam: Camera3D
+var _sky_nodes := []  # the sky dome's meshes: kept on the camera (_process)
 var _triple_layout := ""  # --triple <layout.json>: three screens (core/triple_view layout), stitched side by side
 var _screens := []
 var _msaa := 0  # --msaa 2|4|8 on the screens
@@ -242,6 +243,8 @@ func _init() -> void:
 			mi.transparency = 1.0
 		if String(mi.name).begins_with("cockpit_"):
 			mi.visible = false  # (the in-car model: shown only in the game's first-person views, live)
+		if String(mi.name).begins_with("skydome_"):
+			_sky_nodes.append(mi)
 		if _is_car_mesh(mi):
 			mi.layers = 2  # (left out of the live reflection cube)
 			car_centres.append(mi.global_transform * mi.get_aabb().get_center() if mi.is_inside_tree() else mi.transform * mi.get_aabb().get_center())
@@ -438,7 +441,7 @@ func _init() -> void:
 	var sun_fwd := -sun.global_transform.basis.z if sun.is_inside_tree() else -sun.transform.basis.z
 	for cm in _car_mats:
 		(cm as ShaderMaterial).set_shader_parameter("sun_dir", -sun_fwd)  # (towards the sun: the glass highlight)
-	print("world_view: %d wheel rim surfaces dimmed" % rim_set)
+	print("world_view: %d wheel rim surfaces dimmed, %d sky dome meshes (kept on the camera)" % [rim_set, _sky_nodes.size()])
 	if glass_set:
 		print("world_view: %d car glass surfaces with the game's own glass settings" % glass_set)
 	sun.directional_shadow_max_distance = 250.0
@@ -1287,6 +1290,10 @@ func _car_in_frame(car: int, k: int):
 
 func _process(_delta: float) -> bool:
 	_frames += 1
+	# the sky dome stays centred on the camera, as FM3 draws it (fm3_track_export.py: skydome_ nodes)
+	if _cam != null and _cam.is_inside_tree():
+		for sk in _sky_nodes:
+			(sk as Node3D).global_position = _cam.global_position
 	if _live_port > 0 and _frames > 3:
 		_live_step()
 		return false

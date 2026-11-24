@@ -855,8 +855,11 @@ def main():
             bix_cache[key] = name
         return bix_cache[key]
 
-    # Sky dome origin: the camera position (from --camera-from) lowered by SkyboxHeightOffset.
+    # Sky dome: FM3 centres it on the camera, lowered by SkyboxHeightOffset. Its vertices are written around the camera
+    # (the height offset only), its nodes named 'skydome_...' at the camera (--camera-from's, else 0): the viewer keeps
+    # them on its camera (world_view.gd), so the sky follows a flying or live camera on every track.
     sky_origin = np.zeros(3)
+    sky_height = np.zeros(3)
     if '--camera-from' in sys.argv:
         ref_ = json.load(open(sys.argv[sys.argv.index('--camera-from') + 1]))
         for n_ in ref_['nodes']:
@@ -868,7 +871,8 @@ def main():
         if os.path.exists(ts):
             mo = re.search(r'SkyboxHeightOffset value="([-0-9.]+)"', open(ts, errors='replace').read())
             if mo:
-                sky_origin = sky_origin + np.array([0.0, float(mo.group(1)), 0.0])
+                sky_height = np.array([0.0, float(mo.group(1)), 0.0])
+    sky_cam = sky_origin.copy()
     families_used = {}
     groups = {}
     nfiles = textured = lit = from_files = placed = 0
@@ -924,7 +928,7 @@ def main():
         # Placements: (3x3, translation, lightmap entry or None); world-space files once, as they are.
         places = [(np.eye(3), np.zeros(3), None)]
         if is_sky:
-            places = [(np.eye(3), sky_origin, None)]
+            places = [(np.eye(3), sky_height, None)]
         if pv is not None and mm and int(mm.group(1)) in by_model:
             places = []
             for ins in by_model[int(mm.group(1))]:
@@ -1113,7 +1117,10 @@ def main():
         prim['indices'] = len(accessors) - 1
         prim['material'] = len(materials) - 1
         meshes.append({'name': name, 'primitives': [prim]})
-        nodes.append({'mesh': len(meshes) - 1, 'name': f'{name}__{len(meshes) - 1}'})  # unique (Godot renames duplicates)
+        if sky:
+            nodes.append({'mesh': len(meshes) - 1, 'name': f'skydome_{name}__{len(meshes) - 1}', 'translation': sky_cam.tolist()})
+        else:
+            nodes.append({'mesh': len(meshes) - 1, 'name': f'{name}__{len(meshes) - 1}'})  # unique (Godot renames duplicates)
         nv += len(P)
         nt += len(T)
     if pv is not None:
