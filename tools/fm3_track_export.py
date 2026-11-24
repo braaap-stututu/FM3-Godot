@@ -856,7 +856,10 @@ def main():
         # A copy of a decoded texture whose alpha is its red channel (road lines); the file name.
         key = ('red_alpha', png)
         if key not in bix_cache:
-            w_, h_, px_ = fir_frame.read_png(os.path.join(tex_out, png))
+            src_ = os.path.join(tex_out, png)
+            if not os.path.exists(src_) and capdir and os.path.exists(os.path.join(capdir, png)):
+                src_ = os.path.join(capdir, png)  # (a capture texture, not copied yet)
+            w_, h_, px_ = fir_frame.read_png(src_)
             a_ = np.frombuffer(bytes(px_), np.uint8).reshape(h_, w_, -1)
             rgba = np.empty((h_, w_, 4), np.uint8)
             rgba[:, :, :3] = a_[:, :, :3]
@@ -1036,6 +1039,10 @@ def main():
                 rec = texmap[name]
                 uv = apply_uv(rec['chan'], rec['a'], rec['b'], me)
                 base_png = rec['base'] if uv is not None else None
+            if base_png and shader_.startswith('rdline') and 'opac' in shader_ and not base_png.startswith('ra_'):
+                # (a captured road line too: the same line picture, blended and dimmed as above)
+                base_png = red_alpha_png(base_png)
+                rec = dict(rec, factor=[0.6, 0.6, 0.6, 1], blend='BLEND')
             # FM3 shader families (fm3_families.py): multi-texture terrain, road, paint, curbs, from the files; they replace
             # the capture's single (composited) texture too, so the area the frame saw looks like the rest of the track.
             fam, fam_ex = None, None
