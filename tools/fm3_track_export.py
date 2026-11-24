@@ -1065,15 +1065,17 @@ def main():
         offset += len(data) + pad
         return len(views) - 1
 
-    def image(png):
-        if png not in img_ids:
+    def image(png, sampler=0):
+        # (sampler 1 = clamp to edge: the sky dome's panels; with repeat, filtering blended in the opposite edge: a light
+        # seam line down the sky where two panels meet)
+        if (png, sampler) not in img_ids:
             os.makedirs(tex_out, exist_ok=True)
             if capdir and os.path.exists(os.path.join(capdir, png)):  # (capture textures may change under the same name)
                 shutil.copyfile(os.path.join(capdir, png), os.path.join(tex_out, png))
             images.append({'uri': os.path.basename(tex_out) + '/' + png})
-            textures.append({'source': len(images) - 1, 'sampler': 0})
-            img_ids[png] = len(textures) - 1
-        return img_ids[png]
+            textures.append({'source': len(images) - 1, 'sampler': sampler})
+            img_ids[(png, sampler)] = len(textures) - 1
+        return img_ids[(png, sampler)]
 
     nv = nt = 0
     for (name, base, lm, famj), parts in sorted(groups.items(), key=lambda kv: str(kv[0])):
@@ -1106,7 +1108,7 @@ def main():
             U = np.ascontiguousarray(np.concatenate([q[2] for q in parts]).astype(np.float32))
             accessors.append({'bufferView': add_view(U.tobytes(), 34962), 'componentType': 5126, 'count': len(U), 'type': 'VEC2'})
             prim['attributes']['TEXCOORD_0'] = len(accessors) - 1
-            pbr['baseColorTexture'] = {'index': image(base)}
+            pbr['baseColorTexture'] = {'index': image(base, 1 if sky else 0)}
             blend = rec.get('blend')
             if blend in ('MASK', 'BLEND', True):
                 mat['alphaMode'] = 'MASK' if blend == 'MASK' else 'BLEND'
@@ -1179,7 +1181,7 @@ def main():
     if any('extensions' in m for m in materials):
         gltf['extensionsUsed'] = ['KHR_materials_unlit']
     if images:
-        gltf.update(images=images, textures=textures, samplers=[{'wrapS': 10497, 'wrapT': 10497}])
+        gltf.update(images=images, textures=textures, samplers=[{'wrapS': 10497, 'wrapT': 10497}, {'wrapS': 33071, 'wrapT': 33071}])
     if '--camera-from' in sys.argv:
         ref = json.load(open(sys.argv[sys.argv.index('--camera-from') + 1]))
         for n in ref['nodes']:
