@@ -64,7 +64,7 @@ Frozen grid (`FM3_GRID_TEST=1`), Godot `--live` beside the game, the game's own 
 |---|---|---|---|
 | grid (chase) | 104.29, -0.51, 217.17, fov 53 | 20.0 / 19.1 / 17.9 | as the offline render |
 | RB once | 104.30, -0.29, 216.82, fov 53 | 20.8 / 19.9 / 18.7 | |
-| RB twice (in-car) | 103.92, -1.75, 222.21, fov 45 | 37.6 / 38.6 / 37.5 | geometry lines up exactly; the rest is the HUD, the CR-X's gauges and the driver's hands (not in the carbin parts used), the mirror's picture and darker cabin light |
+| RB twice (in-car) | 103.92, -1.75, 222.21, fov 45 | 37.6 / 38.6 / 37.5 (2026-11-24: 20.6 / 19.8 / 18.9, see below) | geometry lines up exactly; the rest is the HUD, the CR-X's gauges and the driver's hands (not in the carbin parts used), the mirror's picture and darker cabin light |
 
 Cars, an AI-driven race (`FM3_GRID_TEST=1` + `FM3_AI_PLAYER=1`: the race AI drives the player's car too), frozen
 with `Fm3 "env FM3_FREEZE_TIME 1"` for each pair of pictures. All 8 cars attached (49-87 meshes each):
@@ -176,7 +176,12 @@ The user's last question was whether to chase the remaining uneven steps or call
    the same as the captured Ladera (33); the live reflection cube costs ~40%: `--live-cube-faces 2` 40 fps, `1` 45,
    `--live-cube 0` 52 (faces not rendered keep their last picture: reflections lag; default stays 6). With the game
    capped (`-GameEnv FM3_MAX_FPS=60`) 36 fps and speed jitter median 1.0% / p95 5.2% (uncapped 4.1% / 17.6%), but
-   35 ms behind the game instead of 11. live_compare's picture waits (up to 10 s) for the library cars. Open: the player's
+   35 ms behind the game instead of 11.
+   In-car (2026-11-24, `live_compare.ps1 -Cameras 2`): the cockpit's windows as the game's cockpit_glass (clear, a
+   highlight only), the cockpit unlit by the sun (FM3: SHCockpitDir 0; render layer COCKPIT_LAYER) and the in-car
+   exposure x1.5 (the game shows the outside brighter from the cockpit), gauges at gain 0.25: capture-free CrownJewel
+   34.8 / 36.3 / 36.7 -> 17.0 / 17.6 / 18.4, captured Ladera 37.6 / 38.6 / 37.5 -> 20.6 / 19.8 / 18.9. Left: the HUD,
+   the driver's hands, the mirror's picture, the cluster housing (bluish grey, the game's black). live_compare's picture waits (up to 10 s) for the library cars. Open: the player's
    custom paint (the livery layer: the car object holds only the database colour, +0x9A0 etc.,
    `FM3_LIVE_DUMP_CARS=1`), crowd sprites, the sky dome's seam line, the sea's colour.
 6. Then stage B: ReGPU skips what Godot draws.
