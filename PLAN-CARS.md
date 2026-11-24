@@ -86,6 +86,17 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
   grid 20.7-20.8, chase 21.4.
 - **Open:** driver's hands (Granny `.gr2`, `Media\Cars\Driver`: not readable yet); mirror render targets; lit lens
   look in shade (the Eclipse's amber); exhaust tips' shape of light; paint gradients.
+- **Phase 5 started (other tracks):** all 17 tracks' `bin.zip` unpacked to `work\assets\tracks\<track>` (~4 GB).
+  `tools/fm3_track_audit.py` (report: `out\manifest\track_audit.md`): **all 32,782 model files read sequentially,
+  none by the fallback scanner or failed; no unknown vertex strides; every layout's .pvs parses**; 69,697 meshes: 7.0 %
+  drawn by a family recipe, 10.8 % multi-texture without one (most: `rdline_blnd_spec_opac_3` road lines 1,828,
+  `shldr_blnd_spec_3` 1,333, `shldr_blnd_3` 709, `rdline_blnd_diff_opac_2` 543, `shldr_blnd_spec_vclr_dualmix_4`
+  534). `shldr_blnd_spec_3`'s recipe rejects specular intensities above 1.0 (the other tracks use 2.0, Ladera has
+  1.2): widening it made Ladera's grid 19.6 -> 20.0, so reverted until another track's capture can check the
+  recipe's scale assignment. **Capture-free scenes:** `tools/build_track.ps1 -Track <Name> [-Ribbon NN] [-Render]`
+  (AmalfiGP, New York, Suzuka, Le Mans rendered); the sky dome follows the camera (`skydome_` nodes) but draws grey
+  without a capture: its textures are not in its model's slots (the .pvs texture table starts with the sun flare
+  and a pale strip; not settled).
 
 **Revised order from here:** phase 1 (structural reader) first, with LOD0 bodies and the file's normals as its first
 use (finding 1-2, and a likely cause of the paint's stripe on the Eclipse); then phase 0's fxobj and shadersettings
