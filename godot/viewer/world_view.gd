@@ -747,7 +747,7 @@ func _blend_material(m: BaseMaterial3D, f: Dictionary, gltf_path: String) -> Sha
 	if tex.size() > 3:
 		sm.set_shader_parameter("tex3", _load_tex(gltf_path, tex[3]))
 	var mode_name := String(f["mode"])
-	sm.set_shader_parameter("mode", {"blend": 1, "road": 2, "paint": 3, "edge": 4, "mix": 5, "curb": 6, "refl": 7, "ovly": 8, "blend3": 9, "road3": 10, "road2u": 11, "road2": 12, "opac2": 13, "rdline2": 14, "palette": 15}.get(mode_name, 1))
+	sm.set_shader_parameter("mode", {"blend": 1, "road": 2, "paint": 3, "edge": 4, "mix": 5, "curb": 6, "refl": 7, "ovly": 8, "blend3": 9, "road3": 10, "road2u": 11, "road2": 12, "opac2": 13, "rdline2": 14, "palette": 15, "dualmix": 16}.get(mode_name, 1))
 	if f.has("scale2"):
 		sm.set_shader_parameter("scale2", Vector2(f["scale2"][0], f["scale2"][1]))
 	sm.set_shader_parameter("vclr", bool(f.get("vclr", false)))

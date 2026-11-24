@@ -59,6 +59,11 @@ void fragment() {
 			t1 *= tint1;  // (the second layer's own tint: shldr_blnd_3's P[1]; 1 in the older recipes)
 		}
 		a = mix(t0, t1, m);
+	} else if (mode == 16) {
+		// shldr_blnd_spec_vclr_dualmix_4 (disassembled, simplified): lerp(A * tint0, B * tint1, v.g) * vertex colour
+		vec3 la = texture(albedo_tex, UV * scale0).rgb * tint0;
+		vec3 lb = texture(tex1, uv23.xy * scale1).rgb * tint1;
+		a = mix(la, lb, texture(tex3, uv23.zw).g) * COLOR.rgb;
 	} else if (mode == 15) {
 		// palette props (diff_clr_spec_2, disassembled): t0 * gain * lerp(t0, palette colour, mask.a)
 		vec3 t0 = texture(albedo_tex, UV * scale0).rgb;

@@ -1181,7 +1181,7 @@ def main():
                             pal_ = palette_colours(pv['textures'][texl_[ps_]]['id']) if 0 <= ps_ < len(texl_) else None
                         fam_ex = {'uv2': uv_src(r_['src1']).astype(np.float32),
                                   'uv3': (uv_src(r_['mask']) if r_['mask'] is not None else uv_src(r_['src1'])).astype(np.float32),
-                                  'col': fm3_track.vertex_colour(me) if r_['vclr'] else None,
+                                  'col': fm3_track.vertex_colour(me, r_.get('vclr_at', 20)) if r_['vclr'] else None,
                                   'lmsrc': uv_src(r_['lm']) if r_['lm'] is not None else None}
                         rec = {'factor': [1, 1, 1, 1], 'blend': False}
                         families_used[r_['mode']] = families_used.get(r_['mode'], 0) + 1

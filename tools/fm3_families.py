@@ -119,6 +119,14 @@ def recipe(shader, params, stride, slots):
         return {'mode': 'palette', 'src0': 16, 'src1': 16, 'mask': None, 'lm': 20 if stride >= 24 else None, 'vclr': False,
                 'scale0': list(params[0][:2]), 'scale1': [1.0, 1.0], 'tint0': [params[0][2]] * 3, 'tint1': [1.0, 1.0, 1.0],
                 'slots': slots[:2], 'palette_slot': slots[2]}
+    if shader == 'shldr_blnd_spec_vclr_dualmix_4' and len(slots) >= 4 and min(slots[:4]) >= 0 and len(params) >= 5             and stride >= 28:
+        # LeMans' verges and run-offs (disassembled, simplified): lerp(A * P[0], B * P[3], v) * vertex colour; A (slot 0) at
+        # UV 20 * P[1].xy, B (slot 2) at UV 20 * P[4].xy, v = slot 3's green at UV 24 (also the lightmap's), the vertex
+        # colour (ARGB) at byte 16. (The game also mixes each layer with a copy at a rotated UV by an offset map, slot 1,
+        # against visible tiling: left out.)
+        return {'mode': 'dualmix', 'src0': 20, 'src1': 20, 'mask': 24, 'lm': 24, 'vclr': True, 'vclr_at': 16,
+                'scale0': list(params[1][:2]), 'scale1': list(params[4][:2]), 'tint0': list(params[0][:3]),
+                'tint1': list(params[3][:3]), 'slots': [slots[0], slots[2], slots[2], slots[3]]}
     if ROAD3.match(shader) and len(slots) >= 2 and min(slots[:2]) >= 0 and len(params) >= 3 and stride >= 20:
         # road_3clr_blnd_2 (MapleValley's asphalt; disassembled): grain t0 at world (x, z) * P[1].x, v = t1.rgb * t1.a
         # (slot 1 at UV 16 * P[1].yz, the lightmap's UV); albedo = grain * P[0] + v * (grain + P[2] - grain * P[0]): dark
