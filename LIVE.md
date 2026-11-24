@@ -185,8 +185,23 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
   `REGPU_NO_GAMMA` / `REGPU_NO_GAMMA_PWL`) is a fixed toe curve, the same on MapleValley and LagunaSeca: 16 -> 9-12,
   48 -> 33, 80 -> 60, 112 -> 95-98, 144 -> 132-137, 240 -> 244-247. It is not the per-track brightness difference, nor
   highlight compression; our calibration (on the game's shots) already includes it.
-- **Open:** per-track brightness (LagunaSeca 1.25x brighter than ours, LeMans 0.88x; not the display gamma; next
-  suspect: the bloom pass, TrackSettings bloomCutoff / bloomScale), the road specular's overshoot; the palette barriers (`diff_clr_spec_2`: a per-model
+- **The game's auto-exposure and tone curve (found 2026-11-25, MapleValley capture):** after the scene, FM3 runs
+  a bloom chain (bright pass ps 58dc46c8b0b963ea on a 320x192 copy with c4 = (bloomCutoff, bloomScale), blurs
+  c8e364190753a770 / b9c3764fc70c9819, down to 32x32), a luminance pass (ps 4a17014edfabf5f0: the 32x32 bloom
+  buffer's average luminance, blended with the previous value by 0.02 a frame = adaptation L), and the final pass
+  (vs 2a342f670b5bb28a + ps 5b7efac9b0c87a00): colour = desat((scene + bloom), 0.85) / W + boost/255, where
+  W = lerp(DarkCurveWhitePoint, LightCurveWhitePoint, k) / 255 (- 0.0006), k = saturate((L - LumMin/255) * 255 /
+  (LumMax - LumMin)); vertex constants vc2 = (LumMin/255, -0.0006, 0, 255/(LumMax-LumMin)), vc3 / vc4 = the dark /
+  light curve (black/255, white/255, gamma, boost/255), vc254 = (1,0,0,0), vc255 = (0.1, 1280, 720, 0.5). Verified
+  by running the final ps in fir_vs: a linear exposure from 1/W (MapleValley 1.96x dark to 0.88x bright: the 0.88
+  caps its glare near 224). The shaders' code: the recomp's `out\user\static_shaders.bin` (pixel shaders, by
+  ReGPU's FNV hash) and the debug server's `hlsl <hash>` (vertex shaders). **Next:** the bright pass's formula (it
+  also takes its own vertex shader's interpolants) to compute L as the game does, then exposure + bloom as a
+  full-screen pass in the viewer, relative to CrownJewel's (our calibration includes its exposure). L is not the
+  scene's mean luminance (that estimate contradicts the measurements), and reading the 32x32 texture from guest memory
+  gave zeros (resolves stay on the GPU; FM3_WRITEBACK=32x32 did not reach it).
+- **Open:** per-track brightness (LagunaSeca 1.25x brighter than ours, LeMans 0.88x: the exposure above), the road
+  specular's overshoot (the same exposure caps it); the palette barriers (`diff_clr_spec_2`: a per-model
   palette row, ModelData c148), LeMans' `shldr_blnd_spec_vclr_dualmix_4`, reflective glass `diff_spec_opac_refl_3`,
   MapleValley's Castrol banners and asphalt tone, Catalunya's grass 25% dim.
 
