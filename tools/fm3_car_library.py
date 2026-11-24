@@ -33,7 +33,9 @@ import fm3_tex  # noqa: E402
 import fm3_track_export as tx  # noqa: E402
 from fir_world import smooth_normals  # noqa: E402
 
-LAMPS = ('head_light', 'tail_light', 'reverse_light', 'brake_light', 'signal')
+# the lights texture's materials: the lamps and the reflectors (the CR-X's 'reflector' is the red CR-X VTEC panel between its
+# tail lights, on lights_lod0; from nodamage it came out white)
+LAMPS = tx.LAMP_MATERIALS
 
 
 class Gltf:
