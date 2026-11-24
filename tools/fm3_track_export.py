@@ -689,13 +689,17 @@ def shader_settings(path):
         root = ET.parse(path).getroot()
     except ET.ParseError:
         return out
+    def num(v):
+        # (a few cars' files carry typos such as "14.6.0": the leading number, as the game's parser would read it)
+        m_ = re.match(r'\s*[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?', str(v))
+        return float(m_.group(0)) if m_ else 0.0
     for m in root:
         d = {}
         for e in m:
             if e.get('value') is not None:
-                d[e.tag] = float(e.get('value'))
+                d[e.tag] = num(e.get('value'))
             elif e.get('r') is not None:
-                d[e.tag] = [float(e.get(k, 0)) for k in 'rgba']
+                d[e.tag] = [num(e.get(k, 0)) for k in 'rgba']
         out[m.tag] = d
     return out
 
@@ -878,6 +882,25 @@ def main():
             bix_cache[key] = name_
         return bix_cache[key]
 
+    def mask_alpha_png(png, mask_png):
+        # A copy of a road line's picture whose alpha is its mask texture's red channel (rdline_blnd_spec_opac_3's material
+        # slot 2, resampled to the picture's size); the file name. CrownJewel's masks equal the picture's grey (red_alpha_png
+        # gives the same), Catalunya's grid boxes are fainter: mask red 0.49 under a 0.79 picture.
+        key = ('mask_alpha', png, mask_png)
+        if key not in bix_cache:
+            w_, h_, px_ = fir_frame.read_png(os.path.join(tex_out, png))
+            a_ = np.frombuffer(bytes(px_), np.uint8).reshape(h_, w_, -1)
+            mw, mh, mpx = fir_frame.read_png(os.path.join(tex_out, mask_png))
+            m_ = np.frombuffer(bytes(mpx), np.uint8).reshape(mh, mw, -1)[:, :, 0]
+            m_ = m_[(np.arange(h_) * mh // h_)[:, None], (np.arange(w_) * mw // w_)[None, :]]
+            rgba = np.empty((h_, w_, 4), np.uint8)
+            rgba[:, :, :3] = a_[:, :, :3]
+            rgba[:, :, 3] = m_
+            name_ = 'ma_' + png[:-4] + '_' + mask_png
+            fr.write_png(os.path.join(tex_out, name_), w_, h_, rgba.tobytes())
+            bix_cache[key] = name_
+        return bix_cache[key]
+
     stx_path = glob.glob(os.path.join(src, '*.stx.bin'))
     stx = fm3_tex.load_stx(stx_path[0]) if (pv is not None and stx_path) else None
     stx_data = open(stx_path[0], 'rb').read() if stx else None
@@ -905,6 +928,10 @@ def main():
     sky_height = np.zeros(3)
     shadow_dir = None  # TrackSettings.xml ShadowLightDirection (game space): the sun of a capture-free scene
     crowd_shade = [1.0, 1.0, 1.0]  # TrackSettings <Crowds> dark_x/y/z: the crowd under the stands' roofs
+    # The sky's brightness against CrownJewel's (where the unlit dome matched the game within 6%): TrackSettings skyScale
+    # over its tone curve's white point (LightCurveWhitePoint, CrownJewel 275); Catalunya 1.05 / 214.6 -> 1.35 (its game sky
+    # 253 where ours was 175, clipped)
+    sky_gain = 1.0
     if '--camera-from' in sys.argv:
         ref_ = json.load(open(sys.argv[sys.argv.index('--camera-from') + 1]))
         for n_ in ref_['nodes']:
@@ -921,6 +948,10 @@ def main():
             mo = re.search(r'<Crowds [^>]*dark_x="([-0-9.]+)" dark_y="([-0-9.]+)" dark_z="([-0-9.]+)"', ts_text)
             if mo:
                 crowd_shade = [float(mo.group(k)) for k in (1, 2, 3)]
+            mo = re.search(r'LightCurveWhitePoint="([-0-9.e]+)"', ts_text)
+            mo2 = re.search(r'<skyScale value="([-0-9.e]+)"', ts_text)
+            if mo and float(mo.group(1)) > 1:
+                sky_gain = (float(mo2.group(1)) if mo2 else 1.0) * 275.0 / float(mo.group(1))
             mo = re.search(r'<ShadowLightDirection x="([-0-9.e]+)" y="([-0-9.e]+)" z="([-0-9.e]+)"', ts_text)
             if mo:
                 shadow_dir = np.array([float(mo.group(k)) for k in (1, 2, 3)])
@@ -959,7 +990,11 @@ def main():
                     order.append(me_['material'])
             for k, mat_name in enumerate(order):
                 if k < len(starts) and starts[k] < len(plain):
-                    file_tex[mat_name] = (plain[starts[k]], shaders[k] if k < len(shaders) else '')
+                    sh_k = shaders[k] if k < len(shaders) else ''
+                    # (anim_flag_diff_spec_bump_2_nolm, Catalunya's 102 flags: its first texture is the cloth's wrinkle
+                    # map (grey), the second the flag's picture)
+                    j = starts[k] + (1 if sh_k.startswith('anim_flag') and starts[k] + 1 < len(plain) else 0)
+                    file_tex[mat_name] = (plain[j], sh_k)
             if atlas:
                 file_lm = atlas[0]
             # The file's own material table (fm3_track._parse_materials): slot 0 = base texture, slot 7 = lightmap,
@@ -973,6 +1008,10 @@ def main():
                 sl = mt_['slots']
                 shn = shaders[mt_['shader']] if mt_['shader'] < len(shaders) else ''
                 mesh_mat[me_['index_offset']] = (shn, mt_, texl)
+                if os.environ.get('FM3_DEBUG_MAT') and os.environ['FM3_DEBUG_MAT'].lower() in (me_['material'] or '').lower():
+                    # (debugging aid: a material's shader, parameters and per-slot texture ids)
+                    print('mat', os.path.basename(path), me_['material'], shn, [list(map(float, q)) for q in mt_['params']],
+                          ['%x' % pv['textures'][texl[s]]['id'] if 0 <= s < len(texl) else None for s in sl])
                 if sl and 0 <= sl[0] < len(texl):
                     mesh_tex[me_['index_offset']] = (pv['textures'][texl[sl[0]]]['id'], shn)
                 if len(sl) > 7 and 0 <= sl[7] < len(texl):
@@ -1044,7 +1083,11 @@ def main():
                         # a colour factor fitted on the live CrownJewel grid: 0.5 / 0.6 / 0.7 -> start-box line p95
                         # 134 / 159 / 185 (game 188), whole frame 20.3/20.0/18.4, 20.4/20.2/18.5, 20.7/20.4/18.7
                         # (opaque white: 21.2/21.0/19.3); 0.6 between the two measures.
-                        png = red_alpha_png(png)
+                        mm_l = mesh_mat.get(me['index_offset'])
+                        sl_l = mm_l[1]['slots'] if mm_l else []
+                        mpng = (bix_png(pv['textures'][mm_l[2][sl_l[2]]]['id'])
+                                if (mm_l and len(sl_l) > 2 and 0 <= sl_l[2] < len(mm_l[2])) else None)
+                        png = mask_alpha_png(png, mpng) if mpng else red_alpha_png(png)
                         rec = {'factor': [0.6, 0.6, 0.6, 1], 'blend': 'BLEND'}
                     uv, base_png = me['uv0'].astype(np.float32), png
                     mm_p = mesh_mat.get(me['index_offset'])
@@ -1061,7 +1104,7 @@ def main():
                 # the crowd cards: the game shades its crowd by TrackSettings' Crowds dark / light colours; the stands sit
                 # under their roofs (CrownJewel stand crowd 42 in the game, 57 unshaded here)
                 rec = dict(rec, factor=crowd_shade + [1.0])
-            if base_png and shader_.startswith('rdline_blnd_spec_opac') and not base_png.startswith('ra_'):
+            if base_png and shader_.startswith('rdline_blnd_spec_opac') and not base_png.startswith(('ra_', 'ma_')):
                 # (a captured road line too: the same line picture, blended and dimmed as above)
                 base_png = red_alpha_png(base_png)
                 rec = dict(rec, factor=[0.6, 0.6, 0.6, 1], blend='BLEND')
@@ -1211,6 +1254,8 @@ def main():
             mat['alphaMode'] = 'BLEND'
         if sky:
             mat['extensions'] = {'KHR_materials_unlit': {}}
+            if abs(sky_gain - 1.0) > 1e-3:
+                mat['extras'] = {'fm3_sky_gain': round(sky_gain, 4)}
             lm = None
         prim = {'attributes': {}}
         accessors.append({'bufferView': add_view(P.tobytes(), 34962), 'componentType': 5126, 'count': len(P), 'type': 'VEC3',

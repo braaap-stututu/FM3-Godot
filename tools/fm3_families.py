@@ -51,13 +51,21 @@ def recipe(shader, params, stride, slots):
         pairs = [o for o in range(16, stride - 3, 4) if not (vclr and o == 20)]
         if len(pairs) < 2 or len(slots) < 3 or min(slots[:3]) < 0:
             return None
-        k = next((i for i, p in enumerate(params) if 0.05 <= p[2] <= 1.0 and p[3] >= 5), None)
+        # (the specular vector's intensity: 0.2..1.2 on CrownJewel, 1.5 on Catalunya's verges, 2.0 on AmalfiGP; above
+        # 1.0 the recipe used to be skipped and the verge drew its slot 0 alone: gravel where the game has lawn)
+        k = next((i for i, p in enumerate(params) if 0.05 <= p[2] <= 4.0 and p[3] >= 5), None)
         if k is None:
             return None
+        tint0 = list(params[0][:3]) if k > 0 else [1.0, 1.0, 1.0]
+        s1 = k + 1
+        if k == 0 and len(params) > 2 and abs(params[1][3] - 1.0) < 1e-3 and params[2][2] == 0.0:
+            # shldr_blnd_spec_3: P[0] specular (scale0), P[1] a colour (w 1: (1,1,1) on CrownJewel, greys and browns on
+            # Catalunya), P[2] scale1 (as terr_*'s tint, spec, scale order, the tint moved after the spec)
+            tint0, s1 = list(params[1][:3]), 2
         return {'mode': 'blend', 'src0': pairs[0], 'src1': pairs[1] if len(pairs) >= 3 else pairs[0],
                 'mask': pairs[-1], 'lm': pairs[-1], 'vclr': vclr and stride == 32,
-                'scale0': list(params[k][:2]), 'scale1': list(params[k + 1][:2]) if k + 1 < len(params) else [1.0, 1.0],
-                'tint0': list(params[0][:3]) if k > 0 else [1.0, 1.0, 1.0],
+                'scale0': list(params[k][:2]), 'scale1': list(params[s1][:2]) if s1 < len(params) else [1.0, 1.0],
+                'tint0': tint0,
                 'tint1': list(params[k + 2][:3]) if (vclr and k + 2 < len(params)) else [1.0, 1.0, 1.0],
                 'slots': slots[:3]}
     pairs = list(range(16, stride - 3, 4))

@@ -364,9 +364,16 @@ def main():
     tx.CAR_FILE_DIRS[:] = [cdir]
     os.makedirs(outdir, exist_ok=True)
     cars = a[4:] or sorted(d for d in os.listdir(cdir) if os.path.isdir(os.path.join(cdir, d)))
+    bad = []
     for car in cars:
-        print(build(car, cdir, wdir, db, outdir))
-    return 0
+        try:
+            print(build(car, cdir, wdir, db, outdir), flush=True)
+        except Exception as ex:  # (one broken car must not stop a whole-library build)
+            bad.append(car)
+            print(f'{car}: FAILED {type(ex).__name__}: {ex}', flush=True)
+    if bad:
+        print(f'{len(bad)} failed: {" ".join(bad)}')
+    return 1 if bad else 0
 
 
 if __name__ == '__main__':

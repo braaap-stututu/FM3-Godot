@@ -322,6 +322,10 @@ func _init() -> void:
 				# a car's soft contact shadow (fir_world.py): lie just above the road it would otherwise z-fight
 				mi.position += Vector3(0, 0.03, 0)  # (before entering the tree: local = world, glTF nodes sit at the root)
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			if m.has_meta("extras") and m.get_meta("extras") is Dictionary and m.get_meta("extras").has("fm3_sky_gain"):
+				# the sky dome's brightness against CrownJewel's (TrackSettings skyScale / tone white point; fm3_track_export)
+				var sg := float(m.get_meta("extras")["fm3_sky_gain"])
+				m.albedo_color = Color(m.albedo_color.r * sg, m.albedo_color.g * sg, m.albedo_color.b * sg, m.albedo_color.a)
 			if m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:  # (the glTF's unlit materials stay unlit)
 				m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL if lit else BaseMaterial3D.SHADING_MODE_UNSHADED
 			m.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -1236,7 +1240,9 @@ func _cars_pending() -> bool:
 	if not _library_queue.is_empty():
 		return true
 	if not _car_attached:
-		return false
+		# (the cars not attached yet: on a 400 MB scene (Catalunya) the viewer still ran at 1 fps when live_track asked for
+		# its picture, and the cars attached right after it; with a live stream, wait for them too)
+		return _live_port > 0
 	for c in _cars:
 		if not _cars_with_parts.has(c) and not _library_tried.has(c):
 			return true
@@ -1530,7 +1536,7 @@ func _live_step() -> void:
 	# last were missing from live_compare's picture (one load a frame, ~0.4 s each).
 	if _out != "" and FileAccess.file_exists(_out + ".shot") and _shot_held_since < 0:
 		_shot_held_since = Time.get_ticks_msec()
-	if _out != "" and _shot_held_since >= 0 and _cars_pending() and Time.get_ticks_msec() - _shot_held_since < 10000:
+	if _out != "" and _shot_held_since >= 0 and _cars_pending() and Time.get_ticks_msec() - _shot_held_since < 20000:
 		_shot_settle = 3
 	elif _out != "" and _shot_settle > 0 and FileAccess.file_exists(_out + ".shot"):
 		_shot_settle -= 1  # (a few frames more: what the last load changed, e.g. has_live, is drawn one frame later)
