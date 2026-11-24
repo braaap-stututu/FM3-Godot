@@ -798,7 +798,8 @@ func _attach_cars() -> void:
 				# A wheel's mesh (centre within 0.45 m of a wheel's centre, under 1 m across) follows that wheel's spin and
 				# steering; everything else the body. (placed at D * this, D = A(t) * A(0)^-1)
 				var wk := -1
-				if _wheels.has(car) and maxf(box.size.x, maxf(box.size.y, box.size.z)) < 1.0:
+				# (brake calipers do not spin: they stay with the body; fm3_track_export.py build_wheels)
+				if _wheels.has(car) and maxf(box.size.x, maxf(box.size.y, box.size.z)) < 1.0 and not String(m.name).contains("caliper"):
 					var c := box.get_center()
 					var best_d := 0.45
 					for k in 4:

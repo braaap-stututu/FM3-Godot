@@ -434,7 +434,7 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                     if gp is not None:
                         CARMATS[nm] = gp
                     break
-        wheel_note = build_wheels(car, best_wheels, ref, copy_mat, xds_material, emit) if best_wheels else ''
+        wheel_note = build_wheels(car, best_wheels, ref, copy_mat, xds_material, emit, zdir) if best_wheels else ''
         built.add(car)
         allp = np.concatenate([q[0] for parts in groups.values() for q in parts])
         CAR_GEOM[car] = allp[np.linspace(0, len(allp) - 1, min(6000, len(allp))).astype(int)]
@@ -445,7 +445,7 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
     return built
 
 
-def build_wheels(car, wheels, ref, copy_mat, xds_material, emit):
+def build_wheels(car, wheels, ref, copy_mat, xds_material, emit, zdir=None):
     """A car's four wheels from its stock wheel carbin (PLAN-CARS phase 2): LOD 0 (rims, spokes, the blurred rim; FM3's
     LOD 0 has no tyre) plus the tyre of LOD 1, each placed by the wheel's matrix as the game draws it (spin and steering
     included; world = F (p W) as the body). Materials: the captured wheel draws' by material name, else the wheel zip's
@@ -478,11 +478,15 @@ def build_wheels(car, wheels, ref, copy_mat, xds_material, emit):
     for k, W in enumerate(wheels):
         R = Fz @ W[:3, :3].T
         t = Fz @ W[3, :3]
+        # The wheel model's spoke face is at its -x; the four matrices all keep x along the car's +x (no mirror,
+        # determinant +1), so on the car's right side the game must mirror the model elsewhere: mirrored here (checked
+        # on the CR-X: the spoke face outboard on both sides). Order: 0 LF, 1 RF, 2 RR, 3 LR.
+        side = np.diag([-1.0, 1.0, 1.0]) if k in (1, 2) else np.eye(3)
         for sec, lod1 in secs:
-            P = (sec['local'] + sec['offset']) @ R.T + t
+            P = ((sec['local'] + sec['offset']) @ side) @ R.T + t
             Nf = None
             if sec.get('normal') is not None:
-                Nf = sec['normal'] @ R.T
+                Nf = (sec['normal'] @ side) @ R.T
                 Nf /= np.maximum(np.linalg.norm(Nf, axis=1, keepdims=True), 1e-9)
             for sub in sec['subs']:
                 tris = fm3_car.triangles(sub['indices'], sub['prim'], restart=sub.get('restart', 0xFFFF))
@@ -502,7 +506,45 @@ def build_wheels(car, wheels, ref, copy_mat, xds_material, emit):
                 groups.setdefault((f'{k}_{mname}', m_), []).append((P, tris, sec['uv0'], Nf, lit))
     emit(groups, 'wheel_')
     WHEELS_BUILT.add(car)
-    return f'; wheels from {os.path.basename(path)} ({len(cap)} captured materials)'
+    # Brakes from the car zip (<car>_rotor{lf,rf,rr,lr}.carbin, _caliper..: each corner its own model, centred on the
+    # wheel, axle along x): the rotor turns with the wheel (its matrix as drawn); the caliper does not spin: placed in
+    # the wheel's frame without the spin (axle from the wheel matrix, up from the car's), nodes 'brake_..caliper..' that
+    # the viewer moves with the body. Flat materials (no brake textures in the zips).
+    nb = 0
+    if zdir:
+        corner = ['lf', 'rf', 'rr', 'lr']
+        bgroups = {}
+        for k, W in enumerate(wheels):
+            R = Fz @ W[:3, :3].T
+            t = Fz @ W[3, :3]
+            x = W[0, :3] / np.linalg.norm(W[0, :3])
+            up = np.array([0.0, 1.0, 0.0])
+            y = up - x * float(up @ x)
+            y /= np.linalg.norm(y)
+            z = np.cross(x, y)
+            Rc = Fz @ np.stack([x, y, z]).T
+            for kind, Rk in (('rotor', R), ('caliper', Rc)):
+                f_ = os.path.join(zdir, f'{car}_{kind}{corner[k]}.carbin')
+                if not os.path.exists(f_):
+                    continue
+                b = fm3_carbin.parse(open(f_, 'rb').read())
+                for sec in fm3_carbin.sections(b, 0) or fm3_carbin.sections(b, 1):
+                    P = (sec['local'] + sec['offset']) @ Rk.T + t
+                    Nf = None
+                    if sec.get('normal') is not None:
+                        Nf = sec['normal'] @ Rk.T
+                        Nf /= np.maximum(np.linalg.norm(Nf, axis=1, keepdims=True), 1e-9)
+                    for sub in sec['subs']:
+                        tris = fm3_car.triangles(sub['indices'], sub['prim'], restart=sub.get('restart', 0xFFFF))
+                        if not len(tris) or tris.max() >= len(P):
+                            continue
+                        mn = sub['material']
+                        m_ = ('flat', mn) if mn in CAR_FLAT else ('flat', 'black')
+                        bgroups.setdefault((f'{k}_{kind}_{mn}', m_), []).append((P, tris, sec['uv0'], Nf))
+                        nb += 1
+        if bgroups:
+            emit(bgroups, 'brake_')
+    return f'; wheels from {os.path.basename(path)} ({len(cap)} captured materials)' + (f', {nb} brake meshes' if nb else '')
 
 
 def on_rebuilt_car(W):
