@@ -187,7 +187,8 @@ The user's last question was whether to chase the remaining uneven steps or call
    level rear camera (30 deg; the middle mirror straight back), as FM3 renders its mirror as a separate scene. The CR-X's
    middle mirror then shows the stands and the run-off behind like the game's, framed a little lower; in-car vs game
    17.4 / 17.8 / 18.6 (dark glass 16.8 / 17.4 / 18.3: a framing offset costs more pixel difference than flat glass).
-   Its cost in-car not measured yet. The cabin's plain surfaces: `fm3_cockpit.gdshader` (unshaded: albedo x baked
+   Their cost in-car (`live_smooth.ps1 -Cameras 2`, capture-free CrownJewel, 30 s): no mirrors 33 fps, three every frame
+   26, one a frame in turn 29, plus a 300 m far plane 30 (kept: one a frame, 300 m). The cabin's plain surfaces: `fm3_cockpit.gdshader` (unshaded: albedo x baked
    brightness x a hemisphere by facing, top 1 / bottom 0.05 fitted; no sun, no sky reflection, which had tinted the dash
    blue): capture-free in-car 17.5 / 17.9 / 17.3; captured Ladera grid 20.0 / 19.2 / 18.1, in-car 19.1 / 18.9 / 17.6.
    Vertical cabin faces still too dark (A-pillar 3 vs the game's 13); tried: the game's SH numbers as a top light (all

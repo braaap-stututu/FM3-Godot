@@ -74,7 +74,9 @@ const COCKPIT_GAIN := 1.0  # (fm3_cockpit.gdshader's light scale)
 # Cockpit mirrors (fm3_mirror.gdshader): one small viewport each, rendered only while the player's car is seen in-car.
 const MIRROR_SIZE := Vector2i(512, 256)
 const MIRROR_FOV := 30.0  # (vertical degrees of a mirror's picture)
+const MIRROR_FAR := 300.0  # (metres: a mirror's far scene is a few pixels; drawn to 2 km, in-car 29 fps, now 30)
 var _mirrors_on := true
+var _mirror_turn := 0
 var _mirrors := []  # [{mesh, car, centre, normal, radius (mesh space), mat, vp, cam}]
 const IN_CAR_EXPOSURE := 1.5
 # The gauges (unshaded, seen in-car only): the game's daylight dials are grey markings (~150) on black; at gain 1 / 1.5
@@ -1041,6 +1043,8 @@ func _add_mirror(m: MeshInstance3D, car) -> void:
 # Each frame: the player's mirrors while in-car (the driver's eye = the drawn camera, reflected in each mirror's plane;
 # near plane at the mirror so the dash in front of a reflected eye is cut away); other mirrors stop rendering.
 func _update_mirrors(player, in_car: bool, eye: Transform3D) -> void:
+	_mirror_turn += 1
+	var nth := 0
 	for mr in _mirrors:
 		var on: bool = _mirrors_on and in_car and mr["car"] == player and (mr["mesh"] as Node3D).visible
 		if not on:
@@ -1055,14 +1059,18 @@ func _update_mirrors(player, in_car: bool, eye: Transform3D) -> void:
 			vp.mesh_lod_threshold = 4.0
 			var c3 := Camera3D.new()
 			c3.cull_mask = 0xFFFFF & ~COCKPIT_LAYER
-			c3.far = 2000.0
+			c3.far = MIRROR_FAR
 			vp.add_child(c3)
 			root.add_child(vp)
 			mr["vp"] = vp
 			mr["cam"] = c3
 			(mr["mat"] as ShaderMaterial).set_shader_parameter("view_tex", vp.get_texture())
 		var vp2: SubViewport = mr["vp"]
-		vp2.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		# one mirror re-rendered a frame, in turn (the others keep their picture): three mirrors every frame cost the
+		# in-car view 21% (33 -> 26 fps, capture-free CrownJewel); FM3 has a half-rate mirror option for the same reason
+		vp2.render_target_update_mode = SubViewport.UPDATE_ONCE if (nth % 3) == (_mirror_turn % 3) or not mr.get("drawn", false) else SubViewport.UPDATE_DISABLED
+		mr["drawn"] = true
+		nth += 1
 		var gt := (mr["mesh"] as Node3D).global_transform
 		var c := gt * (mr["centre"] as Vector3)
 		var n := (gt.basis * (mr["normal"] as Vector3)).normalized()

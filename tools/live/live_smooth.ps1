@@ -7,7 +7,7 @@
 #
 # -NoGodot records the stream itself instead (tools\live_record.py: packet timing, camera/car pairing).
 # Output: frame-ir\out\live\smooth\<Tag>.csv and godot-<Tag>.log. The game must be closed first; the monitor awake.
-param([switch]$NoGodot, [string]$GameEnv = '', [string]$ViewerArgs = '', [string]$Tag = 'interp', [int]$Seconds = 16, [string]$Gltf = '')
+param([switch]$NoGodot, [string]$GameEnv = '', [string]$ViewerArgs = '', [string]$Tag = 'interp', [int]$Seconds = 16, [string]$Gltf = '', [int]$Cameras = 0)
 $ErrorActionPreference = 'Stop'
 $g = (Resolve-Path "$PSScriptRoot\..\..\..").Path          # the Godot folder
 $r = (Resolve-Path "$g\..\FM3-ReGPU recomp").Path         # the FM3 repo beside it
@@ -38,6 +38,8 @@ if (-not $NoGodot) {
     $p = Start-Process "$g\Godot_v4.7.2-stable_win64_console.exe" -ArgumentList $vargs -RedirectStandardOutput $glog -PassThru -WindowStyle Normal
     for ($i = 0; $i -lt 90 -and -not (Select-String -Path $glog -Pattern 'meshes attached' -Quiet -ErrorAction SilentlyContinue); $i++) { Start-Sleep 1 }
 }
+# -Cameras N: press RB N times on the grid first (2 = the in-car view)
+for ($k = 0; $k -lt $Cameras; $k++) { Fm3 'press RB 500' | Out-Null; Start-Sleep 2 }
 Fm3 'env FM3_FREEZE_TIME 0' | Out-Null
 Start-Sleep 4
 if ($NoGodot) {
