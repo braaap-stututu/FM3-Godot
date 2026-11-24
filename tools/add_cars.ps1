@@ -28,6 +28,9 @@ $dlcZips = @(Get-ChildItem (Join-Path $Fm3 'out\user\dlc') -Recurse -Filter '*_p
 if ($dlcZips) {
     $code = "import sys, zipfile`nfor z in sys.argv[1:]:`n    for c in sorted({n.split('/')[2] for n in zipfile.ZipFile(z).namelist() if n.lower().startswith('media/cars/') and n.count('/') >= 3}):`n        print(z + '|' + c)"
     foreach ($l in (& $py -c $code @dlcZips)) { $zp, $cn = $l -split '\|'; $dlc[$cn.ToLower()] = @($zp, $cn) }
+    # their database patches (media\db\patch\*_merge.slt: Disc 2 cars' colours, fm3_car_library.EXTRA_DBS)
+    $dbDir = Join-Path $godotDir 'work\assets\dlc_db'
+    if (-not (Test-Path $dbDir)) { foreach ($z in $dlcZips) { & $unzip $z $dbDir 'merge.slt' | Out-Null } }
 }
 $built = @()
 foreach ($n in $names) {

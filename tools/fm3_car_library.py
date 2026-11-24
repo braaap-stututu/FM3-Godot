@@ -131,12 +131,29 @@ class Gltf:
             json.dump(g, f)
 
 
+# Disc 2's database patches (the packages' media\db\patch\*_merge.slt, extracted by add_cars.ps1 to
+# workssets\dlc_db): its cars' Data_Car and Combo_Colors rows (FOR_FusionSport_10 is only in 4064_merge.slt)
+EXTRA_DBS = []
+
+
 def car_colors(db, media):
-    """{Sequence: [r, g, b, metallic]} for a car (Data_Car.MediaName, any case) from Combo_Colors."""
+    """{Sequence: [r, g, b, metallic]} for a car (Data_Car.MediaName, any case) from Combo_Colors (the game's database,
+    then Disc 2's merge databases in EXTRA_DBS)."""
+    for d in [db] + EXTRA_DBS:
+        out = _car_colors(d, media)
+        if out:
+            return out
+    return {}
+
+
+def _car_colors(db, media):
     if not db or not os.path.exists(db):
         return {}
     c = sqlite3.connect('file:' + db + '?mode=ro', uri=True)
-    row = c.execute('select Id from Data_Car where lower(MediaName) = lower(?)', (media,)).fetchone()
+    try:
+        row = c.execute('select Id from Data_Car where lower(MediaName) = lower(?)', (media,)).fetchone()
+    except sqlite3.Error:
+        return {}
     if not row:
         return {}
     out = {}
@@ -362,6 +379,8 @@ def main():
         return 2
     cdir, wdir, db, outdir = a[:4]
     tx.CAR_FILE_DIRS[:] = [cdir]
+    import glob
+    EXTRA_DBS[:] = sorted(glob.glob(os.path.join(os.path.dirname(os.path.abspath(cdir)), 'dlc_db', '**', '*.slt'), recursive=True))
     os.makedirs(outdir, exist_ok=True)
     cars = a[4:] or sorted(d for d in os.listdir(cdir) if os.path.isdir(os.path.join(cdir, d)))
     bad = []
