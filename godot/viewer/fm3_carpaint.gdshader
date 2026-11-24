@@ -33,6 +33,12 @@ uniform float refl_f0 = 0.02;  // ... and looking straight at the paint (the gam
 uniform float spec_gain = 1.4;  // the sun's highlight
 uniform float spec_power = 75.0;
 uniform float fresnel_power = 4.0;
+uniform bool game_fresnel = true;
+uniform float game_fresnel_power = 1.5;
+uniform float fresnel_min = 0.15;
+uniform float fresnel_max = 1.0;
+uniform float cube_scale = 1.5;
+uniform float env_scale = 0.2;
 
 #include "res://viewer/fm3_livecube.gdshaderinc"
 
@@ -56,7 +62,11 @@ void light() {
 		vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
 		vec3 env = has_live ? live_cube(r) : (has_env ? textureLod(env_cube, r * env_flip, env_lod).rgb : env_fallback);
 		float cosv = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
-		float fres = refl_f0 + (1.0 - refl_f0) * pow(1.0 - cosv, fresnel_power);
+		// the game's Fresnel (ShaderSettings body: FresnelMin 0.15, Max 1, Power 1.5, CubeScale 1.5), the reflected
+		// brightness at the windows' measured env_scale (the same, darker, game cube): replaces the fitted f0 0.02 /
+		// power 4, under which the grid's paint lacked its bright top tenth (CR-X p90 138 where the game has 189)
+		float fres = game_fresnel ? clamp(pow(1.0 - cosv, game_fresnel_power), fresnel_min, fresnel_max) * cube_scale * env_scale
+			: refl_f0 + (1.0 - refl_f0) * pow(1.0 - cosv, fresnel_power);
 		float spec = pow(max(dot(reflect(-LIGHT, NORMAL), VIEW), 0.0), spec_power) * sh;
 		SPECULAR_LIGHT += to_linear(env * fres * mix(refl_gain, refl_metal, metallic) * mix(1.0, sh, 0.3) + sun * spec * spec_gain);
 	}
