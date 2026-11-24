@@ -76,7 +76,7 @@ class Gltf:
             self.mat_ids[key] = len(self.materials) - 1
         return self.mat_ids[key]
 
-    def mesh(self, node_name, P, T, U, N, lit, mat, flip=False):
+    def mesh(self, node_name, P, T, U, N, lit, mat, flip=False, fz=False):
         if not len(T):
             return
         # Raw car space, the file's winding (counter-clockwise = outside: its normals agree with the rebuilt ones on
@@ -87,7 +87,15 @@ class Gltf:
         # came out mirrored over reversed triangles and Godot drew the cars' back faces: a dark band across the Mazda's
         # trunk, its paint 41 against the captured copy's 55; the rest of the gap was the viewer's colour, world_view.gd
         # _vec4.)
-        if flip:
+        # fz: the glTF mirror F = diag(1, 1, -1) baked in (positions and normals z-mirrored, triangles reversed): wheels,
+        # rotors and calipers, whose streamed matrices are mirrored (det -1 on the grid, where the body's is +1); the
+        # viewer places them with matrix x F, a proper rotation (a mirrored node over this winding drew back faces: black
+        # rims).
+        if fz:
+            P = P * np.array([1.0, 1.0, -1.0])
+            if N is not None:
+                N = N * np.array([1.0, 1.0, -1.0])
+        if flip != fz:
             T = T[:, ::-1]
         P = P.astype(np.float32)
         prim = {'attributes': {'POSITION': self.acc(P, 'VEC3', minmax=True)}, 'material': mat}
@@ -204,13 +212,13 @@ def build(car, cdir, wdir, db, outdir):
             return None
         return np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
 
-    def add(prefix, sec, P, Nf, mname, mat, lit, flip=False):
+    def add(prefix, sec, P, Nf, mname, mat, lit, flip=False, fz=False):
         for sub in sec['subs']:
             if sub['material'] != mname and not (sub['material'].endswith('_lod0') and sub['material'][:-5] == mname):
                 continue
             tris = fm3_car.triangles(sub['indices'], sub['prim'], restart=sub.get('restart', 0xFFFF))
             if len(tris) and tris.max() < len(P):
-                g.mesh(prefix, P, tris, sec['uv0'], Nf, lit, mat, flip)
+                g.mesh(prefix, P, tris, sec['uv0'], Nf, lit, mat, flip, fz)
 
     settings = tx.car_settings(zdir)
     carmats, needles = {}, {}
@@ -319,16 +327,20 @@ def build(car, cdir, wdir, db, outdir):
                 Nf = None if sec.get('normal') is None else sec['normal'] @ side
                 lit = None if sec.get('light') is None else np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
                 for mname in sorted({u['material'] for u in sec['subs']}):
-                    add(f'wheel_{car}_{k}_{mname}', sec, P, Nf, mname, wheel_mat(mname), lit, flip=k in (1, 2))
+                    add(f'wheel_{car}_{k}_{mname}', sec, P, Nf, mname, wheel_mat(mname), lit, flip=k in (1, 2), fz=True)
                     nw += 1
-            rp = os.path.join(zdir, f'{car}_rotor{corner[k]}.carbin')
-            if os.path.exists(rp):
+            # rotors and calipers: each corner its own model, centred on the wheel, axle along x (wheel space); the
+            # viewer turns the rotor with the wheel and keeps the caliper on the wheel's axle without the spin
+            for kind in ('rotor', 'caliper'):
+                rp = os.path.join(zdir, f'{car}_{kind}{corner[k]}.carbin')
+                if not os.path.exists(rp):
+                    continue
                 b = fm3_carbin.parse(open(rp, 'rb').read())
                 for sec in fm3_carbin.sections(b, 0) or fm3_carbin.sections(b, 1):
                     P = sec['local'] + sec['offset']
                     for mname in sorted({u['material'] for u in sec['subs']}):
-                        add(f'brake_{car}_{k}_rotor_{mname}', sec, P, sec.get('normal'), mname,
-                            flat_mat(mname if mname in tx.CAR_FLAT else 'black'), None)
+                        add(f'brake_{car}_{k}_{kind}_{mname}', sec, P, sec.get('normal'), mname,
+                            flat_mat(mname if mname in tx.CAR_FLAT else 'black'), None, fz=True)
     out = os.path.join(outdir, car + '.gltf')
     g.write(out)
     for suffix, data in (('_colors.json', car_colors(db, car)), ('_carmaterials.json', carmats), ('_needles.json', needles)):

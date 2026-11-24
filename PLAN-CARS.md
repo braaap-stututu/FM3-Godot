@@ -118,8 +118,10 @@ branch `live-mirror`; details in `LIVE.md` and `HANDOFF.md` sections 7-8):
   colour inside its texture) is 55. Car shader colours now go in as Vector4 (`_vec4`; the rims' 0.75 too). Result:
   Mazda library paint 56 vs captured 55, crop difference 1.7 / 1.4 / 1.3; captured grid unchanged (20.6 / 19.7 /
   18.7). The baked track shader still gets its colour as a Color (track materials mostly 1.0; not changed, it would
-  move the tuned track match). **Open:** the player's custom paint (profile); calipers (need the wheel's
-  non-spinning frame) not in the library.
+  move the tuned track match). The wheels' streamed matrices are mirrored (det -1 on the grid, the body's +1): wheels,
+  rotors and calipers keep F baked in (`fm3_car_library.py` fz) and go on with matrix x F (raw, they drew back faces:
+  black rims). Calipers are in the library since 2026-11-24 (`<car>_caliper{lf,rf,rr,lr}.carbin`, placed on the
+  wheel's axle with the car's up, moving with the body, as the grid export does). **Open:** the player's custom paint.
 - **Also 2026-11-24 afternoon:** the library's lamp list is the exporter's (`LAMP_MATERIALS`): reflectors are on the
   lights texture (the CR-X's red CR-X VTEC panel came out white from nodamage; swap crop 12.3/24.4/9.7 ->
   7.2/17.9/3.6). **The player's custom paint is the livery layer:** `FM3_LIVE_DUMP_CARS=1` (FM3-ReGPU) dumped the

@@ -1004,6 +1004,20 @@ func _attach_library_car(car) -> void:
 			m.visible = false
 		# (the library's vertices are in raw car / wheel space: placed by the streamed matrix itself, mirrored or not)
 		var off: Transform3D = (w_att[wk] as Transform3D) if wk >= 0 else a_att
+		if wk >= 0 and nm.contains("_caliper_"):
+			# a caliper does not spin: the wheel's place and axle with the car's up (as fm3_track_export.py's
+			# build_wheels), moved with the body; the axle keeps the wheel matrix's handedness (mirrored or not)
+			var w := w_att[wk] as Transform3D
+			var ax := w.basis.x
+			var up := a_att.basis.y.normalized()
+			var yv := (up - ax.normalized() * up.dot(ax.normalized())).normalized() * w.basis.y.length()
+			var zv := ax.cross(yv).normalized() * w.basis.z.length() * signf(w.basis.determinant())
+			off = Transform3D(Basis(ax, yv, zv), w.origin)
+			wk = -1
+		if nm.begins_with("wheel_") or nm.begins_with("brake_"):
+			# (wheels and brakes carry the glTF mirror in their vertices, fm3_car_library.py fz: the wheel matrices are
+			# mirrored where the body's is not, so matrix x F is the proper rotation)
+			off = off * Transform3D(Basis.from_scale(Vector3(1, 1, -1)), Vector3.ZERO)
 		_register_part(m, car, off, wk, needle)
 		m.global_transform = off  # (now: offline renders; live moves it)
 		n += 1
