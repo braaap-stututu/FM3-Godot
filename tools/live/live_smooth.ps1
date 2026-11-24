@@ -7,7 +7,7 @@
 #
 # -NoGodot records the stream itself instead (tools\live_record.py: packet timing, camera/car pairing).
 # Output: frame-ir\out\live\smooth\<Tag>.csv and godot-<Tag>.log. The game must be closed first; the monitor awake.
-param([switch]$NoGodot, [string]$GameEnv = '', [string]$ViewerArgs = '', [string]$Tag = 'interp', [int]$Seconds = 16)
+param([switch]$NoGodot, [string]$GameEnv = '', [string]$ViewerArgs = '', [string]$Tag = 'interp', [int]$Seconds = 16, [string]$Gltf = '')
 $ErrorActionPreference = 'Stop'
 $g = (Resolve-Path "$PSScriptRoot\..\..\..").Path          # the Godot folder
 $r = (Resolve-Path "$g\..\FM3-ReGPU recomp").Path         # the FM3 repo beside it
@@ -33,7 +33,7 @@ $p = $null
 if (-not $NoGodot) {
     $glog = "$out\godot-$Tag.log"
     $vargs = @('--path', "`"$g\frame-ir\godot`"", '-s', 'res://viewer/world_view.gd', '--', '--gltf',
-        "`"$g\frame-ir\out\world\ladera.gltf`"", '--lit', '--live', '7342', '--size', '1280x720', '--live-log', "`"$out\$Tag.csv`"") +
+        "`"$(if ($Gltf) { $Gltf } else { "$g\frame-ir\out\world\ladera.gltf" })`"", '--lit', '--live', '7342', '--size', '1280x720', '--live-log', "`"$out\$Tag.csv`"") +
         @($ViewerArgs -split ' ' | Where-Object { $_ })
     $p = Start-Process "$g\Godot_v4.7.2-stable_win64_console.exe" -ArgumentList $vargs -RedirectStandardOutput $glog -PassThru -WindowStyle Normal
     for ($i = 0; $i -lt 90 -and -not (Select-String -Path $glog -Pattern 'meshes attached' -Quiet -ErrorAction SilentlyContinue); $i++) { Start-Sleep 1 }

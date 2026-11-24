@@ -162,6 +162,8 @@ func _init() -> void:
 				_wheel_lock_arg = float(args[i + 1]); i += 1
 			"--live-cube":  # the live reflection cube's face size in pixels (0 = the layout's static cube)
 				_live_cube_size = int(args[i + 1]); i += 1
+			"--live-cube-faces":  # live cube faces rendered per frame, round-robin (6 = all, every frame)
+				_live_cube_faces = clampi(int(args[i + 1]), 1, 6); i += 1
 			"--live-smooth":  # average the shown motion over this many game frames (0 = off)
 				_live_smooth = float(args[i + 1]); i += 1
 			"--fps":  # cap the viewer's frame rate (vsync stays on)
@@ -547,6 +549,11 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 const LIVE_DIRS = [Vector3.RIGHT, Vector3.LEFT, Vector3.UP, Vector3.DOWN, Vector3.BACK, Vector3.FORWARD]  # +x -x +y -y +z -z
 const LIVE_UPS = [Vector3.UP, Vector3.UP, Vector3.FORWARD, Vector3.BACK, Vector3.UP, Vector3.UP]  # (+y: up -z; -y: up +z)
 var _live_cube_size := 128
+# Faces rendered per frame (round-robin; the others keep their last picture). The six faces cost ~40% of the live
+# frame on the capture-free CrownJewel (RX 6650 XT, 720p: 32 fps with the cube, 52 without, 2026-11-24).
+var _live_cube_faces := 6
+var _live_cube_next := 0
+var _live_cube_vps := []
 var _live_cube_cams := []
 var _car_mats := []
 
@@ -556,7 +563,8 @@ func _make_live_cube(at: Vector3) -> void:
 	for k in 6:
 		var vp := SubViewport.new()
 		vp.size = Vector2i(_live_cube_size, _live_cube_size)
-		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS if _live_cube_faces >= 6 else SubViewport.UPDATE_ONCE
+		_live_cube_vps.append(vp)
 		vp.positional_shadow_atlas_size = 0
 		vp.mesh_lod_threshold = 4.0  # (small faces: coarser LODs are fine)
 		var c := Camera3D.new()
@@ -578,6 +586,10 @@ func _make_live_cube(at: Vector3) -> void:
 
 
 func _place_live_cube(at: Vector3) -> void:
+	if _live_cube_faces < 6 and not _live_cube_vps.is_empty():
+		for j in _live_cube_faces:
+			(_live_cube_vps[_live_cube_next] as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
+			_live_cube_next = (_live_cube_next + 1) % 6
 	for k in _live_cube_cams.size():
 		var c: Camera3D = _live_cube_cams[k]
 		c.global_transform = Transform3D(Basis(), at).looking_at(at + LIVE_DIRS[k], LIVE_UPS[k])

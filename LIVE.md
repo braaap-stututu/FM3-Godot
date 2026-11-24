@@ -171,7 +171,12 @@ The user's last question was whether to chase the remaining uneven steps or call
    the game's sky (the sky dome's textures: the last .pvs texture entries with flags 1) and sun (TrackSettings.xml
    ShadowLightDirection): live CrownJewel grid vs game 46.0 / 36.0 / 27.1 (grey sky, default sun) -> 21.7 / 21.7 / 20.0
    (captured Ladera: 20.7-20.8); then crowd cards without lightmaps, road lines blended by their mask (fitted colour 0.6),
-   library wheels / calipers: **20.4 / 20.2 / 18.5**; the crowd from the .crowd files (FM3-FORMATS) 20.4 / 20.1 / 18.5. live_compare's picture waits (up to 10 s) for the library cars. Open: the player's
+   library wheels / calipers: **20.4 / 20.2 / 18.5**; the crowd from the .crowd files (FM3-FORMATS) 20.4 / 20.1 / 18.5.
+   Viewer speed there (RX 6650 XT, 720p, MSAA 4x, game uncapped beside it; `live_smooth.ps1 -Gltf`, 30 s): 32 fps,
+   the same as the captured Ladera (33); the live reflection cube costs ~40%: `--live-cube-faces 2` 40 fps, `1` 45,
+   `--live-cube 0` 52 (faces not rendered keep their last picture: reflections lag; default stays 6). With the game
+   capped (`-GameEnv FM3_MAX_FPS=60`) 36 fps and speed jitter median 1.0% / p95 5.2% (uncapped 4.1% / 17.6%), but
+   35 ms behind the game instead of 11. live_compare's picture waits (up to 10 s) for the library cars. Open: the player's
    custom paint (the livery layer: the car object holds only the database colour, +0x9A0 etc.,
    `FM3_LIVE_DUMP_CARS=1`), crowd sprites, the sky dome's seam line, the sea's colour.
 6. Then stage B: ReGPU skips what Godot draws.
