@@ -1,4 +1,4 @@
-﻿# build_track.ps1: any FM3 track as a Godot scene from the game's files alone, no frame capture (PLAN-CARS.md phase 5).
+# build_track.ps1: any FM3 track as a Godot scene from the game's files alone, no frame capture (PLAN-CARS.md phase 5).
 #
 #   powershell -ExecutionPolicy Bypass -File frame-ir\tools\build_track.ps1 -Track AmalfiGP [-Ribbon 01] [-Render]
 #
@@ -12,10 +12,12 @@ param(
     [Parameter(Mandatory = $true)][string]$Track,
     [string]$Ribbon = '',
     [string]$CameraAt = '',
-    [string]$Fm3 = (Join-Path (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))) 'FM3-ReGPU recomp'),
+    [string]$Fm3 = '',
     [switch]$Render
 )
 $ErrorActionPreference = 'Stop'
+# (the default here, not in param(): Windows PowerShell 5.1 leaves $PSScriptRoot empty in parameter defaults)
+if (-not $Fm3) { $Fm3 = Join-Path (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))) 'FM3-ReGPU recomp' }
 $repo = Split-Path -Parent $PSScriptRoot
 $godotDir = Split-Path -Parent $repo
 $media = Join-Path $Fm3 "reference\rexglue recomp reference\hl360-forza3\game\disc1\Media\Tracks\$Track"
