@@ -181,6 +181,11 @@ The user's last question was whether to chase the remaining uneven steps or call
    per-frame cube sees its own cabin: CR-X glass 17.1 -> 12.4), AI glass blended in gamma space at reflection 0.25.
    live_compare's picture also waits for the liveries and 3 frames more, and keeps the viewer's stderr (godot.err.log).
    Live: captured Ladera 19.8 / 18.8 / 17.7 (in-car 19.2 / 18.9 / 17.6), capture-free CrownJewel 19.9 / 18.4 / 18.0.
+   **In-car while moving (open):** at 71 km/h our right A-pillar sits left of the game's (race6 in-car 25.9 / 28.2 /
+   28.7). The camera's offset from the car grows with speed (-0.23 m at 5-10 m/s, -0.11 m at 30-45 m/s: the game's head
+   lean easing as acceleration drops); sampling the cars later or earlier than the camera (`--live-car-lead` ms, new;
+   `live_compare.ps1 -ViewerArgs`) does not help (-9 / 0 / 4.5 / 9 ms: 26.2 / 25.9 / 26.5 / 26.9): not a timing gap.
+   Next: compare the cockpit's yaw against the camera's in the stream (head turn into corners?).
    **Liveries (custom paint):** `tools/live_liveries.py <FM3 run dir> <gamedb.slt> out\cars\live_liveries <viewer log>`
    while a race is loaded: one traced frame through the debug server, every car-paint draw's t0 read from guest memory
    (peek) and decoded, named by its paint colour (c118 = the car's Combo_Colors RGB, the cars from the viewer's FM3N

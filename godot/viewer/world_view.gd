@@ -79,6 +79,7 @@ const MIRROR_FOV := 40.0  # (vertical degrees of a mirror's picture)
 const MIRROR_PITCH := 6.0  # (degrees up from level)
 const MIRROR_FAR := 300.0  # (metres: a mirror's far scene is a few pixels; drawn to 2 km, in-car 29 fps, now 30)
 var _mirrors_on := true
+var _car_lead := 0.0
 var _mirror_turn := 0
 var _mirrors := []  # [{mesh, car, centre, normal, radius (mesh space), mat, vp, cam}]
 const IN_CAR_EXPOSURE := 1.5
@@ -188,6 +189,8 @@ func _init() -> void:
 				_live_cube_size = int(args[i + 1]); i += 1
 			"--mirrors":  # 0 = the cockpit mirrors stay dark glass (no mirror viewports)
 				_mirrors_on = args[i + 1] != "0"; i += 1
+			"--live-car-lead":  # sample the cars this many ms later than the camera
+				_car_lead = float(args[i + 1]) / 1000.0; i += 1
 			"--live-cube-faces":  # live cube faces rendered per frame, round-robin (6 = all, every frame)
 				_live_cube_faces = clampi(int(args[i + 1]), 1, 6); i += 1
 			"--live-smooth":  # average the shown motion over this many game frames (0 = off)
@@ -1777,24 +1780,37 @@ func _sample(t: float) -> Dictionary:
 		alpha = clampf((t - float(_live_frames[k0]["t"])) / span, 0.0, 1.0) if span > 0.0 else 1.0
 	var f0: Dictionary = _live_frames[k0]
 	var f1: Dictionary = _live_frames[k1]
+	# the cars sampled _car_lead seconds later than the camera (--live-car-lead ms)
+	var kc0 := k0
+	var kc1 := k1
+	var alphac := alpha
+	if t != INF and _car_lead != 0.0 and _live_frames.size() > 1:
+		var tc := t + _car_lead
+		var ic := _live_frames.size() - 1
+		while ic > 0 and float(_live_frames[ic]["t"]) > tc:
+			ic -= 1
+		kc0 = ic
+		kc1 = mini(ic + 1, _live_frames.size() - 1)
+		var spc := float(_live_frames[kc1]["t"]) - float(_live_frames[kc0]["t"])
+		alphac = clampf((tc - float(_live_frames[kc0]["t"])) / spc, 0.0, 1.0) if spc > 0.0 else 1.0
 	var moves := {}
 	if _car_attached:
 		for car in _car_inv:
-			var a0 = _car_in_frame(car, k0)
-			var a1 = _car_in_frame(car, k1)
+			var a0 = _car_in_frame(car, kc0)
+			var a1 = _car_in_frame(car, kc1)
 			if a0 == null or a1 == null:
 				continue
 			var d0: Transform3D = (a0 as Transform3D) * (_car_inv[car] as Transform3D)
 			var d1: Transform3D = (a1 as Transform3D) * (_car_inv[car] as Transform3D)
 			d0.basis = d0.basis.orthonormalized()
 			d1.basis = d1.basis.orthonormalized()
-			moves[car] = d0.interpolate_with(d1, alpha)
+			moves[car] = d0.interpolate_with(d1, alphac)
 	# Each wheel's move, the same way (spin between two frames stays under half a turn up to ~200 km/h at 60 fps).
 	var wmoves := {}
 	if _car_attached:
 		for car in _wheel_inv:
-			var w0 = _wheels_in_frame(car, k0)
-			var w1 = _wheels_in_frame(car, k1)
+			var w0 = _wheels_in_frame(car, kc0)
+			var w1 = _wheels_in_frame(car, kc1)
 			if w0 == null or w1 == null:
 				continue
 			var ws := []
@@ -1803,7 +1819,7 @@ func _sample(t: float) -> Dictionary:
 				var e1: Transform3D = (w1[k] as Transform3D) * (_wheel_inv[car][k] as Transform3D)
 				e0.basis = e0.basis.orthonormalized()
 				e1.basis = e1.basis.orthonormalized()
-				ws.append(e0.interpolate_with(e1, alpha))
+				ws.append(e0.interpolate_with(e1, alphac))
 			wmoves[car] = ws
 	return {"cam": (f0["cam"] as Transform3D).interpolate_with(f1["cam"] as Transform3D, alpha),
 		"fov": lerpf(float(f0["fov"]), float(f1["fov"]), alpha), "moves": moves, "wmoves": wmoves}
