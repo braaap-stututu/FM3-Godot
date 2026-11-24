@@ -221,6 +221,20 @@ web search were not reachable).
   flags, u32 idx, u32, f32 x4, u16, u16 x3 LOD, f32 x3 position, u16 x9 rotation (half floats, 3x3). **Model:** vec u32
   textures, vec u32 shaders, f32 x16 matrix, f32 x4 extent. Instance flags: bit 1 transparent, bit 2 opaque, bit 4
   mirror, bit 9 cube map, bit 28 decal; LOD distances per instance.
+- **Sky textures (2026-11-24):** the sky dome (`<track>out.sky.rmb.bin`) has one material per mesh (sky1..sky5/6),
+  slots 0..n-1; no `.pvs` model lists its textures: they are the last n `.pvs` texture entries with flags 1, in id
+  order (streamed from the `.stx`; CrownJewel 3506-3511: sky1..4 = 3509/3510/3507/3508, matched against the captured
+  sky at mean |diff| 3.5-6; sky5 the zenith cap, sky6 the landscape below the horizon). The sun: TrackSettings.xml
+  `ShadowLightDirection` (game space; CrownJewel's equals the captured sun).
+
+## Crowd (`<track>_track_NN.crowd`, beside each layout's `.pvs`; 2026-11-24)
+
+Big endian. Header u32 version (2), u32 cells, u32 people. Cell (52 bytes): row start, end, middle (3 x f32 each),
+f32 half length, u32 0, u32 first person, u32 people. Person (16 bytes): u16 figure (low byte 0..14, +256 a second
+set), 6 zero bytes, the offset from its cell's middle as three half floats (metres), the facing angle as a half float
+(radians: 0, pi/2, pi, 3pi/2 common). Coordinates are in the glTF frame of our exports (no z mirror: the cells lie on
+the track's own 'crowds' cards). CrownJewel Ribbon_04: 95 cells, 2627 people, each within a few metres of its cell's
+row. `fm3_track_export.py` draws them as cards from the 'crowds' sprite sheet (seven seated figures).
 
 ## Textures
 
