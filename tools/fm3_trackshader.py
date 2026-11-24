@@ -85,18 +85,39 @@ def simple_terms(path):
         return _SIMPLE[path]
     out = {}
     try:
-        c = plain_ps(containers(open(path, 'rb').read()))
+        cs = [c for c in containers(open(path, 'rb').read()) if c['kind'] == 'ps'
+              and 'TimeGain' not in [k['name'] for k in c['constants']] and len(c['words']) >= 30]
+        # (the full variant: the most samplers; diff_spec_opac_refl_3's shortest one samples only Diffuse + lightmap)
+        c = max(cs, key=lambda c: (len([k for k in c['constants'] if k['set'] == 'sampler']), -len(c['constants'])),
+                default=None)
         lines = fir_disasm.disasm(c['words']) if c else []
     except Exception:
         lines = []
     import re
+    # the base texture: sampler 0, unless the table names another one the diffuse (diff_spec_opac_refl_3: s0 = SPEC,
+    # s2 = Diffuse_Texture); its UV scale is the multiply of that sampler's uvOS constant (c120..c124) by a parameter
+    base, uvos = 0, 120
+    cons = c['constants'] if c else []
+    samp = {k['register']: k['name'] for k in cons if k['set'] == 'sampler'}
+    if 0 in samp and 'diff' not in samp[0].lower() and 'texturemap' not in samp[0].lower():
+        d_ = [r for r, n in samp.items() if 'diffuse' in n.lower() and r != 7]
+        if d_:
+            base = d_[0]
+            nm = samp[base][:-len('Sampler')] if samp[base].endswith('Sampler') else samp[base]
+            uvos = next((k['register'] for k in cons if k['name'] == nm + '_uvOS'), 120)
+            out['base_slot'] = base
     for ln in lines:
-        m = re.search(r'mul r\d+\.\w+ = c120\.\w+, c(\d+)\.\w+', ln)
-        if m and int(m.group(1)) < 100 and 'uv0' not in out:
-            out['uv0'] = int(m.group(1))
+        m = re.search(r'mul r\d+\.([0-9a-f]) = c%d\.\w+, c(\d+)\.(\w{4})' % uvos, ln)
+        if m and int(m.group(2)) < 100 and 'uv0' not in out:
+            # the parameter's components feeding the written lanes (mask bits x 1, y 2, z 4, w 8): '.c = c1.xxxy' -> xy
+            mask, sw = int(m.group(1), 16), m.group(3)
+            comps = [sw[i] for i in range(4) if mask >> i & 1][:2]
+            if len(comps) == 2:
+                out['uv0'] = int(m.group(2))
+                out['uv0_comp'] = ['xyzw'.index(q) for q in comps]
     t0 = None
     for ln in lines:
-        m = re.search(r'tfetch r(\d+)\.\w+ <- t0 ', ln)
+        m = re.search(r'tfetch r(\d+)\.\w+ <- t%d ' % base, ln)
         if m:
             t0 = m.group(1)
         m = re.search(r'mul r\d+\.\w+ = r(\d+)\.xyzz, c(\d+)\.([xyzw])\3\3\3,', ln)

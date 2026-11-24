@@ -1104,7 +1104,16 @@ def main():
             base_png = rec['base'] if uv is not None else None
             ft = mesh_tex.get(me['index_offset']) or file_tex.get(name)
             if uv is None and ft and me.get('uv0') is not None:
-                png = bix_png(ft[0])
+                tid_ = ft[0]
+                mm_b = mesh_mat.get(me['index_offset'])
+                tb_ = fm3_trackshader.simple_terms(shader_files[ft[1]]) if shader_files.get(ft[1]) else {}
+                if tb_.get('base_slot') and mm_b and tb_['base_slot'] < len(mm_b[1]['slots']):
+                    # the base texture in another slot (diff_spec_opac_refl_3 & co: slot 0 is the SPEC mask, the diffuse
+                    # is slot 2: 828 meshes drew their specular mask as colour)
+                    sl_b = mm_b[1]['slots'][tb_['base_slot']]
+                    if 0 <= sl_b < len(mm_b[2]):
+                        tid_ = pv['textures'][mm_b[2][sl_b]]['id']
+                png = bix_png(tid_)
                 if png:
                     sh = ft[1]
                     # grass_* cards are soft decals (flat tuft shadows, upright tufts): alpha-blended; other opac: cut out
@@ -1135,7 +1144,8 @@ def main():
                         # TextureMap uvOS scale; diff_spec_ovly_2's canopy burlap 15 x 15: unscaled, big grey blotches) and
                         # the colour x P[k].c (diff_spec_1 & co: P[0].z, e.g. 0.8-0.9)
                         if terms.get('uv0') is not None and terms['uv0'] < len(pr_):
-                            uv = uv * np.array(pr_[terms['uv0']][:2], np.float32)
+                            cc_ = terms.get('uv0_comp', [0, 1])
+                            uv = uv * np.array([pr_[terms['uv0']][cc_[0]], pr_[terms['uv0']][cc_[1]]], np.float32)
                         if terms.get('gain') and terms['gain'][0] < len(pr_):
                             g_ = float(pr_[terms['gain'][0]][terms['gain'][1]])
                             if 0.0 < g_ < 4.0:
