@@ -238,6 +238,9 @@ row. `fm3_track_export.py` draws them as cards from the 'crowds' sprite sheet (s
 
 ## Textures
 
+- **Track textures as their own CAFF (2026-11-24):** besides `_0x<id>.bix` + `_B.bix` pairs, a track's bin.zip has`n  `_0x<id>.bin` files (290 on CrownJewel): a CAFF container (as the `.stx`) with one texture record (format word`n  at +0x18, width / height at +0x24, mip count at +0x30) and its GPU data right after the .data section. The `.stx`
+  stream entry for the same id is a smaller copy (the grandstand canopy: 64 x 64 here, 32 x 32 in the stream).`n  `fm3_tex.load_caff_texture`. Material parameters can scale UVs per shader: `diff_spec_ovly_2` tiles its base by`n  parameter 0's xy (15, 60); road lines (`rdline_*`) use parameter 0 as a colour.
+
 - **ForzaStudio-EVO `XdsTexture.cs`:** `.xds` = 13 big-endian dwords (dword 0 == 3, dword 1 == 1), fetch constant in
   dwords 7-12: d7 bit 31 tiled, bits 22-30 pitch / 32; d8 bits 0-5 format (18/51 DXT1, 19/52 DXT3, 20/53 DXT5, 49 DXN,
   59 DXT5A, 6/50 A8R8G8B8), bits 6-7 endian, bits 12+ base page (4 KiB); d9 width-1 bits 0-12, height-1 bits 13-25; d11
