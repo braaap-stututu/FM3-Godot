@@ -33,6 +33,9 @@ uniform float spec_amount = 0.0;
 uniform float spec_power = 70.0;
 uniform vec3 spec_color = vec3(1.0);
 uniform vec3 sun_dir = vec3(0.0, 1.0, 0.0);
+// A lit lamp behind this lens (the brake lights, world_view.gd _update_lights): the game's lamp is HDR (BrakeColor 7)
+// and shines through its lens saturated; here the lens itself glows in its own colour.
+uniform float glow = 0.0;
 // The one number not from the game: the brightness of what is reflected. The game's cube (and its damping towards the
 // track lightmap, c180 / c119) is far darker than the viewer's live cube of its surroundings; with env_scale 1 the
 // CR-X's rear glass came out at 178 where the game has 15. Measured on the grid (tools/car_regions.py).
@@ -61,6 +64,8 @@ void fragment() {
 	vec3 l = normalize((VIEW_MATRIX * vec4(sun_dir, 0.0)).xyz);
 	float spec = pow(max(dot(reflect(-l, NORMAL), VIEW), 0.0), spec_power) * spec_amount;
 	vec3 c = mix(glass_color.rgb, env, f) + spec_color * spec * 0.25;
+	vec3 lamp = glass_color.rgb / max(max(glass_color.r, glass_color.g), max(glass_color.b, 0.001));
+	c = mix(c, lamp, clamp(glow, 0.0, 1.0));
 	ALBEDO = to_linear(c);
-	ALPHA = clamp(a + spec * 0.25, 0.0, 1.0);
+	ALPHA = clamp(max(a + spec * 0.25, glow * 0.95), 0.0, 1.0);
 }

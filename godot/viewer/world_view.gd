@@ -44,6 +44,17 @@ var _car_inv := {}  # car -> its matrix at attach time, inverted
 var _wheels := {}  # car -> its latest four wheel matrices (glTF space)
 var _car_prev := {}  # car -> [position (game space), game time]: for its speed
 var _car_speed := {}  # car -> speed, m/s (smoothed)
+# Lights (2026-11-24). The game lights a car's tail_light meshes by brakeReverseAmount (shader c198) x BrakeColor (the
+# material's ShaderSettings: tail_light_lod0 7,0,0); its source per car was not found yet, so: the player's from its own
+# brake input ("FM3E" v3, exact), every other car's from its deceleration (over 2.5 m/s2 above walking pace: an
+# approximation; engine braking alone stays under it). Reverse lights (reverse_light meshes) when a car moves backwards.
+var _car_accel := {}  # car -> acceleration along its path, m/s2 (smoothed)
+var _car_back := {}  # car -> true while it moves backwards
+var _car_lit := {}  # car -> brake light amount shown (0..1)
+var _player_brake := -1.0  # the player's brake input ("FM3E" v3; -1 = none)
+var _light_mats := {}  # car -> [[material, "brake" | "reverse"], ...]
+const BRAKE_DECEL := 2.5
+const BRAKE_ENERGY := 2.0  # emission at full brake (gamma-space look fitted by eye; the game's BrakeColor is HDR 7)
 var _carmats := {}  # car mesh node name -> its glass parameters from the game's shader settings (<gltf>_carmaterials.json)
 var _needles := {}  # cockpit gauge needle node name -> {pivot, axis, mid, max, gauge, ticks} (<gltf>_needles.json)
 var _wheel_inv := {}  # car -> its four wheel matrices at attach time, inverted
@@ -704,6 +715,33 @@ func needle_param(ticks: Array, value: float) -> float:
 	return p0 + (value - v0) * (p1 - p0) / maxf(v1 - v0, 1e-6)
 
 
+# Brake and reverse lights per car (see _car_accel): the player's brake from its input, the others' from deceleration,
+# held 0.25 s so they do not flicker; reverse while moving backwards.
+func _update_lights(player) -> void:
+	var dt := 1.0 / 60.0
+	for car in _light_mats:
+		var on := 0.0
+		if car == player and _player_brake >= 0.0:
+			on = _player_brake
+		elif float(_car_accel.get(car, 0.0)) < -BRAKE_DECEL and float(_car_speed.get(car, 0.0)) > 1.5:
+			on = 1.0
+		var shown := float(_car_lit.get(car, 0.0))
+		shown = on if on >= shown else maxf(on, shown - dt * 4.0)
+		_car_lit[car] = shown
+		var back := bool(_car_back.get(car, false))
+		for e in _light_mats[car]:
+			if e[1] == "lens":
+				(e[0] as ShaderMaterial).set_shader_parameter("glow", shown)
+				continue
+			var lm := e[0] as BaseMaterial3D
+			if e[1] == "brake":
+				lm.emission_energy_multiplier = shown * BRAKE_ENERGY
+				# (the lamp's whitish texture tinted red while lit: the game's lit lamp is saturated red, not pink)
+				lm.albedo_color = Color(1.0, 1.0 - 0.85 * shown, 1.0 - 0.85 * shown)
+			else:
+				lm.emission_energy_multiplier = 1.5 if back else 0.0
+
+
 func _attach_cars() -> void:
 	_car_attached = true
 	var inv := _car_inv
@@ -745,6 +783,27 @@ func _attach_cars() -> void:
 				_car_parts.append([m, car, m.global_transform, wk, (1 if _is_blur_wheel(m) else 0) if wk >= 0 else -1,
 					String(m.name).begins_with("cockpit_"), m.cast_shadow, _needles.get(String(m.name))])
 				per_car[car] = per_car.get(car, 0) + 1
+				var nm_ := String(m.name)
+				var kind_ := "brake" if nm_.contains("tail_light") or nm_.contains("brake_light") else ("reverse" if nm_.contains("reverse_light") else "")
+				if nm_.contains("detail_glass_red") or nm_.contains("red_glass"):
+					for si_ in m.get_surface_override_material_count():
+						var gl_ = m.get_surface_override_material(si_)
+						if gl_ is ShaderMaterial:
+							if not _light_mats.has(car):
+								_light_mats[car] = []
+							_light_mats[car].append([gl_, "lens"])
+				if kind_ != "":
+					for si_ in m.get_surface_override_material_count():
+						var lm_ = m.get_surface_override_material(si_)
+						if lm_ is BaseMaterial3D and (lm_ as BaseMaterial3D).albedo_texture != null:
+							var bm_ := lm_ as BaseMaterial3D
+							bm_.emission_enabled = true
+							bm_.emission_texture = bm_.albedo_texture
+							bm_.emission = Color(1.0, 0.0, 0.0) if kind_ == "brake" else Color(1.0, 1.0, 0.95)
+							bm_.emission_energy_multiplier = 0.0
+							if not _light_mats.has(car):
+								_light_mats[car] = []
+							_light_mats[car].append([bm_, kind_])
 				if wk >= 0:
 					per_wheel[car] = per_wheel.get(car, 0) + 1
 				break
@@ -806,6 +865,8 @@ func _live_step() -> void:
 			if b.decode_u32(4) >= 2 and b.size() >= 40:
 				_steer = clampf(b.decode_float(20), -1.0, 1.0)
 				_steer_lock = float(b.decode_u32(24))
+			if b.decode_u32(4) >= 3 and b.size() >= 40:
+				_player_brake = clampf(b.decode_float(28), 0.0, 1.0)
 			continue
 		if b.size() == 280 and b.slice(0, 4).get_string_from_ascii() == "FM3W" and b.decode_u32(4) == 1:
 			# A car's four wheels as drawn (spin and steering), right after that car's datagram.
@@ -854,7 +915,13 @@ func _live_step() -> void:
 			if _car_prev.has(car):
 				var dtk := tk - float(_car_prev[car][1])
 				if dtk > 0.002 and dtk < 0.2:
-					_car_speed[car] = lerpf(float(_car_speed.get(car, 0.0)), pos.distance_to(_car_prev[car][0]) / dtk, 0.2)
+					var v_old := float(_car_speed.get(car, 0.0))
+					_car_speed[car] = lerpf(v_old, pos.distance_to(_car_prev[car][0]) / dtk, 0.2)
+					_car_accel[car] = lerpf(float(_car_accel.get(car, 0.0)), (float(_car_speed[car]) - v_old) / dtk, 0.15)
+					# backwards: the displacement against the car's nose (car space -z is forward: the cockpit's hood)
+					var nose := -Vector3(b.decode_float(48), b.decode_float(52), b.decode_float(56))
+					var dpos: Vector3 = pos - (_car_prev[car][0] as Vector3)
+					_car_back[car] = dpos.dot(nose) < -0.3 * dtk
 			if not _car_prev.has(car) or tk - float(_car_prev[car][1]) > 0.002:
 				_car_prev[car] = [pos, tk]
 			_cars[car] = b
@@ -948,6 +1015,7 @@ func _show_drawn(now: float) -> void:
 			pdist = o.distance_to(cam.origin)
 			player = car
 	var in_car := _live_vtable == 0x8200206C or _live_vtable == 0x82034FC4
+	_update_lights(player)
 	for part in _car_parts:
 		var mine: bool = int(part[1]) == player and in_car
 		var gi := part[0] as GeometryInstance3D
