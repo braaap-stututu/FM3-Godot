@@ -601,6 +601,15 @@ func _env_cube(gltf_path: String, tex_dir: String) -> Cubemap:
 	return _env[key]
 
 
+func _env_cube_gain(gltf_path: String) -> float:
+	var f := gltf_path.get_basename() + "_tex/envcube.json"
+	if FileAccess.file_exists(f):
+		var t = JSON.parse_string(FileAccess.get_file_as_string(f))
+		if t is Dictionary and t.has("gain"):
+			return float(t["gain"])
+	return 2.0
+
+
 # A colour for a plain vec4 shader uniform. Godot 4.7 converts a Color given to a vec4 uniform from sRGB to linear even
 # without source_color; the shaders here linearise themselves (to_linear), so a Color came out darkened twice: library
 # cars' paint (white texture x the database colour) measured 22 where the captured copy (the colour in its texture) has
@@ -654,6 +663,10 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 		sm.set_shader_parameter("albedo_tex", m.albedo_texture)
 	var cube := _env_cube(gltf_path, gltf_path.get_file().get_basename() + "_tex")
 	sm.set_shader_parameter("has_env", cube != null)
+	if shader == CARPAINT_SHADER and cube != null:
+		# the static cube's own scale (fm3_track_export.py envcube.json: its fetch constant's exponent adjust; x2 on
+		# every race track but CrownJewel, x1 there; scenes exported before it get x2)
+		sm.set_shader_parameter("static_cube_gain", _env_cube_gain(gltf_path))
 	if cube != null:
 		sm.set_shader_parameter("env_cube", cube)
 	var v := OS.get_environment(env)
@@ -1355,8 +1368,14 @@ func _setup_exposure(gltf_path: String) -> void:
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_expo_mat = ShaderMaterial.new()
 	_expo_mat.shader = load("res://viewer/fm3_exposure.gdshader")
-	_expo_mat.set_shader_parameter("s_scale", EXPOSURE_W_CJ / 0.9874)
+	# Our picture is the game's scene (its shaders' output): the final pass runs on it as it is, then the display table.
+	# (Until 2026-11-25 s_scale was W_cj / 0.9874, which made the pass a no-op on CrownJewel: the picture had been
+	# calibrated against the game's displayed picture, display table included; now the table is applied here.)
+	_expo_mat.set_shader_parameter("s_scale", 1.0)
 	_expo_mat.set_shader_parameter("desat", float(_expo_tone.get("desat", 1.0)))
+	_expo_mat.set_shader_parameter("display_toe", OS.get_environment("FM3_NO_TOE") == "")
+	if OS.get_environment("FM3_EXPO_SSCALE") != "":
+		_expo_mat.set_shader_parameter("s_scale", float(OS.get_environment("FM3_EXPO_SSCALE")))
 	rect.material = _expo_mat
 	layer.add_child(rect)
 	root.add_child(layer)
@@ -1392,6 +1411,22 @@ func _expo_k(lum: float) -> float:
 
 # Every 10 frames: the picture's mean luminance (it already has the exposure pass on it: undone through the current
 # curve), as the game's scene luminance L, adapted 2% a frame like the game's luminance pass (the first one taken as is).
+# The display table's points (fm3_exposure.gdshader TOE: input k * 16, the last 255) and its inverse.
+const TOE_PTS := [0.0, 6.0, 16.0, 32.0, 48.0, 65.0, 81.0, 98.0, 115.0, 132.0, 150.0, 167.0, 185.0, 202.0, 220.0, 238.0, 255.0]
+
+
+static func _untoe(v: float) -> float:
+	var o := clampf(v, 0.0, 1.0) * 255.0
+	for i in 16:
+		var a: float = TOE_PTS[i]
+		var b: float = TOE_PTS[i + 1]
+		if o <= b or i == 15:
+			var x0 := float(i) * 16.0
+			var x1 := 255.0 if i == 15 else float(i + 1) * 16.0
+			return (x0 + (x1 - x0) * clampf((o - a) / maxf(b - a, 1e-4), 0.0, 1.0)) / 255.0
+	return v
+
+
 func _exposure_update() -> void:
 	if _expo_mat == null or _frames < 3 or _frames - _expo_last < 10:
 		return
@@ -1402,9 +1437,13 @@ func _exposure_update() -> void:
 		return
 	img.resize(64, 36, Image.INTERPOLATE_BILINEAR)
 	var sum := 0.0
+	var toe_on := bool(_expo_mat.get_shader_parameter("display_toe"))
 	for y in 36:
 		for x in 64:
 			var c := img.get_pixel(x, y)
+			if toe_on:
+				# (the display table undone per pixel: the picture's values before it)
+				c = Color(_untoe(c.r), _untoe(c.g), _untoe(c.b))
 			sum += c.r * 0.2 + c.g * 0.7152 + c.b * 0.0722
 	var y_out := sum / (64.0 * 36.0)
 	var k := float(_expo_mat.get_meta("k", 0.73))

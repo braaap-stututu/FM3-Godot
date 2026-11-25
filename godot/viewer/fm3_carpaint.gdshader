@@ -104,6 +104,10 @@ uniform float lm_dampen_live = 0.3;
 uniform float lm_dampen_static = 0.5;
 uniform float game_env_gain = 1.0;  // our cube against the game's (1 = the same brightness)
 uniform float game_live_scale = 1.0;  // (the live cube in this term: live_scale belongs to the older fit)
+// The static cube (staticcarcubemap.xpr, the paint's t7) is stored at half brightness and read x2: its fetch constant's
+// exponent adjust is 1 (dword 3 bits 13-18; the live cube's is 3, x8, stored at 1/8). Motegi: our decode of the file has
+// sky ~0.3 / road ~0.16, half the game's live cube (0.6 / 0.34). 2026-11-25.
+uniform float static_cube_gain = 2.0;
 varying vec2 env_ab;
 uniform int debug_out = 0;
 
@@ -145,7 +149,7 @@ void light() {
 			float fg = clamp(pow(max(1.0 - cosv, 0.0), game_fresnel_pow), game_fresnel_min, 1.0);
 			fg = clamp(fg * (1.0 - fresnel_kill * dot(paint_gamma, vec3(0.2125, 0.7154, 0.0721))), 0.0, 1.0);
 			float damp = has_live ? lm_dampen_live : lm_dampen_static;
-			vec3 envg = has_live ? live_cube(r) * game_live_scale : env;
+			vec3 envg = has_live ? live_cube(r) * game_live_scale : env * (has_env ? static_cube_gain : 1.0);
 			vec3 refl = envg * fg * cube_scale * 0.368 * max(d, 0.0) * (1.0 - damp * (1.0 - sh)) * game_env_gain * mix(refl_gain, refl_metal, metallic);
 			add = flake + refl + sun * spec * spec_gain;
 			// (debug, FM3_PAINT_DEBUG=n: one term alone, as the game's paint shows it with a live ps edit: 1 the
@@ -153,6 +157,7 @@ void light() {
 			if (debug_out == 1) { dbg = refl; }
 			if (debug_out == 2) { dbg = vec3(fg); }
 			if (debug_out == 3) { dbg = refl / max(fg, 1e-4); }
+			if (debug_out >= 10 && debug_out <= 12) { dbg = vec3(debug_out == 10 ? 0.1 : (debug_out == 11 ? 0.25 : 0.5)); }  // (the picture's response to known values)
 		}
 		if (debug_out > 0) {
 			DIFFUSE_LIGHT += to_linear(dbg);

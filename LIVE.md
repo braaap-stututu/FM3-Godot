@@ -270,6 +270,36 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
   the existing files patched), and the viewer scales the paint's CrownJewel-fitted sun and sky by them
   (`FM3_NO_TRACK_CAR_LIGHT=1` off). The sun's direction was already right (game psLightDirWS = ours with the glTF's
   z mirror; shadows agree). Godot's own sun light (props, trim, rims) stays one fixed colour on every track.
+- **Display table, sky, static cube (2026-11-25 afternoon):**
+  - **Display table.** The console's display table (DC_LUT, a toe: 16 -> 6, 32 -> 16, 64 -> 48, 128 -> 115,
+    192 -> 185, 240 -> 238) is now applied by `fm3_exposure.gdshader` after the exposure:
+    - The table was taken from the game's own shots of the same frozen frames with and without it (REGPU_NO_GAMMA),
+      as the median per pixel value.
+    - It was found by having the game's paint output constants (live ps edits, `tools/research/gridterms.ps1`):
+      0.1 / 0.25 / 0.5 came out 13 / 52 / 119 in the game, 25 / 65 / 129 in ours.
+    - Everything that copies the game's formulas had been too light in shade. The road_blnd_2 x0.85 "cause unknown"
+      was this table (102 -> 88): `road1_gain` is 1 now.
+    - With the table, the final pass takes our picture as the game's scene (`s_scale` 1; before it was W_cj / 0.9874,
+      a no-op on CrownJewel).
+    - `FM3_NO_TOE=1` turns it off; `FM3_EXPO_SSCALE` overrides the scale.
+  - **Sky.** `fm3_track_export.py` gave the sky dome skyScale x 275 / LightCurveWhitePoint: the exposure, from
+    before the viewer had the final pass. That exposed the sky twice (Motegi's 1.19x the game's). The sky gain is
+    skyScale only (existing scenes patched in place).
+  - **Results, live:**
+    - CrownJewel grid **19.6 / 17.8 / 16.1** (this morning 21.1 / 20.1 / 19.5; the best yet).
+    - Motegi **23.4 -> 14.7**: its open sky 132/174/214 against the game's 132/175/214.
+  - **Static car cube scale.** The static car cube's own scale: each `staticcarcubemap.xpr` carries its fetch
+    constant, whose exponent adjust the game applies:
+    - x1 on CrownJewel, x2 on every other race track, x8 in the menu scenes;
+    - our decode of Motegi's file is half the brightness of the game's live cube there;
+    - the export writes `<scene>_tex/envcube.json` (`gain`), which the paint's game term uses (`static_cube_gain`).
+  - **Checked on the grid** (`tools/research/gridterms.ps1`, `gridcap.ps1`):
+    - the game's static cube sampled at face centres matches our decode;
+    - the per-car `shCubeMapDampnerLight` varies only with heading;
+    - `o[1].w` = 0;
+    - the track lightmap under the cars is ~0.9.
+  - **Per-car paint on the captured grid:** older fit without the table 14.4, the game's own term with the table
+    14.7 (equal); glass 14.6 -> 16.2, to look at.
 - **Open:** bloom (bright pass: exposed scene + 0.42 x last frame's bloom - 1/255 - bloomCutoff, x bloomScale, on
   the HDR scene: needs values above 1, our picture is clipped at 1), the road specular's overshoot (re-check with the
   exposure), one opponent per race without an FM3N name (Silverstone's B.Giese: not the colour-file case); the palette barriers (`diff_clr_spec_2`: a per-model

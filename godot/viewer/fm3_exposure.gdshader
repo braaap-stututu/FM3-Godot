@@ -15,6 +15,23 @@ uniform float black = 0.0;
 uniform float white = 0.942;
 uniform float gamma_inv = 1.0;
 uniform float boost = 0.0;
+// The console's display table (DC_LUT, the title's 256-entry gamma ramp; ReGPU applies it at present): a toe that
+// darkens the low end (16 -> 6, 32 -> 16, 64 -> 48, 128 -> 115, 192 -> 185). Measured 2026-11-25 from the game's own
+// shots of the same frozen frames with and without it (REGPU_NO_GAMMA; MapleValley and LagunaSeca, every pixel value's
+// median). Without it every shader that follows the game's formulas came out too light in shade: a mid-grey road
+// (102 -> 88) needed a fitted x0.85, the paint's reflection terms 2x too bright in the darks. world_view.gd
+// FM3_NO_TOE=1: off (A/B).
+uniform bool display_toe = true;
+const float TOE[17] = float[](0.0, 6.0, 16.0, 32.0, 48.0, 65.0, 81.0, 98.0, 115.0, 132.0, 150.0, 167.0, 185.0, 202.0,
+	220.0, 238.0, 255.0);
+
+float toe(float v) {
+	float x = clamp(v, 0.0, 1.0) * 255.0 / 16.0;  // (points at 0, 16, ..., 240, then 255)
+	int i = min(int(x), 15);
+	float x0 = float(i) * 16.0, x1 = i == 15 ? 255.0 : float(i + 1) * 16.0;
+	float t = clamp((clamp(v, 0.0, 1.0) * 255.0 - x0) / (x1 - x0), 0.0, 1.0);
+	return mix(TOE[i], TOE[i + 1], t) / 255.0;
+}
 
 void fragment() {
 	vec3 s = texture(screen_tex, SCREEN_UV).rgb * s_scale;
@@ -24,5 +41,8 @@ void fragment() {
 	float x = max((yp - black) / wb, max((0.1 - black) / wb, 0.0));
 	float t = pow(max(x, 1e-6), gamma_inv);
 	vec3 c = mix(vec3(y), s, desat) * (t / max(yp, 0.1)) + boost;
+	if (display_toe) {
+		c = vec3(toe(c.r), toe(c.g), toe(c.b));
+	}
 	COLOR = vec4(c, 1.0);
 }

@@ -303,7 +303,7 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
                 # through the lenses)
                 if sec.get('light') is not None and (not mname.startswith(LAMP_MATERIALS) or mname.startswith('tail_light')):
                     lit = np.clip(sec['light'] / 107.0, 0.0, 1.0) ** 2.2
-                groups.setdefault((mname, m_), []).append((P, tris, sec['uv0'], Nf, lit))
+                groups.setdefault((mname, m_), []).append((P, tris, sec['uv0'], Nf, lit, sec.get('env_sh')))
         mirrored = np.linalg.det(R) < 0
         normal_agree = []
 
@@ -329,6 +329,9 @@ def build_cars(ref, rbin, caps, capdir, copy_mat, add_view, accessors, meshes, n
             if all(len(q) > 4 and q[4] is not None for q in parts):
                 lit = np.concatenate([q[4] for q in parts]).astype(np.float32)
                 attrs.append(('COLOR_0', np.stack([lit, lit, lit, np.ones_like(lit)], axis=1), 'VEC4'))
+            if all(len(q) > 5 and q[5] is not None for q in parts):
+                # (the paint's reflection sky weight per vertex, fm3_carbin.env_sh: fm3_carpaint.gdshader reads UV2)
+                attrs.append(('TEXCOORD_1', np.concatenate([q[5] for q in parts]).astype(np.float32), 'VEC2'))
             for attr, arr, typ in attrs:
                 acc = {'bufferView': add_view(np.ascontiguousarray(arr).tobytes(), 34962), 'componentType': 5126,
                        'count': len(arr), 'type': typ}
@@ -963,9 +966,8 @@ def main():
     sky_height = np.zeros(3)
     shadow_dir = None  # TrackSettings.xml ShadowLightDirection (game space): the sun of a capture-free scene
     crowd_shade = [1.0, 1.0, 1.0]  # TrackSettings <Crowds> dark_x/y/z: the crowd under the stands' roofs
-    # The sky's brightness against CrownJewel's (where the unlit dome matched the game within 6%): TrackSettings skyScale
-    # over its tone curve's white point (LightCurveWhitePoint, CrownJewel 275); Catalunya 1.05 / 214.6 -> 1.35 (its game sky
-    # 253 where ours was 175, clipped)
+    # The sky's brightness: TrackSettings skyScale (the game's sky shader scale; CrownJewel 1, where the unlit dome matched
+    # the game within 6%). The per-track exposure is the viewer's final pass, for the sky as for everything else.
     sky_gain = 1.0
     if '--camera-from' in sys.argv:
         ref_ = json.load(open(sys.argv[sys.argv.index('--camera-from') + 1]))
@@ -985,8 +987,9 @@ def main():
                 crowd_shade = [float(mo.group(k)) for k in (1, 2, 3)]
             mo = re.search(r'LightCurveWhitePoint="([-0-9.e]+)"', ts_text)
             mo2 = re.search(r'<skyScale value="([-0-9.e]+)"', ts_text)
-            if mo and float(mo.group(1)) > 1:
-                sky_gain = (float(mo2.group(1)) if mo2 else 1.0) * 275.0 / float(mo.group(1))
+            # (2026-11-25: skyScale only. The white point's 275 / W was the exposure, which the viewer's final pass
+            # (fm3_exposure.gdshader) now applies to the whole picture: Motegi's sky came out 1.19x the game's, 275 / 229.6)
+            sky_gain = float(mo2.group(1)) if mo2 else 1.0
             mo = re.search(r'<ShadowLightDirection x="([-0-9.e]+)" y="([-0-9.e]+)" z="([-0-9.e]+)"', ts_text)
             if mo:
                 shadow_dir = np.array([float(mo.group(k)) for k in (1, 2, 3)])
@@ -1467,6 +1470,13 @@ def main():
                 img = img.copy()
                 img[..., 3] = 255
                 fr.write_png(os.path.join(tex_out, 'envcube_%d.png' % k), img.shape[1], img.shape[0], img.tobytes())
+            # the cube's own scale: the game reads it with the exponent adjust in its fetch constant (dword 3 bits 13-18):
+            # 1 (x2) on every race track but CrownJewel (0, x1), 3 (x8) in the menu scenes (2026-11-25)
+            d3 = struct.unpack_from('>I', open(cube_path, 'rb').read(), 0x64)[0]
+            exp_ = ((d3 >> 13) & 63) - (64 if (d3 >> 13) & 32 else 0)
+            with open(os.path.join(tex_out, 'envcube.json'), 'w', newline='
+') as f_:
+                json.dump({'gain': 2.0 ** exp_, 'source': os.path.basename(os.path.dirname(cube_path))}, f_)
     if '--carbins' in sys.argv:
         CARBIN_DIRS.extend(sys.argv[sys.argv.index('--carbins') + 1].split(';'))
     if '--car-files' in sys.argv:
