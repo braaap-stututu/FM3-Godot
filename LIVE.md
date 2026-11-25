@@ -483,6 +483,13 @@ FM3's physics in Godot with FM3's physics files. Findings (full report: `FM3-fil
 
 ## Next for stage A (where to continue)
 
+**User's list (2026-11-25 evening): glass shininess / reflections.** The user, comparing the live pictures: the
+RSX's rear window and tail lights are not as reflective as the game's (on the Sebring / RoadAtlanta grids the game's
+tail lenses look bright and pinkish, ours dark red: `fm3_carlens.gdshader` is only a multiply filter over the lamp, the
+game's lens also adds a reflection; the rear window, `fm3_carglass.gdshader`, player_env 0.1). The paint is close now,
+but the reflections in it are blurrier than the game's: check the live cube's resolution / mip level used for the
+paint lookup against the game's cube (the paint's term: LIVE.md "Car paint reflection").
+
 The user's last question was whether to chase the remaining uneven steps or call it good enough: ask.
 1. Smoothness left: the speed jitter's p95 (24-41%): check against the game's own frame times (the FM3V timestamps'
    spacing, `live_record.py`) before changing the viewer; the 17-20 ms delay could shrink to ~1 frame if the jitter
