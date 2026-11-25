@@ -663,7 +663,7 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 		sm.set_shader_parameter("albedo_tex", m.albedo_texture)
 	var cube := _env_cube(gltf_path, gltf_path.get_file().get_basename() + "_tex")
 	sm.set_shader_parameter("has_env", cube != null)
-	if shader == CARPAINT_SHADER and cube != null:
+	if (shader == CARPAINT_SHADER or shader == CARGLASS_SHADER) and cube != null:
 		# the static cube's own scale (fm3_track_export.py envcube.json: its fetch constant's exponent adjust; x2 on
 		# every race track but CrownJewel, x1 there; scenes exported before it get x2)
 		sm.set_shader_parameter("static_cube_gain", _env_cube_gain(gltf_path))

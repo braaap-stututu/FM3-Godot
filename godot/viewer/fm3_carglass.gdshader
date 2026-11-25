@@ -40,7 +40,11 @@ uniform float glow = 0.0;
 // track lightmap, c180 / c119) is far darker than the viewer's live cube of its surroundings; with env_scale 1 the
 // CR-X's rear glass came out at 178 where the game has 15. Measured on the grid (tools/car_regions.py). 2026-11-24: with
 // gamma_blend and the player's own dim reflection (below), the AI windows fit at 0.5 (glass summary 15.6 -> 13.8).
-uniform float env_scale = 0.25;
+// 2026-11-25: with the display table in the final pass (fm3_exposure.gdshader) the game's own formula fits: the static
+// cube x its fetch constant's exponent adjust (static_cube_gain: x1 CrownJewel, x2 the other tracks; envcube.json) x
+// CubeScale, no fitted scale (grid glass per car 15.7 at 0.25 -> 13.8 at 1).
+uniform float env_scale = 1.0;
+uniform float static_cube_gain = 1.0;
 // The player's glass (has_live): the game's per-frame cube is rendered from inside the player's car and mostly sees its
 // own dark cabin, so its windows reflect little (the CR-X's rear glass 9/15/20 in the game) where the AI cars' windows,
 // on the static cube, show the sky (the Eclipse 40/48/57). (Until 2026-11-24 one env_scale 0.2 for every window, fitted
@@ -73,7 +77,7 @@ vec3 to_linear(vec3 c) {
 
 void fragment() {
 	vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
-	vec3 env = (has_env ? texture(env_cube, r * env_flip).rgb : env_fallback) * cube_scale * ((has_live || player_glass) ? player_env : env_scale);
+	vec3 env = (has_env ? texture(env_cube, r * env_flip).rgb : env_fallback) * cube_scale * ((has_live || player_glass) ? player_env : env_scale * (has_env ? static_cube_gain : 1.0));
 	float cosv = clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0);
 	float f = clamp(fresnel_scale * pow(1.0 - cosv, fresnel_power), fresnel_min, fresnel_max) * reflection_scaler;
 	float a = min(f + glass_color.a + opacity, max_opacity);

@@ -299,7 +299,11 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
     - `o[1].w` = 0;
     - the track lightmap under the cars is ~0.9.
   - **Per-car paint on the captured grid:** older fit without the table 14.4, the game's own term with the table
-    14.7 (equal); glass 14.6 -> 16.2, to look at.
+    14.7 (equal).
+  - **AI window glass:** now the game's own formula too: the static cube x its gain x CubeScale, the fitted
+    env_scale 0.25 retired. Grid glass per car 15.7 at 0.25 -> 13.8, and 14.6 before the table. The player's glass
+    keeps its fit (player_env 0.1): the game's live cube sees the player's dark cabin from inside, ours leaves the
+    cars out.
 - **Open:** bloom (bright pass: exposed scene + 0.42 x last frame's bloom - 1/255 - bloomCutoff, x bloomScale, on
   the HDR scene: needs values above 1, our picture is clipped at 1), the road specular's overshoot (re-check with the
   exposure), one opponent per race without an FM3N name (Silverstone's B.Giese: not the colour-file case); the palette barriers (`diff_clr_spec_2`: a per-model
