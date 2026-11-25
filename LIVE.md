@@ -569,6 +569,12 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   fitted before the exposure pass): CrownJewel CR-X rear window 16.6 -> 10.9 (21 / 25 / 23, game 20 / 25 / 29), the
   car 15.9 -> 15.1; Sebring RSX sunroof strip on the roof 58.8 -> 48.2 (it is player glass), rear window 13.6 -> 13.9,
   the car 19.4 -> 19.2.
+- **The player's windows at full reflection** (player_env 1.0, after the user pointed out that the dark band under the
+  RSX's rear window is what the glass rests on, hidden in the game by the window's reflection): with the cabin at 0.5,
+  Sebring RSX rear window 10.4 -> 6.6, the band 7.9 -> 7.4, roof 51.0 -> 35.2, the car 18.5 -> 17.6; CrownJewel CR-X rear
+  window 11.6 -> 11.0, whole frame 18.9 / 18.5 / 17.8 -> 18.7 / 18.1 / 17.1. Both are needed: 1.0 with the cabin at 1.0
+  gives the RSX window 15.1 (the seats show through). So the player's glass is no longer dimmed (the 0.1 of 2026-11-24
+  was fitted before the exposure pass).
 - **The dark band round the RSX's rear window** (found by hiding library parts, `FM3_HIDE_PARTS=<name part>,...`): the
   black trim inside the window framed a cabin that was too bright (grey seats; the game's window reads as one dark
   tint). Library cabins now at `CABIN_K` 0.5 (was 1.0; `FM3_CABIN_K`): Sebring RSX rear window 14 -> 10.5, CrownJewel
