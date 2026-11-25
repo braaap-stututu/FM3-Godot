@@ -629,8 +629,11 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   has none, e.g. `--gltf out\cars\mit_eclipsegts_03.gltf --lit --look-from 0,1,5 --look-at 0,0.6,0`;
   `FM3_HIDE_PARTS` now also works on such a plain load; `FM3_BG_COLOR=r,g,b` for the unlit background): the specks
   are short white dashes left of the right lamp's big lens, present with each of that lamp's five parts hidden in
-  turn (lenses, reflectors, bulb): not holes, but a white detail in another part of the housing (its texture?) that
-  ours draws sunlit and the game dark. Next: find that part (hide the housing's other meshes) and its material.
+  turn (lenses, reflectors, bulb): not holes. **Found and fixed (00:25):** they are the lamp's clear outer cover
+  (`glass_1`, material `<glass>`: SpecularAmount 3.5 at power 50): its sun highlight on few, curved polygons drew
+  saturated white dashes. The glass highlight weight is now 0 (`fm3_carglass.gdshader` spec_weight, was 0.25;
+  `FM3_GLASS_SPEC=<w>`): the Eclipse's right lamp 34.3 -> 24.7, the Eclipse 17.9 -> 17.3, the CR-X 12.6 -> 13.0
+  (0.1 kept the dashes).
 - The CrownJewel grid's largest differences otherwise: the game's lap counter overlay (top right, not ours to fix) and
   the white kerb stripes on the right, brighter and crisper in ours (141-163 against 115-136): the road-lines item.
 - Still open: the RSX's lenses are less pink than the game's (G 37 vs 65); a thin strip at the roof's rear edge is

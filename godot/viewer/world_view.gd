@@ -780,6 +780,8 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 		sm.set_shader_parameter("env_cube", cube)
 	if shader == CARGLASS_SHADER and OS.get_environment("FM3_PLAYER_ENV") != "":
 		sm.set_shader_parameter("player_env", float(OS.get_environment("FM3_PLAYER_ENV")))
+	if shader == CARGLASS_SHADER and OS.get_environment("FM3_GLASS_SPEC") != "":
+		sm.set_shader_parameter("spec_weight", float(OS.get_environment("FM3_GLASS_SPEC")))
 	if shader == CARGLASS_SHADER and OS.get_environment("FM3_LIVE_GLASS") == "0":
 		sm.set_shader_parameter("live_glass", false)
 	if shader == CARGLASS_SHADER and OS.get_environment("FM3_LIVE_GLASS_SCALE") != "":
