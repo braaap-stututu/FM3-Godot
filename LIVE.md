@@ -625,9 +625,12 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   game): not a lamp material. They stay with the lenses, bulbs, reverse lamps or the reflection passes hidden
   (`FM3_HIDE_PARTS`, `FM3_REFLECTOR=0`), and sit where the white kerb is behind the car: most likely gaps in the
   library model round the lamp housings (seams / missing parts) showing the background. The grid's car is
-  `MIT_EclipseGTS_03`. Next: render it alone against a coloured background (world_view.gd cannot yet: a library
-  .gltf has no camera, "no camera in the glTF" even with --look-from), or check its part selection
-  (`fm3_car_library.py` stock_parts).
+  `MIT_EclipseGTS_03`. Rendered alone (world_view.gd now makes a camera for `--look-from` / `--look-at` when a glTF
+  has none, e.g. `--gltf out\cars\mit_eclipsegts_03.gltf --lit --look-from 0,1,5 --look-at 0,0.6,0`;
+  `FM3_HIDE_PARTS` now also works on such a plain load; `FM3_BG_COLOR=r,g,b` for the unlit background): the specks
+  are short white dashes left of the right lamp's big lens, present with each of that lamp's five parts hidden in
+  turn (lenses, reflectors, bulb): not holes, but a white detail in another part of the housing (its texture?) that
+  ours draws sunlit and the game dark. Next: find that part (hide the housing's other meshes) and its material.
 - The CrownJewel grid's largest differences otherwise: the game's lap counter overlay (top right, not ours to fix) and
   the white kerb stripes on the right, brighter and crisper in ours (141-163 against 115-136): the road-lines item.
 - Still open: the RSX's lenses are less pink than the game's (G 37 vs 65); a thin strip at the roof's rear edge is

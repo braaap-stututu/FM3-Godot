@@ -454,7 +454,19 @@ func _init() -> void:
 		fa.store_string("
 ".join(id_lines))
 		fa.close()
+	if OS.get_environment("FM3_HIDE_PARTS") != "":
+		# (tests: also on a plain scene load, e.g. a car library model rendered alone)
+		for mh in scene.find_children("*", "MeshInstance3D", true, false):
+			for h in OS.get_environment("FM3_HIDE_PARTS").split(",", false):
+				if String(mh.name).contains(h):
+					(mh as MeshInstance3D).visible = false
 	var cams := scene.find_children("*", "Camera3D", true, false)
+	if cams.is_empty() and look_from != "" and look_at != "":
+		# (a glTF without a camera, e.g. a car library model: one is made for --look-from / --look-at)
+		var nc := Camera3D.new()
+		nc.fov = 50.0
+		scene.add_child(nc)
+		cams = [nc]
 	if cams.is_empty():
 		push_error("no camera in the glTF")
 		quit(1)
@@ -476,6 +488,10 @@ func _init() -> void:
 	env.environment = Environment.new()
 	env.environment.background_mode = Environment.BG_COLOR
 	env.environment.background_color = Color(0.45, 0.6, 0.8)
+	if OS.get_environment("FM3_BG_COLOR") != "":
+		# (tests: a loud background shows holes in a model, e.g. FM3_BG_COLOR=1,0,1)
+		var bc := OS.get_environment("FM3_BG_COLOR").split_floats(",")
+		env.environment.background_color = Color(bc[0], bc[1], bc[2])
 	env.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.environment.ambient_light_color = Color(0.5, 0.5, 0.5)
 	if lit:
