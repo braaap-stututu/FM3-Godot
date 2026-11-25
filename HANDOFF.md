@@ -61,6 +61,15 @@ Godot", "Telemetry from the car-physics object", "Physics in Godot: feasibility"
   suspension positions (FM3-ReGPU f4cb614, local); `tools/fm3_car_physics.py` exports a car's drivetrain, and its
   engine torque / power equal the telemetry page's (145.4 / 151.4 / 150.8 N m); the engine sound's torque inputs use it.
 
+**2026-11-25 evening (to midnight): pushed, arcanite24's ports, lamps, telemetry out.** The user allowed pushing the
+FM3-ReGPU commits (pushed to origin/main, 580ecb6..f4cb614 and on). Their question, whether arcanite24's
+`pinyon-shift` / `cobalt-shift` help with telemetry: cobalt-shift (FM3) has none; pinyon-shift (FH1) maps the same
+car-physics object (engine +324 / redline +452 identical) and sends Forza Data Out packets; its clean-room sibling
+`pinyon-shift-native` simulates FH1's cars from the game's own tables within 2% of the real game: the template for
+physics in Godot (LIVE.md "arcanite24's Forza ports"). Found in our dumps: world position +2544, velocity +2560,
+acceleration +2512; +2672 is not a clutch. User's list item "glass shininess": the lamp lenses now use the game's
+glass formula and the reflectors behind them a mirror pass (`fm3_reflector.gdshader`; LIVE.md "Next for stage A").
+
 **Night of 2026-11-24/25: the other tracks** (LIVE.md "Other tracks"). All 15 Free Play tracks
 build and run live (`tools\live\live_track.ps1`); the car library has all 500 cars incl. Disc 2; track shaders are read
 from the game's own `.fxobj` files (`tools/fm3_trackshader.py`) and many recipes written from that code; re-survey

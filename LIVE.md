@@ -481,6 +481,53 @@ FM3's physics in Godot with FM3's physics files. Findings (full report: `FM3-fil
   related).
   (The stream's "clutch" field, +2672, sits at ~0.13 while driving: not a plain pedal value.)
 
+## arcanite24's Forza ports: what they give us (2026-11-25 evening)
+
+The user asked whether arcanite24's `pinyon-shift` / `cobalt-shift` recomps help with telemetry. Read-only clones
+(not kept in the repo): `github.com/arcanite24/{cobalt-shift, pinyon-shift, pinyon-shift-native}`.
+
+- **cobalt-shift** (FM3, Xbox 360, performance first; 65 files, ports some FM3-ReGPU hooks under MIT): no telemetry,
+  physics, camera or audio work. Nothing to take for this project.
+- **pinyon-shift** (FH1 recomp, the FM4-era engine): telemetry out over UDP in Forza's Data Out layouts (FM7 Dash 311 B
+  / FH4-5 324 B, `telemetry_udp_target` 127.0.0.1:5300, for SimHub etc.) from the car's `ICarDynamics` (car +0x2D90),
+  documented in `site/findings/objects.toml` ("Car dynamics"). **FM3's physics object is the same kind of object:**
+  engine speed +324 and redline +452 (rad/s) are at the same offsets in both games. FH1's other fields (from +1228 on)
+  have moved in FM3 (FH1 idle +1228, limiter +456, gear +2240, speed +3128 read 12 rpm / 1 rpm / - / - in FM3 dumps),
+  but the layout carries over: FH1's controls block (+3904: gas, brake, steer, clutch, handbrake) = FM3's +3408
+  (throttle, brake, steer +3416; +3420 / +3424 stay 0 while the AI drives: clutch / handbrake candidates, unconfirmed);
+  FH1's four 1024-byte wheel blocks (+3936; per wheel +0 suspension position, +12 wheel speed rad/s, +496 slip ratio /
+  peak (1 = peak grip), +520 slip angle / peak, +796 ground contact, +337 surface index, +860 spring rest, +828 rate)
+  = FM3's 1040-byte blocks (our +4164 wheel speed, +3440 suspension, +3492 tyre temps per 1040). Also FH1: ABS active
+  +3020, TCS amount +3004, the game's own rumble inputs. **Our "+2672 clutch" is not a clutch**: 0.12 in 2nd, 0.5-1.0
+  in 1st under wheelspin, 0.02-0.14 in 3rd (four recordings): a slip / traction value.
+  Next for telemetry: find FM3's slip ratio / slip angle / contact in its wheel blocks (FH1's order and the page
+  FRICTION as the check), then send a Data Out packet from the recomp too (SimHub, dashboards) beside FM3E.
+- **pinyon-shift-native** (a clean-room FH1 engine, C++20 / Vulkan; written from specs, not from game code): a full
+  car simulation from the game's own data, validated against the real game within 2% (R34: 0-100 km/h 5.83 vs
+  5.84 s, braking 8.42 vs 8.57 m/s2, a lap +1.08%, top speed 147.6 vs 147.5 km/h; `docs/SPEC_QUESTIONS.md` Q20-Q40).
+  This is the template for "physics in Godot" (option 2 above, but with the game's own rules):
+  - Steps: 120 Hz outer step, `CarPhysicsUpdateHz` (359) substeps for tyres / drivetrain / body; semi-implicit Euler.
+  - Tyres: the game's own `List_TireFrictionCurve` arrays (no Pacejka): two curves per direction (light / heavy load,
+    kgf, blended between `MinLoadCurve` / `MaxLoadCurve`), slip ratio `(w r - vx) / max(|vx|, 1)`, slip angle in
+    degrees, combined slip `hypot(sx, sy)` of the peak-normalised values; sidewall stretch from tyre size.
+  - Engine: `T = closed + throttle x (full - closed)` (our fit found the same blend); they synthesise the closed curve
+    (FH1's DB has only a scalar), FM3's DB has a real zero-throttle curve (`fm3_car_physics.py`). Upgrade TorqueScales
+    add, not multiply; `GameTorqueScale` scales only the wheels' torque.
+  - Units: aero coefficients are kgf at 150 mph (x 9.80665 / 67.056^2 -> N per (m/s)^2); springs, dampers, bump stops
+    and anti-roll bars are per kg of mass; `RelVelClamp` in rpm; `List_UpgradeCarBodyWeight.Mass` in kg (FM3's
+    `Data_Car.CurbWeight` in kN, as found here).
+  - Clutch / gearbox state machine (`ClutchInTime`, `GearShiftTime`, `ClutchOutTime`), open diffs and LSDs, ABS / TCS,
+    brakes (`BrakeTorqueSlider`, bias), suspension with bump stops, aero, all with the tables and columns they read
+    (their `libs/cars/src/database.cpp` 550-731: the SQL join chain; `libs/drive/src/from_physics.cpp`).
+  - Cameras: they read `CameraSettings.ini` + `CameraPhysics.xml` as we do (same layer types and curves), spring
+    damping `SpringDPercent x 2 sqrt(K)`, implicit spring step.
+  - Engine sound: loops crossfade by rpm (`log2(1 + t)` on overlaps), pitch from rpm_sample with pitchMin / pitchMax,
+    load parameters `a n + b throttle + c posTorque + d |negTorque|` through 3-point curves (posT = T / T_full,
+    negT = T / T_closed): the same inputs as our `fm3_engine_audio.gd` recipe.
+  How to use it: their source is BSD/clean-room but written for FH1; FM3's tables differ in places (check each column in
+  `gamedb.slt`). A Godot car model following their structure, fed by `fm3_car_physics.py`, checked against the FM3E
+  stream (rpm, gear, speed, wheel speeds, suspension, tyre temps) is the next physics step.
+
 ## Next for stage A (where to continue)
 
 **User's list (2026-11-25 evening): glass shininess / reflections.** The user, comparing the live pictures: the
@@ -489,6 +536,37 @@ tail lenses look bright and pinkish, ours dark red: `fm3_carlens.gdshader` is on
 game's lens also adds a reflection; the rear window, `fm3_carglass.gdshader`, player_env 0.1). The paint is close now,
 but the reflections in it are blurrier than the game's: check the live cube's resolution / mip level used for the
 paint lookup against the game's cube (the paint's term: LIVE.md "Car paint reflection").
+
+**Done the same evening (lamps and black glass):** measured on the Sebring RSX (Free Play, chase view, boxes on each
+tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with several viewer variants (scratch scripts:
+`live_track.ps1` / `live_compare.ps1` with a loop over environment settings, one Godot start each).
+- The game's settings (`Media\Cars\ShaderSettings\Normal.xml`) explain the look: the lamps' **reflectors** are
+  mirror-like (`<reflector>` CubeScale 1.5, Fresnel min 0.15) and the RSX's red lens is nearly clear (GlassColor alpha
+  0 = 15% opaque head-on); the CR-X's red lens is nearly opaque (GlassColor (0.6, 0, 0, 0.7), max 0.9).
+- Lenses now use the game's glass formula (`fm3_carglass.gdshader` with `lens`: no player dimming, no highlight
+  glints) instead of the fitted multiply / cloud / reflection chain (`FM3_LENS=filter` = the old chain), plus two
+  fitted terms: the lens tints what is behind it (`lens_filter` 0.8: the RSX's pink G / R 0.55 in the game) and its own
+  colour is lit at 0.35 (`lens_light`: the CR-X's opaque lens 60 / 23 / 20 in the shade of its rear).
+- Reflectors, tail-lamp bulbs and black glass get a reflection pass over their lit texture (`fm3_reflector.gdshader`,
+  `_add_reflector_pass`): the static car cube x CubeScale x the game's Fresnel (reflector 1.5, bulbs 0.2, black glass
+  0.53 / min 0.4), half tinted by the lamp texture (the CR-X's red reflector panel). Switches: `FM3_REFLECTOR`,
+  `FM3_BULB`, `FM3_BLACK_GLASS` (scales, 0 = off), `FM3_REFLECTOR_TINT`, `FM3_LENS_FILTER`, `FM3_LENS_LIGHT`,
+  `FM3_REFLECTOR_SPEC` (the reflectors' sun highlight, 0: it left hard glints).
+- Results (mean |diff| against the game in the region): Sebring RSX tail lamps 67.5 / 56.5 -> 40.4 / 29.9, its whole
+  rear 29.7 -> 19.8 (lamps 21 / 5 / 4 -> 69 / 37 / 32, game 114 / 65 / 63: the reflectors and bulbs now show through
+  red lenses as in the game; `out\live\rsx_lamps_game_old_new.png`); CrownJewel CR-X rear 16.7 -> 17.6 (its clear
+  corner lenses 44.8 -> 29.8, the red bar the same), Eclipse rear 22.8 -> 23.1, whole grid frame 18.6 / 18.0 / 17.3 ->
+  18.5 / 18.2 / 17.5. Rejected on the way: an untinted reflector reflection (the CR-X's red panel grey), the bulbs' and
+  lenses' sun highlights (glints), lens light 1 (CR-X lens 2x too bright; the RSX's tails liked it slightly).
+- Still open: the RSX's lenses are less pink than the game's (G 37 vs 65); a dark band frames the RSX's rear window
+  where the game's glass runs to the edge (the black-glass pass did not change it: find which mesh draws it); the
+  roof's dark strip (sunroof glass?).
+- Paint sharpness: the game's car cube is six 256 x 256 faces with 4x MSAA, three a frame (NOTES); a 256 px / 4x MSAA
+  live cube here (`--live-cube 256 --live-cube-faces 3 --live-cube-msaa 4`, or `FM3_LIVE_CUBE=256,3,4`) changed the
+  RSX roof's detail 12.0 -> 12.7 only (game 23.0): resolution is not what makes ours softer. The roof reflects about
+  half as bright as the game's (52 vs 108; the same clouds, lower contrast); a 1.5x live-cube reflection gives 80 but
+  worsens the whole frame (23.2 -> 24.7): the roof alone is under-lit. Next: the RSX's baked sky weight on its roof
+  (library UV2, `fm3_carbin.env_sh`) and the Fresnel at the chase camera's angle against a ps edit of the game's paint.
 
 The user's last question was whether to chase the remaining uneven steps or call it good enough: ask.
 1. Smoothness left: the speed jitter's p95 (24-41%): check against the game's own frame times (the FM3V timestamps'

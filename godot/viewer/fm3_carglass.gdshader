@@ -51,6 +51,17 @@ uniform float static_cube_gain = 1.0;
 // on the CR-X, darkened the AI cars' glass too.)
 uniform float player_env = 0.1;
 uniform bool player_glass = false;
+// A lamp lens drawn with this formula (world_view.gd FM3_LENS=game, 2026-11-25): it faces outwards, so the player's
+// own lenses reflect the surroundings like any car's (no player_env dimming).
+uniform bool lens = false;
+// A lens's tint of what is behind it (gamma_blend only): the scene behind x mix(1, GlassColor, lens_filter). The game's
+// RSX tails are pink-red over bright reflectors (G / R 0.55) where the plain formula (15% red head-on) left them
+// near white (G / R 0.8). FM3_LENS_FILTER=<k> (world_view.gd).
+uniform float lens_filter = 0.0;
+// A lens's own colour as lit (GlassColor x lens_light): the CR-X's nearly opaque red lens (GlassColor 0.6, alpha 0.7)
+// came out at its full colour (119 / 48 / 36) where the game shows it lit at about a third (60 / 23 / 20 on the
+// CrownJewel grid, the car's rear in shade). FM3_LENS_LIGHT=<k> (world_view.gd).
+uniform float lens_light = 1.0;
 // The game blends its glass in gamma space (the framebuffer is gamma); Godot blends in linear light, which brightens a
 // bright reflection over a dark cabin. gamma_blend reads the scene behind and mixes in gamma space.
 uniform bool gamma_blend = true;
@@ -77,18 +88,25 @@ vec3 to_linear(vec3 c) {
 
 void fragment() {
 	vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
-	vec3 env = (has_env ? texture(env_cube, r * env_flip).rgb : env_fallback) * cube_scale * ((has_live || player_glass) ? player_env : env_scale * (has_env ? static_cube_gain : 1.0));
+	vec3 env = (has_env ? texture(env_cube, r * env_flip).rgb : env_fallback) * cube_scale * ((has_live || player_glass) && !lens ? player_env : env_scale * (has_env ? static_cube_gain : 1.0));
 	float cosv = clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0);
 	float f = clamp(fresnel_scale * pow(1.0 - cosv, fresnel_power), fresnel_min, fresnel_max) * reflection_scaler;
 	float a = min(f + glass_color.a + opacity, max_opacity);
 	vec3 l = normalize((VIEW_MATRIX * vec4(sun_dir, 0.0)).xyz);
 	float spec = pow(max(dot(reflect(-l, NORMAL), VIEW), 0.0), spec_power) * spec_amount;
-	vec3 c = mix(glass_color.rgb, env, f) + spec_color * spec * 0.25;
+	// (a lens's highlight left hard white glints along the CR-X's lamp edges that the game does not show: off for lenses)
+	if (lens) {
+		spec = 0.0;
+	}
+	vec3 c = mix(glass_color.rgb * (lens ? lens_light : 1.0), env, f) + spec_color * spec * 0.25;
 	vec3 lamp = glass_color.rgb / max(max(glass_color.r, glass_color.g), max(glass_color.b, 0.001));
 	c = mix(c, lamp, clamp(glow, 0.0, 1.0));
 	float al = clamp(max(a + spec * 0.25, glow * 0.95), 0.0, 1.0);
 	if (gamma_blend) {
 		vec3 bg = to_gamma(texture(screen_tex, SCREEN_UV).rgb);
+		if (lens) {
+			bg *= mix(vec3(1.0), glass_color.rgb, lens_filter);
+		}
 		ALBEDO = to_linear(mix(bg, c, al));
 		ALPHA = 1.0;
 	} else {

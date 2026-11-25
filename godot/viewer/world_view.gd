@@ -202,6 +202,8 @@ func _init() -> void:
 				_car_lead = float(args[i + 1]) / 1000.0; i += 1
 			"--live-cube-faces":  # live cube faces rendered per frame, round-robin (6 = all, every frame)
 				_live_cube_faces = clampi(int(args[i + 1]), 1, 6); i += 1
+			"--live-cube-msaa":  # MSAA of the live cube's faces (0, 2, 4, 8)
+				_live_cube_msaa = int(args[i + 1]); i += 1
 			"--live-smooth":  # average the shown motion over this many game frames (0 = off)
 				_live_smooth = float(args[i + 1]); i += 1
 			"--fps":  # cap the viewer's frame rate (vsync stays on)
@@ -354,8 +356,12 @@ func _init() -> void:
 			if lit and _blended(m) and m.roughness < 0.1 and m.albedo_texture == null:
 				# car glass: FM3's dark, reflective windows (fm3_carglass.gdshader), not a clear pane
 				var lens_ := String(mi.name).contains("detail_glass") or String(mi.name).contains("red_glass")
-				var gm_ := _car_material(CARLENS_SHADER if lens_ else CARGLASS_SHADER, m, gltf_path, "FM3_CARGLASS",
+				var gm_ := _car_material(_lens_shader() if lens_ else CARGLASS_SHADER, m, gltf_path, "FM3_CARGLASS",
 					["env_scale", "fresnel_min", "fresnel_power", "max_opacity"])
+				if lens_ and gm_.shader == CARGLASS_SHADER:
+					gm_.set_shader_parameter("lens", true)
+					gm_.set_shader_parameter("lens_filter", _lens_filter())
+					gm_.set_shader_parameter("lens_light", float(OS.get_environment("FM3_LENS_LIGHT")) if OS.get_environment("FM3_LENS_LIGHT") != "" else LENS_LIGHT)
 				# this mesh's own glass (the game's Media\Cars\ShaderSettings + the car's overrides: lenses red / amber /
 				# clear, windows, mirrors); without an entry the shader's defaults = the window
 				var gp_: Dictionary = _carmats.get(String(mi.name), {})
@@ -628,6 +634,85 @@ static func _lens_sync(m: ShaderMaterial) -> void:
 		(m.next_pass as ShaderMaterial).set_shader_parameter("glass_color", m.get_shader_parameter("glass_color"))
 
 
+# Lamp lenses (2026-11-25): the game draws them with its glass formula (fm3_carglass.gdshader: GlassColor, Fresnel
+# opacity, the cube's reflection), so a lens with GlassColor alpha 0 (the RSX's detail_glass_red) is 15% opaque head-on
+# and the lamp's mirror-like reflectors show through it (fm3_reflector.gdshader). FM3_LENS=filter: the older fitted
+# chain (fm3_carlens multiply filter + fm3_lenscloud + fm3_lensrefl).
+static func _lens_shader() -> Shader:
+	return CARLENS_SHADER if OS.get_environment("FM3_LENS") == "filter" else CARGLASS_SHADER
+
+
+# How far a lens tints what is behind it (fm3_carglass.gdshader lens_filter); FM3_LENS_FILTER=<k>. 0.8 fitted on the
+# Sebring RSX (tails G / R 0.55 in the game; 0.85 at 0, 0.69 at 0.5, 0.60 at 0.8; 2026-11-25).
+const LENS_FILTER := 0.8
+# How far a reflector's reflection takes its texture's colour (fm3_reflector.gdshader tint_amount): 1 made the RSX's
+# tails 67 / 32 / 26 (game 114 / 65 / 63), 0 greyed the CR-X's red reflector panel (G / B +16).
+const REFLECTOR_TINT := 0.5
+# A lens's own colour as lit (fm3_carglass.gdshader lens_light): fitted on the CrownJewel grid's CR-X (2026-11-25).
+const LENS_LIGHT := 0.35
+static func _lens_filter() -> float:
+	return float(OS.get_environment("FM3_LENS_FILTER")) if OS.get_environment("FM3_LENS_FILTER") != "" else LENS_FILTER
+
+
+# A lamp reflector's mirror reflection (fm3_reflector.gdshader) as the next pass of its lit textured material; the
+# game's ShaderSettings <reflector> / <textured_reflector> values. FM3_REFLECTOR=<scale> (0 = off).
+func _add_reflector_pass(m: BaseMaterial3D, nm: String, gltf_path: String) -> void:
+	# (library nodes are named <car>_<material>_<n>: carbin_acu_rsxtypes_02_reflector_9, ..._tail_light_11; the
+	# cockpit's own "reflector" parts are not lamps)
+	if nm.begins_with("cockpit_"):
+		return
+	var bulb := nm.contains("_tail_light")
+	# black_glass (the windows' black ceramic border): an opaque black surface with a reflection in the game
+	# (<black_glass>: CubeScale 0.53, Fresnel min 0.4, no highlight); drawn plain black it framed the RSX's rear window in
+	# a dark band the game does not show. FM3_BLACK_GLASS=<scale> (0 = off).
+	var frit := nm.contains("_black_glass")
+	if not nm.contains("_reflector") and not bulb and not frit:
+		return
+	var k := 1.0
+	if frit:
+		k = float(OS.get_environment("FM3_BLACK_GLASS")) if OS.get_environment("FM3_BLACK_GLASS") != "" else 1.0
+	elif bulb:
+		# the tail-lamp bulbs (<tail_light>: CubeScale 0.2, spec 1.7 at 50): FM3_BULB=<scale>, 0 = off
+		k = float(OS.get_environment("FM3_BULB")) if OS.get_environment("FM3_BULB") != "" else 1.0
+	elif OS.get_environment("FM3_REFLECTOR") != "":
+		k = float(OS.get_environment("FM3_REFLECTOR"))
+	if k <= 0.0:
+		return
+	var rp := ShaderMaterial.new()
+	rp.shader = load("res://viewer/fm3_reflector.gdshader")
+	var cube := _env_cube(gltf_path, gltf_path.get_file().get_basename() + "_tex")
+	rp.set_shader_parameter("has_env", cube != null)
+	if cube != null:
+		rp.set_shader_parameter("env_cube", cube)
+		rp.set_shader_parameter("static_cube_gain", _env_cube_gain(gltf_path))
+	if nm.contains("textured_reflector"):
+		rp.set_shader_parameter("cube_scale", 1.0)
+		rp.set_shader_parameter("spec_amount", 10.0)
+		rp.set_shader_parameter("spec_power", 50.0)
+	elif frit:
+		rp.set_shader_parameter("cube_scale", 0.53)
+		rp.set_shader_parameter("fresnel_min", 0.4)
+		rp.set_shader_parameter("spec_amount", 0.0)
+	elif bulb:
+		rp.set_shader_parameter("cube_scale", 0.2)
+		# (the game's SpecularAmount 1.7 made hard white glints on the bulbs that the game does not show)
+		rp.set_shader_parameter("spec_amount", 0.0)
+		rp.set_shader_parameter("spec_power", 50.0)
+	rp.set_shader_parameter("refl", k)
+	if OS.get_environment("FM3_REFLECTOR_SPEC") != "":
+		rp.set_shader_parameter("spec_gain", float(OS.get_environment("FM3_REFLECTOR_SPEC")))
+	rp.set_shader_parameter("sun_dir", _sun_to)
+	if m.albedo_texture != null:
+		rp.set_shader_parameter("albedo_tex", m.albedo_texture)
+		rp.set_shader_parameter("has_tex", true)
+	# the reflection in the reflector's own colour (its texture): untinted, the CR-X's red VTEC panel between its tail
+	# lamps (a "reflector") turned grey-pink on the CrownJewel grid (G / B +16 over the game's); FM3_REFLECTOR_TINT=<amount>, 0 = off
+	var tint := float(OS.get_environment("FM3_REFLECTOR_TINT")) if OS.get_environment("FM3_REFLECTOR_TINT") != "" else REFLECTOR_TINT
+	rp.set_shader_parameter("tint_by_tex", tint > 0.0)
+	rp.set_shader_parameter("tint_amount", tint)
+	m.next_pass = rp
+
+
 const CJ_SH_DIR := Vector3(0.78, 0.76, 0.73)  # CrownJewel's TrackSettings SHDir / SHTop: what the car paint was fitted under
 const CJ_SH_TOP := Vector3(0.33, 0.34, 0.36)
 var _car_light_cache := {}
@@ -730,6 +815,7 @@ var _live_cube_size := 128
 # frame on the capture-free CrownJewel (RX 6650 XT, 720p: 32 fps with the cube, 52 without, 2026-11-24).
 var _live_cube_faces := 6
 var _live_cube_next := 0
+var _live_cube_msaa := 0  # (--live-cube-msaa: the game draws its car cube's faces with 4x MSAA)
 var _live_cube_vps := []
 var _live_cube_cams := []
 var _live_cube_texs := []  # (the six faces, for car materials made after the cube: the library cars)
@@ -738,9 +824,18 @@ var _car_mats := []
 
 func _make_live_cube(at: Vector3) -> void:
 	var texs := []
+	# (tests: FM3_LIVE_CUBE=<size>,<faces a frame>,<msaa 0/2/4/8> overrides the options)
+	var lc := OS.get_environment("FM3_LIVE_CUBE").split_floats(",")
+	if OS.get_environment("FM3_LIVE_CUBE") != "" and lc.size() >= 1:
+		_live_cube_size = int(lc[0])
+		if lc.size() >= 2:
+			_live_cube_faces = clampi(int(lc[1]), 1, 6)
+		if lc.size() >= 3:
+			_live_cube_msaa = int(lc[2])
 	for k in 6:
 		var vp := SubViewport.new()
 		vp.size = Vector2i(_live_cube_size, _live_cube_size)
+		vp.msaa_3d = {2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X, 8: Viewport.MSAA_8X}.get(_live_cube_msaa, Viewport.MSAA_DISABLED)
 		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS if _live_cube_faces >= 6 else SubViewport.UPDATE_ONCE
 		_live_cube_vps.append(vp)
 		vp.positional_shadow_atlas_size = 0
@@ -1796,8 +1891,12 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 			continue
 		if _blended(m) and m.roughness < 0.1 and m.albedo_texture == null:
 			var lens := nm.contains("detail_glass") or nm.contains("red_glass")
-			var gm := _car_material(CARLENS_SHADER if lens else CARGLASS_SHADER, m, _gltf_path, "FM3_CARGLASS",
+			var gm := _car_material(_lens_shader() if lens else CARGLASS_SHADER, m, _gltf_path, "FM3_CARGLASS",
 				["env_scale", "fresnel_min", "fresnel_power", "max_opacity"])
+			if lens and gm.shader == CARGLASS_SHADER:
+				gm.set_shader_parameter("lens", true)
+				gm.set_shader_parameter("lens_filter", _lens_filter())
+				gm.set_shader_parameter("lens_light", float(OS.get_environment("FM3_LENS_LIGHT")) if OS.get_environment("FM3_LENS_LIGHT") != "" else LENS_LIGHT)
 			var gp: Dictionary = cm.get(nm, {})
 			for k in gp:
 				var v = gp[k]
@@ -1834,6 +1933,7 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 			m.metallic_specular = RIM_SPECULAR
 		if mi.mesh.surface_get_format(s) & Mesh.ARRAY_FORMAT_COLOR:
 			m.vertex_color_use_as_albedo = true
+		_add_reflector_pass(m, nm, _gltf_path)
 		mi.set_surface_override_material(s, m)
 
 
