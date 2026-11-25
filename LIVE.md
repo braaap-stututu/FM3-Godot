@@ -360,6 +360,12 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
     the longitudinal G there, yaw and roll follow the lateral G at ~0.6 of our G estimate. With those gains
     (`FM3_GAME_CAM_GGAIN`, default `0,0.6`) yaw rms 0.25 -> 0.19 deg, roll 0.13 -> 0.07, pitch unchanged 0.55.
     Whole-frame diffs can't show this: two runs with the same settings differ by up to 5 (the race's positions).
+    **2026-11-25 evening: the game's own acceleration** (FM3E v8, the physics object's +2512 in the car's frame) now
+    feeds the layers (`FM3_GAME_CAM_ACC=derived` = the positions' second difference as before; `FM3_ACC_LOG=1` logs
+    both). Lateral: the two agree (slope 0.91-0.98, r 0.9); longitudinal: the positions' value is noise (r 0.1). Three AI
+    races on the hood camera: derived G at gain 0.6 yaw / roll / pitch rms 0.080 / 0.068 / 0.381 deg, the game's G at
+    0.6 0.106 / 0.044 / 0.379, at 1.0 0.319 / 0.193 / 0.475: the 0.6 is the game camera's own response, not an
+    over-estimate of ours.
     (The offline recordings, `tools/camrec.py`, fitted in the car's frame, said the in-car cameras look up 0.7-0.95
     deg per G of forward acceleration; in the viewer's frame the live log shows none: open.)
   - **A second car** (the Acura RSX Type-S on Catalunya's Free Play race, the race AI driving, `tools/camrec.py`):
