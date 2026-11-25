@@ -11,7 +11,8 @@ how (frame-ir LIVE.md "Physics in Godot"):
   torque x rad/s (116.0 kW, page 116). The zero-throttle curve is the engine braking (negative). How the game blends
   them by throttle: not checked.
 - gearing: List_UpgradeDrivetrain (Ordinal = the car's Id) -> List_UpgradeDrivetrainTransmission (stock): ratios and
-  the final drive. A profile's tuned car can differ (the test grid's CR-X: second gear within 3.4%, third 11% off).
+  the final drive. Speed from rpm through them runs 4-17% over the real speed under power (the driven wheels' slip:
+  the stock RSX 1.17 / 1.09 / 1.04 in gears 2 / 3 / 4).
 - tyre radius from Data_Car's tyre size (CR-X 195/60 R14 = 0.2948 m = the wheel block's 0.295 in the running game).
 Not checked yet: mass (Data_Car CurbWeight is in kN: 9.8 -> 999 kg), GameTorqueScale, the aero numbers' units.
 --check <camrec.npz>: speed from rpm through each gear against the stream's speed (FM3E telemetry rows).

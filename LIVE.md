@@ -457,8 +457,11 @@ FM3's physics in Godot with FM3's physics files. Findings (full report: `FM3-fil
   `SimRedlineAngVel` 837.76 rad/s = 8000 rpm; tyre 195/60 R14 -> radius 0.2948 m = the wheel block's 0.295). Speed
   from rpm through the stock gearbox (`List_UpgradeDrivetrain` Ordinal 320 -> `List_UpgradeDrivetrainTransmission`
   DrivetrainID 73: 3.166 / 2.052 / 1.416 / 1.103 / 0.87, final 4.266): second gear within 3.4% of the stream's speed
-  (729 samples), third 11% off, the gears' ratio 1.35 against the stock 1.45: the Baseline save's CR-X is probably
-  tuned (the profile's tuning setup, not in the database). The four wheel speeds follow the car's speed within 3%.
+  (729 samples), third 11% off. **Not a tuned gearbox but wheel slip** (corrected the same evening): the Free Play
+  RSX (stock) shows the same, speed from rpm / real speed 1.17 / 1.09 / 1.04 in gears 2 / 3 / 4 on Le Mans (falling
+  with the gear, as the driven wheels' slip under torque does; a wrong radius or final drive would be one factor),
+  and the telemetry page's own rpm / speed pairs give 1.05 (2nd) / 1.03 (3rd) for the CR-X. The stream's wheel
+  speeds follow the car's speed within 3% (ground speed at the contact, not the wheels' spin).
 - **The engine's torque is exact** (`tools/fm3_car_physics.py <car> [--out json] [--check camrec.npz]`, any of the
   510 cars): the stock camshaft row (`List_UpgradeEngineCamshaft`: redline, stall, TorqueCurveMaxRPM 9500,
   96 entries) picks a full-throttle and a zero-throttle (engine braking) curve in `List_TorqueCurve` (values x
@@ -470,7 +473,12 @@ FM3's physics in Godot with FM3's physics files. Findings (full report: `FM3-fil
   With every throttle level (three recordings, 2,365 samples in gears 2-3 away from shifts and brakes): torque =
   closed + throttle x (full - closed) through the gearing explains 62% of the measured acceleration with sensible
   values (drivetrain factor 0.73, drag 67 N at 30 m/s, rolling 858 N); throttle x full alone explains 61% but needs a
-  negative drag. Residual 1.2 m/s2 (corners, slopes, wheelspin): a straight-line recording is needed to settle it.
+  negative drag. Residual 1.2 m/s2 (corners, slopes, wheelspin). With the database's gear ratios (torque is
+  multiplied by the gear, not by the slip) and a second car (the stock RSX, 75 s at Le Mans incl. the Mulsanne,
+  2,721 samples): the blend again gives physical values on both cars (drivetrain factor 0.63 RSX / 0.75 CR-X,
+  drag 79 / 94 N at 30 m/s, R2 0.47 / 0.62), throttle x full alone needs negative drag on both. The drag and
+  losses are not settled (the fitted drag is small next to real cars'; `BodyAeroLongitudinalDrag` 170 / 134 not yet
+  related).
   (The stream's "clutch" field, +2672, sits at ~0.13 while driving: not a plain pedal value.)
 
 ## Next for stage A (where to continue)
