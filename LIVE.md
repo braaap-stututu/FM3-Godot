@@ -304,6 +304,24 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
     env_scale 0.25 retired. Grid glass per car 15.7 at 0.25 -> 13.8, and 14.6 before the table. The player's glass
     keeps its fit (player_env 0.1): the game's live cube sees the player's dark cabin from inside, ours leaves the
     cars out.
+- **Engine sound in Godot (2026-11-25, first version):**
+  - **Decoding.** FM3's FMOD banks decode: `FM3-files/tools/fsb_extract.py` gives each sound a RIFF/XMA1 header
+    (as the game's own .xma music has) and FFmpeg 8.1 (the recomp's thirdparty build, xma1 / xma2 decoders) makes
+    PCM with exactly the declared sample counts. Check: every Gallardo exhaust loop's fundamental is exactly
+    2.30 x its rpm label / 60.
+  - **Converter.** `tools/fm3_engine_audio.py <car> [--preview]` follows the game's chain: Data_Car -> stock engine
+    -> `EngineTuning/<engine>_ET.xml` (idle, redline, volumes, the L0 upgrade's layers) -> `HarmonicTuning/*_HT.xml`
+    (loops: wavebankindex, rpm_min / rpm_sample / rpm_max, volume; DSP gain curves) -> `Soundbanks/LOD1/*.fsb`. It
+    writes the loops (WAV) + `engine.json` to `out/audio/<car>/`; `--preview` renders an idle -> redline sweep.
+  - **Player.** `fm3_engine_audio.gd` plays the recipe as FMOD's harmonic engine does (crossfades over the rpm
+    ranges' overlaps, pitch = rpm / rpm_sample, the gain curves: PhysicsCoeff weights -> three-point curve).
+    `world_view.gd` attaches it to the player's car once FM3N names it and drives it with the stream's rpm (FM3E);
+    throttle is estimated from the rpm's rise until the stream carries it.
+  - **Not yet:** the DSP blocks (expander, load PEQs), burbles / backfires, intake chuff, transmission / turbo /
+    tyre / wind / collision sounds (the other .fev families), and the AI cars.
+  - **FM2's port** (zer0ducksgiven, MIT): `tools/xmadecode.cpp` (FSB3 XMA decoding) and `tools/mkloops.py`
+    (seamless-loop fixes) are worth reading; it has no FMOD reimplementation.
+    `FM3-files/research/fm2-decomp-report.md` has the full research.
 - **Open:** bloom (bright pass: exposed scene + 0.42 x last frame's bloom - 1/255 - bloomCutoff, x bloomScale, on
   the HDR scene: needs values above 1, our picture is clipped at 1), the road specular's overshoot (re-check with the
   exposure), one opponent per race without an FM3N name (Silverstone's B.Giese: not the colour-file case); the palette barriers (`diff_clr_spec_2`: a per-model

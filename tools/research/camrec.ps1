@@ -22,7 +22,23 @@ if (-not $frozen) { throw "the grid did not freeze (see $log)" }
 . "$r\tools\fm3ctl.ps1"
 $py = "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe"
 Fm3 'env FM3_FREEZE_TIME 0' | Out-Null    # the race starts; the AI drives the player's car
-Start-Sleep 12
+Start-Sleep 6
+# The player's car-physics object (live_camera.cpp logs it; FH1's ICarDynamics layout as the lead: controls at +3904,
+# gear +2240, speed +3128, wheels from +3936): its first 8 KB every half second while the AI drives, with the time.
+$phys = ([regex]::Matches((Get-Content $log -Raw), 'live: player car physics ([0-9A-F]{8})') | Select-Object -Last 1).Groups[1].Value
+if ($phys) {
+    $dump = @()
+    for ($i = 0; $i -lt 30; $i++) {
+        $a = [Convert]::ToUInt32($phys, 16)
+        $h0 = (Fm3 ("peek {0:X8} 4096" -f $a)) -replace '.*"hex":"([0-9A-F]*)".*', '$1'
+        $h1 = (Fm3 ("peek {0:X8} 4096" -f ($a + 4096))) -replace '.*"hex":"([0-9A-F]*)".*', '$1'
+        $dump += ("{0:F3} {1}{2}" -f ((Get-Date) - $t0).TotalSeconds, $h0, $h1)
+        Start-Sleep -Milliseconds 500
+    }
+    $dump | Set-Content "$Out\physics_$phys.txt"
+    "physics object ${phys}: 30 dumps"
+}
+Start-Sleep 2
 for ($k = 0; $k -lt $Views; $k++) {
     & $py "$g\frame-ir\tools\camrec.py" --seconds $Seconds --out "$Out\view$k.npz"
     Fm3 "shot $Out\view$k.png" | Out-Null

@@ -998,6 +998,7 @@ var _engine_audio: Node3D = null
 var _engine_audio_car := ""
 var _engine_rpm_prev := -1.0
 var _engine_throttle := 0.0
+var _engine_t_prev := 0
 
 
 func _update_engine_audio(player, moves: Dictionary) -> void:
@@ -1028,7 +1029,9 @@ func _update_engine_audio(player, moves: Dictionary) -> void:
 		return
 	_engine_audio.global_transform = moves[player] as Transform3D
 	if _engine_rpm > 0.0:
-		var dt := maxf(get_process_delta_time(), 1e-3)
+		var now_us := Time.get_ticks_usec()
+		var dt := 0.016 if _engine_t_prev == 0 else clampf((now_us - _engine_t_prev) / 1e6, 1e-3, 0.25)
+		_engine_t_prev = now_us
 		var rise := 0.0 if _engine_rpm_prev < 0.0 else (_engine_rpm - _engine_rpm_prev) / dt
 		_engine_rpm_prev = _engine_rpm
 		var want := clampf(rise / 2500.0 + 0.3, 0.0, 1.0) * (1.0 - maxf(_player_brake, 0.0))
