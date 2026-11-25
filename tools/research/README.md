@@ -9,6 +9,8 @@ you can point anywhere. Run from `frame-ir` (Python ones import `tools/`). LIVE.
 | `idat.ps1 -Track <name> -Points "x,y;..."` | renders a track offline from its last live camera (`out/live/tracks/<name>-godot.log`), lit and as material ids, and names the material under each point |
 | `capconsts.ps1 [-Index N] [-Name n]` | boots FM3 to Free Play environment N (`REGPU_NO_PACKED_CONSTANTS=1`), freezes in the countdown and saves a debug-server capture (every draw with its constants) |
 | `expo.ps1` | as capconsts, with `REGPU_TRACE_VC=1` (vertex constants) and `hlsl` dumps of the post-process shaders (exposure / bloom) into the recomp's `out/run/out/hlsl` |
+| `cubecmp.ps1 [-Index N] -Gltf <abs>` | the game's car reflection cube against the viewer's live cube: a capture (resolve dumps) plus the viewer's six faces (`FM3_DUMP_LIVE_CUBE=1`), same frozen moment |
+| `paintdbg.ps1 [-Index N] -Gltf <abs> [-Modes 0,1,2,3]` | the paint's reflection terms one at a time: the game's paint ps edited live, the viewer with `FM3_PAINT_DEBUG` |
 | `lumpeek.ps1` | tries to read the adapted-luminance 32x32 texture from guest memory (gave zeros: it stays on the GPU) |
 | `gamshots.ps1` | game shots with and without the display gamma (`REGPU_NO_GAMMA`, `REGPU_NO_GAMMA_PWL`): the gamma table is a fixed toe curve |
 | `roadprobe.py`, `roadfit.py` | road_3clr_blnd_2's shadowed variant run in `tools/fir_vs.py`: the road sun specular, probed input by input |

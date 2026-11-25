@@ -251,9 +251,25 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
   (`_live_cube_texs`, has_live set at registration). **Motegi, same game view (RSX, black; boxes game / before /
   after):** roof 100 / 51 / 62, deck lid 43 / 33 / 54, tail panel 8 / 9 / 17, bumper 6 / 5 / 14, flank 47 / 26 / 35;
   frame 23.4 -> 22.7. CrownJewel grid: 21.1 / 20.1 / 19.5 against 21.3 / 20.2 / 19.7 with the older term (same boot
-  conditions). Left: our live cube's sky is dimmer and its road brighter than the game's cube (roof too dark, lower
-  body too light, at the game's own formula): next, dump the game's t6 faces (capture `res`) and compare them with
-  ours.
+  conditions).
+  **Cubes compared (Motegi, `tools/research/cubecmp.ps1`, same frozen moment):** the game's car cube is t6 at
+  1832E000 (six 256x256 faces 0x40000 apart, 2_10_10_10, resolve dumps `<addr>_256x256_v0.png`). Two traps: ReGPU's
+  dump writes A2B10G10R10 texels as RGBA8 with alpha forced to 255 (red and green are recoverable, blue's top bits
+  are lost), and **the fetch constants carry an exponent adjust** (dword 3 bits 13-18): the live cube is stored at
+  1/8 and read x8, the static cube (t7) is read x2, the lightmap x1. With the x8 the game's cube and ours match
+  (road 0.34 both, sky 0.5-0.7 both). The static cube's x2 is already absorbed in the older fit's gains; in game_refl
+  the static path uses game_env_gain 1: check the AI cars against it.
+  **Term by term (`tools/research/paintdbg.ps1`: the game's paint ps edited live to output r7.x x r4, r7.x or r4,
+  the viewer with `FM3_PAINT_DEBUG=1|2|3`):** the angle factor and the environment part look the same in both
+  (rear faces at the 0.15 floor, edges and the grazing bumper white); box means still differ because the cars sit a
+  few pixels apart on screen. Seen but not modelled: the angle factor is x (1 - e1.w), a per-vertex value from the
+  vertex data at byte 28 and the damage stream (const 94), clamped by damageClamps; the game's lower body reflects a
+  darker ground (its cube sees the car's shadow).
+  **Car light per track:** the paint's sun is the game's c179 = TrackSettings SHDir (Motegi 0.8, CrownJewel
+  0.78/0.76/0.73, MapleValley 0.9/0.88/0.85), the sky SHTop. `<track>_track.json` now has 'SH' (fm3_track_export.py;
+  the existing files patched), and the viewer scales the paint's CrownJewel-fitted sun and sky by them
+  (`FM3_NO_TRACK_CAR_LIGHT=1` off). The sun's direction was already right (game psLightDirWS = ours with the glTF's
+  z mirror; shadows agree). Godot's own sun light (props, trim, rims) stays one fixed colour on every track.
 - **Open:** bloom (bright pass: exposed scene + 0.42 x last frame's bloom - 1/255 - bloomCutoff, x bloomScale, on
   the HDR scene: needs values above 1, our picture is clipped at 1), the road specular's overshoot (re-check with the
   exposure), one opponent per race without an FM3N name (Silverstone's B.Giese: not the colour-file case); the palette barriers (`diff_clr_spec_2`: a per-model

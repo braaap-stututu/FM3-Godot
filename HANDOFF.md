@@ -31,7 +31,7 @@ measured 20.4 / 20.1 / 18.5 against the game by the afternoon.
 reflection term, with the per-vertex sky weight baked in the car vertices (`fm3_carbin.env_sh`, library TEXCOORD_1;
 the library was rebuilt). Two viewer bugs behind the player's dark roof were fixed: no live cube on capture-free
 tracks, and library cars without its textures. Motegi frame 23.4 -> 22.7; CrownJewel grid 21.1 / 20.1 / 19.5. Next:
-compare our live cube with the game's (its sky is dimmer and its road brighter than the game's).
+our live cube matches the game's (its x8 exponent adjust), the paint terms match per term; per-track car light from SHDir / SHTop (LIVE.md "Car paint reflection").
 
 **Night of 2026-11-24/25: the other tracks** (LIVE.md "Other tracks"). All 15 Free Play tracks
 build and run live (`tools\live\live_track.ps1`); the car library has all 500 cars incl. Disc 2; track shaders are read

@@ -1015,6 +1015,16 @@ def main():
             tone_ = track_tone(ts_text)
             if tone_:
                 light_['Tone'] = tone_
+            # the cars' light (2026-11-25): the paint shader's sun colour c179 = SHDir (Motegi's capture: 0.8 = SHDirRed..),
+            # its vertex SH sky from SHTop / SHBottom; the viewer scales its CrownJewel-fitted car light by these
+            mo = re.search(r'<SHLighting ([^>]*)/>', ts_text)
+            if mo:
+                at_ = dict(re.findall(r'(\w+)="([-0-9.e]+)"', mo.group(1)))
+                try:
+                    light_['SH'] = {k.lower(): [float(at_['SH%s%s' % (k, c)]) for c in ('Red', 'Green', 'Blue')]
+                                    for k in ('Top', 'Bottom', 'Dir')}
+                except KeyError:
+                    pass
             if light_:
                 with open(os.path.splitext(out)[0] + '_track.json', 'w', newline='') as f_:
                     json.dump(light_, f_)

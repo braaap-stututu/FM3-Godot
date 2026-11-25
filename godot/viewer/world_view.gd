@@ -618,6 +618,28 @@ static func _lens_sync(m: ShaderMaterial) -> void:
 		(m.next_pass as ShaderMaterial).set_shader_parameter("glass_color", m.get_shader_parameter("glass_color"))
 
 
+const CJ_SH_DIR := Vector3(0.78, 0.76, 0.73)  # CrownJewel's TrackSettings SHDir / SHTop: what the car paint was fitted under
+const CJ_SH_TOP := Vector3(0.33, 0.34, 0.36)
+var _car_light_cache := {}
+
+
+# [sun ratio, sky ratio] of this track's car light against CrownJewel's, or [] (no 'SH' in its _track.json, or off)
+func _car_light_ratio(gltf_path: String) -> Array:
+	if OS.get_environment("FM3_NO_TRACK_CAR_LIGHT") != "":
+		return []
+	if not _car_light_cache.has(gltf_path):
+		var f := gltf_path.get_basename() + "_track.json"
+		var t = JSON.parse_string(FileAccess.get_file_as_string(f)) if FileAccess.file_exists(f) else null
+		var r := []
+		if t is Dictionary and t.has("SH") and t["SH"] is Dictionary:
+			var d: Array = t["SH"]["dir"]
+			var u: Array = t["SH"]["top"]
+			r = [Vector3(d[0], d[1], d[2]) / CJ_SH_DIR, Vector3(u[0], u[1], u[2]) / CJ_SH_TOP]
+			print("world_view: car light against CrownJewel's: sun x%s, sky x%s" % [r[0], r[1]])
+		_car_light_cache[gltf_path] = r
+	return _car_light_cache[gltf_path]
+
+
 func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: String, names: Array) -> ShaderMaterial:
 	var sm := ShaderMaterial.new()
 	sm.shader = shader
@@ -640,8 +662,20 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 		for k in mini(f.size(), names.size()):
 			sm.set_shader_parameter(names[k], f[k])
 	if shader == CARPAINT_SHADER:
+		# the track's car light (2026-11-25): the paint was fitted on CrownJewel; the game lights cars with each track's
+		# SHDir (sun, the paint shader's c179) and SHTop (the vertex SH sky), so both scale by the track's against
+		# CrownJewel's (<track>_track.json 'SH', fm3_track_export.py). FM3_NO_TRACK_CAR_LIGHT=1: off.
+		var cl := _car_light_ratio(gltf_path)
+		if not cl.is_empty():
+			var sun_d = RenderingServer.shader_get_parameter_default(shader.get_rid(), "sun")
+			var amb_d = RenderingServer.shader_get_parameter_default(shader.get_rid(), "ambient")
+			if sun_d is Vector3 and amb_d is Vector3:
+				sm.set_shader_parameter("sun", (sun_d as Vector3) * (cl[0] as Vector3))
+				sm.set_shader_parameter("ambient", (amb_d as Vector3) * (cl[1] as Vector3))
 		# the game's paint reflection (fm3_carpaint.gdshader game_refl; LIVE.md "Car paint reflection"):
 		# FM3_OLD_PAINT_REFL=1 = the older fitted term (A/B); FM3_PAINT_ENV=<static cube gain>,<live cube scale>
+		if OS.get_environment("FM3_PAINT_DEBUG") != "":
+			sm.set_shader_parameter("debug_out", int(OS.get_environment("FM3_PAINT_DEBUG")))
 		if OS.get_environment("FM3_OLD_PAINT_REFL") != "":
 			sm.set_shader_parameter("game_refl", false)
 		var pe := OS.get_environment("FM3_PAINT_ENV").split_floats(",")
@@ -1711,6 +1745,12 @@ func _live_step() -> void:
 		DirAccess.remove_absolute(_out + ".shot")
 		root.get_texture().get_image().save_png(_out)
 		print("world_view: saved ", _out)
+		if OS.get_environment("FM3_DUMP_LIVE_CUBE") != "":
+			# (debug: the live cube's six faces beside the picture, <out>.cube<k>.png, k = +x -x +y -y +z -z in glTF
+			# space; for comparing with the game's own car cube)
+			for k_ in _live_cube_vps.size():
+				(_live_cube_vps[k_] as SubViewport).get_texture().get_image().save_png(_out + ".cube%d.png" % k_)
+			print("world_view: live cube faces saved at ", _live_cube_cams[0].global_transform.origin if not _live_cube_cams.is_empty() else "-")
 	var latest := PackedByteArray()
 	var raw_now := Time.get_ticks_usec() / 1e6
 	# The viewer's clock, steadied (2026-11-23): its frames reach the screen at a fixed refresh, but the time this code

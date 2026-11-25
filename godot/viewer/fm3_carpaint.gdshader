@@ -105,6 +105,7 @@ uniform float lm_dampen_static = 0.5;
 uniform float game_env_gain = 1.0;  // our cube against the game's (1 = the same brightness)
 uniform float game_live_scale = 1.0;  // (the live cube in this term: live_scale belongs to the older fit)
 varying vec2 env_ab;
+uniform int debug_out = 0;
 
 void vertex() {
 	env_ab = UV2;
@@ -136,6 +137,7 @@ void light() {
 		float spec = pow(rl, spec_power) * sh + pow(rl, spec2_power) * sh * spec2_gain / spec_gain * metallic;
 		vec3 pg = paint_gamma * mix(1.0, mix(1.0 - flop, 1.0, pow(cosv, flop_power)), metallic);
 		vec3 flake = pg * sun * pow(rl, flake_power) * sh * flake_gain * metallic;
+		vec3 dbg = vec3(0.0);
 		vec3 add = flake + env * fres * mix(env_bottom, env_top, pow(up, env_up_power)) * mix(refl_gain, refl_metal, metallic) * mix(1.0, sh, 0.3) + sun * spec * spec_gain;
 		if (game_refl) {
 			// (no UV2 = a mesh without the baked weight: the CR-X body's median d by facing, 0.82 + 0.40 n.y)
@@ -146,8 +148,15 @@ void light() {
 			vec3 envg = has_live ? live_cube(r) * game_live_scale : env;
 			vec3 refl = envg * fg * cube_scale * 0.368 * max(d, 0.0) * (1.0 - damp * (1.0 - sh)) * game_env_gain * mix(refl_gain, refl_metal, metallic);
 			add = flake + refl + sun * spec * spec_gain;
+			// (debug, FM3_PAINT_DEBUG=n: one term alone, as the game's paint shows it with a live ps edit: 1 the
+			// reflection r7.x x r4, 2 its angle factor r7.x, 3 its environment part r4)
+			if (debug_out == 1) { dbg = refl; }
+			if (debug_out == 2) { dbg = vec3(fg); }
+			if (debug_out == 3) { dbg = refl / max(fg, 1e-4); }
 		}
-		if (gamma_sum) {
+		if (debug_out > 0) {
+			DIFFUSE_LIGHT += to_linear(dbg);
+		} else if (gamma_sum) {
 			DIFFUSE_LIGHT += to_linear(pg * diff + add);
 		} else {
 			DIFFUSE_LIGHT += to_linear(diff);
