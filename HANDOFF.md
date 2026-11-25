@@ -74,7 +74,8 @@ on the game's glass formula with mirror reflectors / bulbs / black glass behind 
 RSX tails 67.5 / 56.5 -> 40.4 / 29.9), the player's windows at full reflection and library cabins at 0.5 (the user:
 the band under the rear window is hidden in the game by the glass's reflection; RSX rear window 14 -> 6.6, CR-X
 16.6 -> 11.0, the RSX's roof / sunroof 58.8 -> 35.2). Paint sharpness: a 256 px / 4x MSAA live cube (the game's size)
-changed nothing measurable; the roof paint is still dimmer than the game's: open. Slip ratio / angle not found yet.
+changed nothing measurable; the roof's "half as bright" was the dimmed sunroof glass (roof paint now 98-102 against
+112). Slip ratio / angle not found yet.
 FM3E v8 streams the car-frame acceleration; the rebuilt cameras' G layers use it (hood camera as good as with the
 positions' G, gain 0.6 confirmed: the game's camera answers lateral G at 0.6).
 

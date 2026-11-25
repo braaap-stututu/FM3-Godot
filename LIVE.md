@@ -588,8 +588,11 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
 - The live cube's faces (`FM3_DUMP_LIVE_CUBE=1`, Sebring) hold the horizon's clouds and buildings and a clear sky
   with the sun overhead; from the chase camera the roof reflects the horizon (grazing angle), so the roof's dimmer
   reflection is not missing sky. Their down face (the road seen from above in sun) is near white (248).
-- Still open: the RSX's lenses are less pink than the game's (G 37 vs 65); the roof paint half as bright as the
-  game's (above).
+- The roof: with the player's glass at full reflection the RSX's roof paint is 98-102 against the game's 112 (rows
+  410-416 of the Sebring chase view); the "half as bright" roof above was mostly the dimmed sunroof glass.
+- Still open: the RSX's lenses are less pink than the game's (G 37 vs 65); a thin strip at the roof's rear edge is
+  dark in ours (46) where the game's is bright (139); the top rows of the rear window are brighter in ours (54-60
+  against 14-24).
 - Paint sharpness: the game's car cube is six 256 x 256 faces with 4x MSAA, three a frame (NOTES); a 256 px / 4x MSAA
   live cube here (`--live-cube 256 --live-cube-faces 3 --live-cube-msaa 4`, or `FM3_LIVE_CUBE=256,3,4`) changed the
   RSX roof's detail 12.0 -> 12.7 only (game 23.0): resolution is not what makes ours softer. The roof reflects about
