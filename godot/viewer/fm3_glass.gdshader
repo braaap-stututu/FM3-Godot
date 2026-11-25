@@ -49,7 +49,14 @@ void fragment() {
 	vec3 glass = body_level * mix(vec3(1.0), tint1, 0.4) + env * tint1 * schlick * env_gain;
 	// (the colour: the Diffuse texture; albedo_tex is the SPEC mask, whose alpha k is; old scenes: the mask's rgb)
 	vec3 base = has_diffuse ? texture(tex1, UV * scale1).rgb : t.rgb;
-	ALBEDO = to_linear(mix(base * light, glass, k));
+	if (has_diffuse) {
+		// the game's own combine (DIFF_SPEC_REFL_NORM_4.fxobj, disassembled): (diffuse + P[0].x * spec.a * cube) * P[2].z,
+		// lit by the lightmap like every surface (the reflection is added, not blended: MapleValley's office front lost its
+		// window frames under a fully reflective blend)
+		ALBEDO = to_linear((base + t.a * tint0.x * env) * tint1.z * light);
+	} else {
+		ALBEDO = to_linear(mix(base * light, glass, k));
+	}
 	if (debug_env_only) { ALBEDO = to_linear(env); }
 	if (debug_part == 1) { ALBEDO = to_linear(base * light); }
 	if (debug_part == 2) { ALBEDO = to_linear(env * tint1); }
