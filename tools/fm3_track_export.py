@@ -679,6 +679,23 @@ def car_attrib(path, name):
     return float(e.get('value')) if e is not None and e.get('value') else None
 
 
+def track_tone(ts_text):
+    """TrackSettings' exposure values for the viewer (the game's final pass): {dark: [black, gamma, white, boost], light:
+    [...], lum: [min, max], desat: DesaturateAmount}, or None."""
+    mo = re.search(r'<ToneMappingLevels ([^>]*)/>', ts_text)
+    lm = re.search(r'<TrackLumLimits min="([-0-9.e]+)" max="([-0-9.e]+)"', ts_text)
+    if not mo or not lm:
+        return None
+    a = {k: float(v) for k, v in re.findall(r'(\w+)="([-0-9.e]+)"', mo.group(1))}
+    ds = re.search(r'<DesaturateAmount value="([-0-9.e]+)"', ts_text)
+    try:
+        return {'dark': [a['DarkCurveBlackPoint'], a['DarkCurveGamma'], a['DarkCurveWhitePoint'], a['DarkCurveBoost']],
+                'light': [a['LightCurveBlackPoint'], a['LightCurveGamma'], a['LightCurveWhitePoint'], a['LightCurveBoost']],
+                'lum': [float(lm.group(1)), float(lm.group(2))], 'desat': float(ds.group(1)) if ds else 1.0}
+    except KeyError:
+        return None
+
+
 def shader_settings(path):
     """An FM3 ShaderSettings XML (Media\\Cars\\ShaderSettings\\Normal.xml, every car material's parameters; or a car
     zip's shadersettings.xml, its overrides): {material: {param: float or [r, g, b, a]}}."""
@@ -993,6 +1010,11 @@ def main():
                                                                    'RoadLightmapLightPoint')]
                 except KeyError:
                     pass
+            # the game's exposure (its final pass, decoded 2026-11-25; LIVE.md "Other tracks"): ToneMappingLevels' dark / light
+            # curves, TrackLumLimits, DesaturateAmount; the viewer applies them relative to CrownJewel's
+            tone_ = track_tone(ts_text)
+            if tone_:
+                light_['Tone'] = tone_
             if light_:
                 with open(os.path.splitext(out)[0] + '_track.json', 'w', newline='') as f_:
                     json.dump(light_, f_)

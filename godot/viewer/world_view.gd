@@ -541,6 +541,8 @@ func _init() -> void:
 		print("world_view: %d car glass surfaces with the game's own glass settings" % glass_set)
 	sun.directional_shadow_max_distance = 250.0
 	root.add_child(sun)
+	if lit:
+		_setup_exposure(gltf_path)
 	if lit and DYNLIT_SHADOWS and dynlit_set > 0:
 		# the sun of the track's sun-lit surfaces (fm3_dynlit), its shadows cast by everything incl. the static track
 		var sun2 := sun.duplicate() as DirectionalLight3D
@@ -1272,6 +1274,99 @@ func _apply_track_light(sm: ShaderMaterial, gltf_path: String) -> void:
 		sm.set_shader_parameter("road_spec_on", true)
 
 
+# The game's exposure (fm3_exposure.gdshader): a full-screen pass over the 3D picture with the track's tone curve,
+# blended by an adapted scene luminance like FM3's final pass. FM3_NO_EXPOSURE=1: off (A/B).
+const EXPOSURE_W_CJ := 0.942  # CrownJewel's own W on the test grid (read from the running game): our calibration's
+var _expo_mat: ShaderMaterial = null
+var _expo_tone := {}
+var _expo_L := -1.0
+var _expo_last := 0
+
+
+func _setup_exposure(gltf_path: String) -> void:
+	if OS.get_environment("FM3_NO_EXPOSURE") != "":
+		return
+	var f := gltf_path.get_basename() + "_track.json"
+	var t = JSON.parse_string(FileAccess.get_file_as_string(f)) if FileAccess.file_exists(f) else null
+	if not (t is Dictionary) or not t.has("Tone") or not (t["Tone"] is Dictionary):
+		return
+	_expo_tone = t["Tone"]
+	var layer := CanvasLayer.new()
+	layer.layer = 90
+	var rect := ColorRect.new()
+	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_expo_mat = ShaderMaterial.new()
+	_expo_mat.shader = load("res://viewer/fm3_exposure.gdshader")
+	_expo_mat.set_shader_parameter("s_scale", EXPOSURE_W_CJ / 0.9874)
+	_expo_mat.set_shader_parameter("desat", float(_expo_tone.get("desat", 1.0)))
+	rect.material = _expo_mat
+	layer.add_child(rect)
+	root.add_child(layer)
+	_expo_apply(0.73)  # (until the first measurement: CrownJewel's grid state)
+	print("world_view: the game's exposure on (tone %s)" % [_expo_tone])
+
+
+# The curve at blend k (0 = the dark curve, 1 = the light one): [white, black, 1/gamma, boost] as the final pass's vertex
+# shader makes them (white - 0.0006, gamma x 0.9994).
+func _expo_curve(k: float) -> Array:
+	var d: Array = _expo_tone["dark"]
+	var l: Array = _expo_tone["light"]
+	var black := lerpf(d[0], l[0], k) / 255.0
+	var gam := lerpf(d[1], l[1], k) * 0.9994
+	var white := lerpf(d[2], l[2], k) / 255.0 - 0.0006
+	var boost := lerpf(d[3], l[3], k) / 255.0
+	return [white, black, 1.0 / max(gam, 0.01), boost]
+
+
+func _expo_apply(k: float) -> void:
+	var c := _expo_curve(k)
+	_expo_mat.set_shader_parameter("white", c[0])
+	_expo_mat.set_shader_parameter("black", c[1])
+	_expo_mat.set_shader_parameter("gamma_inv", c[2])
+	_expo_mat.set_shader_parameter("boost", c[3])
+	_expo_mat.set_meta("k", k)
+
+
+func _expo_k(lum: float) -> float:
+	var lim: Array = _expo_tone["lum"]
+	return clampf((lum - float(lim[0]) / 255.0) * 255.0 / max(float(lim[1]) - float(lim[0]), 1.0), 0.0, 1.0)
+
+
+# Every 10 frames: the picture's mean luminance (it already has the exposure pass on it: undone through the current
+# curve), as the game's scene luminance L, adapted 2% a frame like the game's luminance pass (the first one taken as is).
+func _exposure_update() -> void:
+	if _expo_mat == null or _frames < 3 or _frames - _expo_last < 10:
+		return
+	var n := _frames - _expo_last
+	_expo_last = _frames
+	var img := root.get_texture().get_image()
+	if img == null:
+		return
+	img.resize(64, 36, Image.INTERPOLATE_BILINEAR)
+	var sum := 0.0
+	for y in 36:
+		for x in 64:
+			var c := img.get_pixel(x, y)
+			sum += c.r * 0.2 + c.g * 0.7152 + c.b * 0.0722
+	var y_out := sum / (64.0 * 36.0)
+	var k := float(_expo_mat.get_meta("k", 0.73))
+	var cur := _expo_curve(k)
+	# out = Y * t(0.9874 Y) / max(0.9874 Y, 0.1) + boost: solve for Y (a few fixed-point steps)
+	var y_s := y_out
+	for i in 4:
+		var yp := y_s * 0.9874
+		var wb := maxf(cur[0] - cur[1], 1e-4)
+		var x := maxf((yp - cur[1]) / wb, maxf((0.1 - cur[1]) / wb, 0.0))
+		var f := pow(maxf(x, 1e-6), cur[2]) / maxf(yp, 0.1)
+		y_s = maxf(y_out - cur[3], 0.0) / maxf(f, 1e-4)
+	if _expo_L < 0.0:
+		_expo_L = y_s
+	else:
+		_expo_L += (1.0 - pow(0.98, float(n))) * (y_s - _expo_L)
+	_expo_apply(_expo_k(_expo_L))
+
+
 func _cars_pending() -> bool:
 	if not _library_queue.is_empty():
 		return true
@@ -1935,6 +2030,7 @@ func _car_in_frame(car: int, k: int):
 
 func _process(_delta: float) -> bool:
 	_frames += 1
+	_exposure_update()
 	# the sky dome stays centred on the camera, as FM3 draws it (fm3_track_export.py: skydome_ nodes)
 	if _cam != null and _cam.is_inside_tree():
 		for sk in _sky_nodes:
