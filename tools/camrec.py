@@ -6,7 +6,7 @@ Saves per drawn-camera packet (FM3V, the player view = director with the most pa
 vectors, p_cam = p_world V), FOV, the camera class's vtable; and per car (FM3K): time and world matrix (row vectors,
 rows 0-2 the car's axes, row 3 its position). tools/camfit.py turns them into car-space camera paths. Also the player
 car's telemetry (FM3E v5/v6): 'eng' rows of time, rpm, redline, throttle, car brake, gear, clutch, speed, 4 wheel
-speeds, 4 tyre temperatures (deg C; FL FR RR RL; 0 before v6).
+speeds, 4 tyre temperatures (deg C; FL FR RR RL; 0 before v6), 4 suspension positions (m; 0 before v7).
 """
 import argparse
 import collections
@@ -44,7 +44,8 @@ def main():
             t = struct.unpack_from('<d', data, 32)[0]
             thr, brk, gear, clu, spd, w0, w1, w2, w3 = struct.unpack_from('<2fI6f', data, 40)
             tt = struct.unpack_from('<4f', data, 76) if len(data) >= 92 else (0.0, 0.0, 0.0, 0.0)
-            eng.append((t, rpm, red, thr, brk, gear, clu, spd, w0, w1, w2, w3) + tuple(tt))
+            su = struct.unpack_from('<4f', data, 92) if len(data) >= 108 else (0.0, 0.0, 0.0, 0.0)
+            eng.append((t, rpm, red, thr, brk, gear, clu, spd, w0, w1, w2, w3) + tuple(tt) + tuple(su))
             continue
         if len(data) != 96:
             continue
@@ -61,7 +62,7 @@ def main():
     c = cams[d]
     out = {'cam_t': np.array([x[0] for x in c]), 'cam_v': np.array([x[1] for x in c]).reshape(-1, 4, 4),
            'cam_fov': np.array([x[2] for x in c]), 'cam_vt': np.array([x[3] for x in c], dtype=np.uint32)}
-    out['eng'] = np.array(eng).reshape(-1, 16)
+    out['eng'] = np.array(eng).reshape(-1, 20)
     ids = sorted(cars)
     out['car_ids'] = np.array(ids, dtype=np.uint64)
     for i, k in enumerate(ids):

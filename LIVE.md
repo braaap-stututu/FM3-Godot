@@ -382,9 +382,12 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
     FL, FR, RR, RL (wheel 0 at x -0.731 = left). **v6 (FM3-ReGPU, 92 bytes):** + the tyres' temperatures, deg C: each
     wheel has three zones in deg F at +3492 + 1040 x i, whose mean is the page's value (53.99 / 52.94 / 49.08 / 49.48
     against 54.0 / 52.9 / 49.1 / 49.5 on the same frame). Power / torque are not floats in the first 8 KB (another
-    object). Other page values to find the same way: friction % of peak, suspension travel, camber, pressure (cold
-    setting 30 psi at +188 of the wheel block), wear.
-  - Next: the FRICTION / SUSPENSION pages' fields, the car's G (for the camera layers).
+    object). **v7 (108 bytes):** + the suspension's position, m, FL FR RR RL (+3440 + 1040 x i, about -0.15 at
+    rest): 8 SUSPENSION-page shots with dumps a second apart (the readouts cropped into one picture and read), the
+    page's travel (cm) = (value - rest) x 100 (slopes 0.0095-0.0103 m per cm on all four wheels, correlation
+    0.85-0.99 with the shot ~0.2 s from the read). Other page values to find the same way: friction % of peak
+    (no single-sample match), camber, pressure (cold setting 30 psi at +188 of the wheel block), wear.
+  - Next: the FRICTION page's fields, the car's G (for the camera layers).
 - **Track fog (2026-11-25 evening; the viewer had none):** TrackSettings.xml `<Fog>` holds up to 8 settings (Enabled,
   Angle = a heading in degrees, Color, Near / NearDensity, Far / FarDensity; parser `sub_8283CE78`, stored from +816 of
   the settings object). The track vertex shaders compute f = clamp(distance x c241.y + c241.z, 0, c241.w) (FogConsts:
