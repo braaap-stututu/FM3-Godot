@@ -674,7 +674,9 @@ func _add_reflector_pass(m: BaseMaterial3D, nm: String, gltf_path: String) -> vo
 		return
 	var k := 1.0
 	if frit:
-		k = float(OS.get_environment("FM3_BLACK_GLASS")) if OS.get_environment("FM3_BLACK_GLASS") != "" else 1.0
+		# (off by default since 00:05 on 2026-11-26: on the Sebring RSX the pass brightened the window's top border to
+		# 59 / 67 / 78, game 18 / 27 / 39; that region's difference 41.0 at 1, 20.1 at 0.5, 11.3 off, the car 17.7 -> 16.7)
+		k = float(OS.get_environment("FM3_BLACK_GLASS")) if OS.get_environment("FM3_BLACK_GLASS") != "" else 0.0
 	elif bulb:
 		# the tail-lamp bulbs (<tail_light>: CubeScale 0.2, spec 1.7 at 50): FM3_BULB=<scale>, 0 = off
 		k = float(OS.get_environment("FM3_BULB")) if OS.get_environment("FM3_BULB") != "" else 1.0

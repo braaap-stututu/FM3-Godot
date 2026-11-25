@@ -611,7 +611,15 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   contrast: spread 77-86, median 100 -> 77). With 256 / 512 px faces the detail is 1.1 / 1.4 (game 2.2). Left: why our
   reflected clouds have less contrast than the game's (the cube's content: fog in the cube views, the sky dome's own
   look in a 90-degree view, the paint's diffuse base), and a frame-rate measurement of the 256 px cube (the test runs
-  share the GPU with the game: 1-2 fps logged, meaningless).
+  share the GPU with the game: 1-2 fps logged, meaningless). (Normals are not it: the car library uses the files'
+  own 11:11:10 normals, `smooth_normals` only where a mesh has none.)
+- **Black glass without reflection again** (2026-11-26, 00:05): the top rows of the RSX's rear window, brighter than the
+  game's, were the `black_glass` border under its reflection pass; that region 41.0 -> 11.3 with the pass off
+  (`FM3_BLACK_GLASS=<scale>` turns it back on), the car 17.7 -> 16.7. Plain, it is still lighter than the game's
+  (32 / 35 / 40 against 18 / 27 / 39).
+- Lens pinkness, tried and rejected: doubling the reflectors, less texture tint, a lighter lens filter all bring the
+  tails' mean closer (up to 104 / 87 / 82, game 114 / 64 / 63) but per pixel worse (36.2 / 29.2 -> 44-57): they add grey
+  as fast as red, and our bulbs keep dark centres where the game's lamps are evenly pink.
 - Still open: the RSX's lenses are less pink than the game's (G 37 vs 65); a thin strip at the roof's rear edge is
   dark in ours (46) where the game's is bright (139); the top rows of the rear window are brighter in ours (54-60
   against 14-24).
