@@ -1003,7 +1003,8 @@ var _engine_t_prev := 0
 var _player_throttle := -1.0  # the car's throttle 0..1 ("FM3E" v4; -1 = not in the stream)
 var _player_gear := -1
 var _player_speed := -1.0  # m/s from FM3E v5 (-1 = not sent)
-var _player_wheel_speed := [0.0, 0.0, 0.0, 0.0]
+var _player_wheel_speed := [0.0, 0.0, 0.0, 0.0]  # FL FR RR RL
+var _player_tyre_temp := [0.0, 0.0, 0.0, 0.0]  # deg C, FL FR RR RL (FM3E v6)
 
 
 func _update_engine_audio(player, moves: Dictionary) -> void:
@@ -1989,6 +1990,10 @@ func _live_step() -> void:
 				_player_speed = b.decode_float(56)
 				for i in 4:
 					_player_wheel_speed[i] = b.decode_float(60 + 4 * i)
+			if b.decode_u32(4) >= 6 and b.size() >= 92:
+				# v6: the tyres' temperatures, deg C, FL FR RR RL (the game's telemetry page's values)
+				for i in 4:
+					_player_tyre_temp[i] = b.decode_float(76 + 4 * i)
 			continue
 		if b.size() == 280 and b.slice(0, 4).get_string_from_ascii() == "FM3W" and b.decode_u32(4) == 1:
 			# A car's four wheels as drawn (spin and steering), right after that car's datagram.

@@ -369,7 +369,15 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
     wheel speeds (+4164 + 1040 x i: four 1040-byte wheel blocks; FH1's are 1024 from +3936). In each block, +284 after the speed: the wheel's
     position in the car (CR-X: wheels 0, 1 front at z +0.874, 2, 3 at -1.426: wheelbase 2.30 m = the real car's;
     x -0.731 / +0.731 / +0.725 / -0.725, so 0 and 3 share a side), +108: radius 0.295. The own chase camera's FOV uses that speed when present.
-  - Next: tyre slip / load / temperatures in the wheel blocks, suspension, the car's G (for the camera layers).
+  - **Checked against the game's own telemetry screen** (d-pad UP in a race opens it, RIGHT cycles GENERAL / FRICTION
+    / SUSPENSION / BODY ACCELERATION / TIRES, MISC. / HEAT; tools/research/telepage.ps1-style run: shot + 8 KB dump
+    per page): GENERAL's speed 74 km/h / 6,135 rpm / gear 2 = the stream's 74.4 / 6,122 / 2. The wheels' order is
+    FL, FR, RR, RL (wheel 0 at x -0.731 = left). **v6 (FM3-ReGPU, 92 bytes):** + the tyres' temperatures, deg C: each
+    wheel has three zones in deg F at +3492 + 1040 x i, whose mean is the page's value (53.99 / 52.94 / 49.08 / 49.48
+    against 54.0 / 52.9 / 49.1 / 49.5 on the same frame). Power / torque are not floats in the first 8 KB (another
+    object). Other page values to find the same way: friction % of peak, suspension travel, camber, pressure (cold
+    setting 30 psi at +188 of the wheel block), wear.
+  - Next: the FRICTION / SUSPENSION pages' fields, the car's G (for the camera layers).
 - **Track fog (2026-11-25 evening; the viewer had none):** TrackSettings.xml `<Fog>` holds up to 8 settings (Enabled,
   Angle = a heading in degrees, Color, Near / NearDensity, Far / FarDensity; parser `sub_8283CE78`, stored from +816 of
   the settings object). The track vertex shaders compute f = clamp(distance x c241.y + c241.z, 0, c241.w) (FogConsts:
