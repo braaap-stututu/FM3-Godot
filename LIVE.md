@@ -404,6 +404,13 @@ FM3's physics in Godot with FM3's physics files. Findings (full report: `FM3-fil
      but not like FM3.
   Recommended: 2 for a playable prototype, with 1 used subsystem by subsystem (engine torque and gearing first: the
   easiest to verify against the stream's rpm / gear / speed).
+- **First check of the data against the running game** (`tools/camrec.py` now also records the FM3E telemetry,
+  'eng' rows; 9,691 packets over 45 s of the AI driving the test grid's CR-X): the database's units are SI (redline
+  `SimRedlineAngVel` 837.76 rad/s = 8000 rpm; tyre 195/60 R14 -> radius 0.2948 m = the wheel block's 0.295). Speed
+  from rpm through the stock gearbox (`List_UpgradeDrivetrain` Ordinal 320 -> `List_UpgradeDrivetrainTransmission`
+  DrivetrainID 73: 3.166 / 2.052 / 1.416 / 1.103 / 0.87, final 4.266): second gear within 3.4% of the stream's speed
+  (729 samples), third 11% off, the gears' ratio 1.35 against the stock 1.45: the Baseline save's CR-X is probably
+  tuned (the profile's tuning setup, not in the database). The four wheel speeds follow the car's speed within 3%.
 
 ## Next for stage A (where to continue)
 

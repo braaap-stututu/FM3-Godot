@@ -4,7 +4,8 @@
 
 Saves per drawn-camera packet (FM3V, the player view = director with the most packets): time, view matrix (4x4, row
 vectors, p_cam = p_world V), FOV, the camera class's vtable; and per car (FM3K): time and world matrix (row vectors,
-rows 0-2 the car's axes, row 3 its position). tools/camfit.py turns them into car-space camera paths.
+rows 0-2 the car's axes, row 3 its position). tools/camfit.py turns them into car-space camera paths. Also the player
+car's telemetry (FM3E v5): 'eng' rows of time, rpm, redline, throttle, car brake, gear, clutch, speed, 4 wheel speeds.
 """
 import argparse
 import collections
@@ -30,11 +31,18 @@ def main():
     s.settimeout(0.25)
     cams = collections.defaultdict(list)  # director -> [(t, view16, fov, vtable)]
     cars = collections.defaultdict(list)  # car -> [(t, m16)]
+    eng = []
     end = time.time() + a.seconds
     while time.time() < end:
         try:
             data, _ = s.recvfrom(512)
         except socket.timeout:
+            continue
+        if data[:4] == b'FM3E' and len(data) >= 76:
+            rpm, red = struct.unpack_from('<2f', data, 12)
+            t = struct.unpack_from('<d', data, 32)[0]
+            thr, brk, gear, clu, spd, w0, w1, w2, w3 = struct.unpack_from('<2fI6f', data, 40)
+            eng.append((t, rpm, red, thr, brk, gear, clu, spd, w0, w1, w2, w3))
             continue
         if len(data) != 96:
             continue
@@ -51,6 +59,7 @@ def main():
     c = cams[d]
     out = {'cam_t': np.array([x[0] for x in c]), 'cam_v': np.array([x[1] for x in c]).reshape(-1, 4, 4),
            'cam_fov': np.array([x[2] for x in c]), 'cam_vt': np.array([x[3] for x in c], dtype=np.uint32)}
+    out['eng'] = np.array(eng).reshape(-1, 12)
     ids = sorted(cars)
     out['car_ids'] = np.array(ids, dtype=np.uint64)
     for i, k in enumerate(ids):
