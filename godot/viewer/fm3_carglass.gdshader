@@ -49,7 +49,9 @@ uniform float static_cube_gain = 1.0;
 // own dark cabin, so its windows reflect little (the CR-X's rear glass 9/15/20 in the game) where the AI cars' windows,
 // on the static cube, show the sky (the Eclipse 40/48/57). (Until 2026-11-24 one env_scale 0.2 for every window, fitted
 // on the CR-X, darkened the AI cars' glass too.)
-uniform float player_env = 0.1;
+// 2026-11-25 evening (since the exposure pass): 0.1 -> 0.5 (FM3_PLAYER_ENV): the CrownJewel CR-X's rear window 16.6 ->
+// 10.9 (21 / 25 / 23, game 20 / 25 / 29), the Sebring RSX's sunroof strip 58.8 -> 48.2, its rear window 13.6 -> 13.9.
+uniform float player_env = 0.5;
 uniform bool player_glass = false;
 // A lamp lens drawn with this formula (world_view.gd FM3_LENS=game, 2026-11-25): it faces outwards, so the player's
 // own lenses reflect the surroundings like any car's (no player_env dimming).

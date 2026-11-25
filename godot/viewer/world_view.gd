@@ -755,6 +755,8 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 		sm.set_shader_parameter("static_cube_gain", _env_cube_gain(gltf_path))
 	if cube != null:
 		sm.set_shader_parameter("env_cube", cube)
+	if shader == CARGLASS_SHADER and OS.get_environment("FM3_PLAYER_ENV") != "":
+		sm.set_shader_parameter("player_env", float(OS.get_environment("FM3_PLAYER_ENV")))
 	var v := OS.get_environment(env)
 	if v != "":
 		var f := v.split_floats(",")

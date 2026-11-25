@@ -558,9 +558,13 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   corner lenses 44.8 -> 29.8, the red bar the same), Eclipse rear 22.8 -> 23.1, whole grid frame 18.6 / 18.0 / 17.3 ->
   18.5 / 18.2 / 17.5. Rejected on the way: an untinted reflector reflection (the CR-X's red panel grey), the bulbs' and
   lenses' sun highlights (glints), lens light 1 (CR-X lens 2x too bright; the RSX's tails liked it slightly).
+- **The player's windows reflect more** (`fm3_carglass.gdshader` player_env 0.1 -> 0.5, `FM3_PLAYER_ENV`; the 0.1 was
+  fitted before the exposure pass): CrownJewel CR-X rear window 16.6 -> 10.9 (21 / 25 / 23, game 20 / 25 / 29), the
+  car 15.9 -> 15.1; Sebring RSX sunroof strip on the roof 58.8 -> 48.2 (it is player glass), rear window 13.6 -> 13.9,
+  the car 19.4 -> 19.2.
 - Still open: the RSX's lenses are less pink than the game's (G 37 vs 65); a dark band frames the RSX's rear window
   where the game's glass runs to the edge (the black-glass pass did not change it: find which mesh draws it); the
-  roof's dark strip (sunroof glass?).
+  roof paint half as bright as the game's (above).
 - Paint sharpness: the game's car cube is six 256 x 256 faces with 4x MSAA, three a frame (NOTES); a 256 px / 4x MSAA
   live cube here (`--live-cube 256 --live-cube-faces 3 --live-cube-msaa 4`, or `FM3_LIVE_CUBE=256,3,4`) changed the
   RSX roof's detail 12.0 -> 12.7 only (game 23.0): resolution is not what makes ours softer. The roof reflects about
