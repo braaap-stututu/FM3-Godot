@@ -749,6 +749,7 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 	# paint read the samplers' default, a flat env of 1: a grey haze over the whole car; 2026-11-25)
 	for k_ in _live_cube_texs.size():
 		sm.set_shader_parameter("live%d" % k_, _live_cube_texs[k_])
+	sm.set_shader_parameter("live_hdr", _live_cube_hdr())
 	if m.albedo_texture != null:
 		sm.set_shader_parameter("albedo_tex", m.albedo_texture)
 	var cube := _env_cube(gltf_path, gltf_path.get_file().get_basename() + "_tex")
@@ -832,6 +833,10 @@ var _live_cube_texs := []  # (the six faces, for car materials made after the cu
 var _car_mats := []
 
 
+static func _live_cube_hdr() -> bool:
+	return OS.get_environment("FM3_LIVE_CUBE_HDR") == "1"
+
+
 func _make_live_cube(at: Vector3) -> void:
 	var texs := []
 	# (tests: FM3_LIVE_CUBE=<size>,<faces a frame>,<msaa 0/2/4/8> overrides the options)
@@ -846,6 +851,9 @@ func _make_live_cube(at: Vector3) -> void:
 		var vp := SubViewport.new()
 		vp.size = Vector2i(_live_cube_size, _live_cube_size)
 		vp.msaa_3d = {2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X, 8: Viewport.MSAA_8X}.get(_live_cube_msaa, Viewport.MSAA_DISABLED)
+		# (FM3_LIVE_CUBE_HDR=1: the faces kept in floating point, values above 1 not clipped; the game's car cube is
+		# stored at 1/8 and read x8, so its bright clouds go far above 1)
+		vp.use_hdr_2d = _live_cube_hdr()
 		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS if _live_cube_faces >= 6 else SubViewport.UPDATE_ONCE
 		_live_cube_vps.append(vp)
 		vp.positional_shadow_atlas_size = 0
@@ -866,6 +874,7 @@ func _make_live_cube(at: Vector3) -> void:
 	for sm in _car_mats:
 		for k in 6:
 			(sm as ShaderMaterial).set_shader_parameter("live%d" % k, texs[k])
+		(sm as ShaderMaterial).set_shader_parameter("live_hdr", _live_cube_hdr())
 	print("world_view: live reflection cube, %d px a face, at %s" % [_live_cube_size, at])
 
 

@@ -604,6 +604,14 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   softer than the game's. Next: the sky dome's texture as the cube's small views render it (its resolution / mip /
   compression: `_bind_textures` compresses to BC1), whether the game's paint also sharpens with the static cube, and
   what a 256 px cube costs in frame rate before making it the default (default stays 128).
+  Checked after midnight's start: the sky textures are 2048 px (not the cause); the game's roof has both more spread
+  (p5 / p95 69 / 128 against our 72 / 111) and more fine detail per unit of spread (0.039 against 0.021). Floating-point
+  cube faces (`FM3_LIVE_CUBE_HDR=1`, values above 1 kept, re-encoded to sRGB in `fm3_livecube.gdshaderinc` so the scale
+  stays): p95 111 -> 114 only, so clipping is not it (read without the re-encoding the linear values doubled the
+  contrast: spread 77-86, median 100 -> 77). With 256 / 512 px faces the detail is 1.1 / 1.4 (game 2.2). Left: why our
+  reflected clouds have less contrast than the game's (the cube's content: fog in the cube views, the sky dome's own
+  look in a 90-degree view, the paint's diffuse base), and a frame-rate measurement of the 256 px cube (the test runs
+  share the GPU with the game: 1-2 fps logged, meaningless).
 - Still open: the RSX's lenses are less pink than the game's (G 37 vs 65); a thin strip at the roof's rear edge is
   dark in ours (46) where the game's is bright (139); the top rows of the rear window are brighter in ours (54-60
   against 14-24).

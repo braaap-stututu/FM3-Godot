@@ -8,8 +8,17 @@ uniform sampler2D live3 : filter_linear, repeat_disable;
 uniform sampler2D live4 : filter_linear, repeat_disable;
 uniform sampler2D live5 : filter_linear, repeat_disable;
 uniform bool has_live = false;
+// The faces in floating point (world_view.gd FM3_LIVE_CUBE_HDR): they then hold linear light, values above 1 kept;
+// encoded here as the 8-bit faces are (sRGB), so the shaders read the same scale, with the bright clouds no longer
+// clipped at 1 (the game's car cube is stored at 1/8 and read x8).
+uniform bool live_hdr = false;
 
-vec3 live_cube(vec3 r) {
+vec3 lc_srgb(vec3 c) {
+	c = max(c, vec3(0.0));
+	return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
+}
+
+vec3 live_cube_raw(vec3 r) {
 	vec3 a = abs(r);
 	int k;
 	vec3 d;
@@ -31,4 +40,9 @@ vec3 live_cube(vec3 r) {
 	if (k == 3) return texture(live3, uv).rgb;
 	if (k == 4) return texture(live4, uv).rgb;
 	return texture(live5, uv).rgb;
+}
+
+vec3 live_cube(vec3 r) {
+	vec3 c = live_cube_raw(r);
+	return live_hdr ? lc_srgb(c) : c;
 }
