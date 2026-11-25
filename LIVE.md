@@ -213,6 +213,15 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
   `ps 5b7efac9b0c87a00 float4(r1.y * 4.0, ...)` with `REGPU_NO_GAMMA` on; tools/research `wread.ps1`). LagunaSeca:
   game W 0.756, predicted 0.82 from its shot; the whole-frame mean fits, a centre strip did not. **LagunaSeca live
   41.4 -> 18.4.**
+- **2026-11-25 morning (exposure on; each boot a new grid view):** LagunaSeca 41.4 -> 18.4, RoadAtlanta 37.3 -> 24.8,
+  LeMans 22.2 -> 21.7, Motegi 36.2 -> 46.9 (one run without exposure differences: a stray scene mesh had blocked
+  the player's car, fixed; the rest is a too-light road and greyer pit building), MapleValley 38.6, Catalunya 20.9 (its
+  FTO unnamed in that run: fixed since, see below). Also fixed: NewYork's road lines (opacity map) and LED ticker
+  (UV at byte 12), MapleValley's Castrol barriers (`*_vert_*` UV at byte 20; 16 is a vertex colour), windows coloured
+  by their Diffuse texture (slot 2) instead of the SPEC mask (CrownJewel rebuild 19.6 / 18.3 / 17.4), the game's
+  name re-send for every car once a second (FM3-ReGPU 8093bc0) and an 8 MB UDP buffer in the viewer.
+  Still open: MapleValley's glass office front stays dark (the reflection?), Motegi's light road, `VW_BoraVR6_03`
+  is in no unpacked archive (a DLC pack?).
 - **Open:** bloom (bright pass: exposed scene + 0.42 x last frame's bloom - 1/255 - bloomCutoff, x bloomScale, on
   the HDR scene: needs values above 1, our picture is clipped at 1), the road specular's overshoot (re-check with the
   exposure), one opponent per race without an FM3N name (Silverstone's B.Giese: not the colour-file case); the palette barriers (`diff_clr_spec_2`: a per-model
