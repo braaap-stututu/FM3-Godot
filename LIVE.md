@@ -449,6 +449,14 @@ FM3's physics in Godot with FM3's physics files. Findings (full report: `FM3-fil
   DrivetrainID 73: 3.166 / 2.052 / 1.416 / 1.103 / 0.87, final 4.266): second gear within 3.4% of the stream's speed
   (729 samples), third 11% off, the gears' ratio 1.35 against the stock 1.45: the Baseline save's CR-X is probably
   tuned (the profile's tuning setup, not in the database). The four wheel speeds follow the car's speed within 3%.
+- **The engine's torque is exact** (`tools/fm3_car_physics.py <car> [--out json] [--check camrec.npz]`, any of the
+  510 cars): the stock camshaft row (`List_UpgradeEngineCamshaft`: redline, stall, TorqueCurveMaxRPM 9500,
+  96 entries) picks a full-throttle and a zero-throttle (engine braking) curve in `List_TorqueCurve` (values x
+  TorqueScale N m, 100 rpm apart; peak at 7,100 rpm = `SimPeakTorqueAngVel`). Against the game's own telemetry page:
+  145.4 / 151.4 / 150.8 N m at 6,135 / 6,826 / 7,346 rpm (page: 145.4 / 151.4 / 150.8) and 93.4 / 108.2 / 116.0 kW
+  (page: 93 / 108 / 116). Not yet: how throttle blends the two curves, the drivetrain losses / GameTorqueScale, drag
+  units, the tyres. A longitudinal fit (torque through the gearing against the stream's acceleration) needs a
+  recording with long full-throttle stretches: the race AI rarely holds full throttle (84 usable samples).
 
 ## Next for stage A (where to continue)
 
