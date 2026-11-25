@@ -57,6 +57,10 @@ class Gltf:
         return len(self.views) - 1
 
     def acc(self, arr, kind, target=34962, minmax=False):
+        if arr.dtype.kind == 'f':
+            # (a few cars' files hold NaN vertices: as 'NaN' in the accessor's min / max the whole glTF was unreadable,
+            # MIT_FTO_98, FER_250GTO_64, FER_GTO_84 never drawn live)
+            arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
         a = {'bufferView': self.view(np.ascontiguousarray(arr).tobytes(), target),
              'componentType': 5125 if arr.dtype == np.uint32 else 5126, 'count': int(len(arr) if kind != 'SCALAR' else arr.size),
              'type': kind}

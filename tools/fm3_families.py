@@ -181,6 +181,13 @@ def recipe(shader, params, stride, slots):
         return {'mode': 'mix', 'src0': 20, 'src1': 20, 'mask': 24, 'lm': 24, 'vclr': False,
                 'scale0': list(params[0][:2]), 'scale1': list(params[3][:2]), 'tint0': [1.0, 1.0, 1.0],
                 'tint1': [1.0, 1.0, 1.0], 'slots': [slots[0], slots[3], slots[2]]}
+    if shader == 'road_blnd_2' and len(slots) >= 2 and min(slots[:2]) >= 0 and len(params) >= 3:
+        # (disassembled, ROAD_BLND_2.fxobj) grain g (slot 0) at world (x, z) * P[1].x, the value v (slot 1) at UV 16 *
+        # P[1].yz: g * P[0] + v * (g + P[2] - g * P[0]) (CrownJewel: P[0] 0, P[2] 0.1; Motegi: 0.16, 0; before, the
+        # captured-frame fit v * 0.34 * g / mean(g) for all, Motegi's road far too light)
+        return {'mode': 'road1', 'src0': 'xz', 'src1': 16, 'mask': None, 'lm': None, 'vclr': False,
+                'scale0': [params[1][0]] * 2, 'scale1': list(params[1][1:3]), 'tint0': list(params[0][:3]),
+                'tint1': list(params[2][:3]), 'slots': slots[:2]}
     if ROAD.match(shader) or PAINT.match(shader):
         if len(slots) < 2 or min(slots[:2]) < 0 or len(params) < 2:
             return None

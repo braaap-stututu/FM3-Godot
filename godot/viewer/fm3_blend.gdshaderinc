@@ -85,6 +85,13 @@ void fragment() {
 		// rdedg_diff_opac_2 (road-edge decals, disassembled): t0 at UV * scale0, opacity = t1.a at CUSTOM0.xy * scale1
 		a = texture(albedo_tex, UV * scale0).rgb;
 		alpha_v = texture(tex1, uv23.xy * scale1).a;
+	} else if (mode == 18) {
+		// road_blnd_2 (disassembled): g * tint0 + v * (g + tint1 - g * tint0)
+		vec4 g = texture(albedo_tex, UV * scale0);
+		vec3 v = texture(tex1, uv23.xy * scale1).rgb;
+		a = g.rgb * tint0 + v * (g.rgb + tint1 - g.rgb * tint0);
+		spec_mask = g.a;
+		spec_skid = v.r;
 	} else if (mode == 17) {
 		// rdline_blnd_diff_spec_opac_3 (disassembled): lerp(tint0, t0, t1) * tint1.x, opacity = tex2.a at UV * scale2
 		vec4 t0 = texture(albedo_tex, UV * scale0);
