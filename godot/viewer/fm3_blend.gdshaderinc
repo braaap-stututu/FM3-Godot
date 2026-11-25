@@ -40,6 +40,7 @@ uniform vec3 env_ground = vec3(0.16, 0.16, 0.14);
 // road_gloss.y, m)), added in gamma space (unclamped: it saturates to white facing a low sun). mask = the base texture's
 // alpha; skid = a per-shader channel (road_spec_mask below). road_spec = TrackSettings RoadSpecular, RoadSpecular2,
 // RoadSkid, RoadSkid2; road_gloss = RoadGlossiness, RoadGlossiness2, RoadLightmapDarkPoint, RoadLightmapLightPoint.
+uniform float road1_gain = 0.85;
 uniform bool road_spec_on = false;
 uniform vec4 road_spec = vec4(0.4, 0.7, -2.0, -0.5);
 uniform vec4 road_gloss = vec4(10.0, 20.0, 0.5, 0.75);
@@ -89,7 +90,9 @@ void fragment() {
 		// road_blnd_2 (disassembled): g * tint0 + v * (g + tint1 - g * tint0)
 		vec4 g = texture(albedo_tex, UV * scale0);
 		vec3 v = texture(tex1, uv23.xy * scale1).rgb;
-		a = g.rgb * tint0 + v * (g.rgb + tint1 - g.rgb * tint0);
+		// x road1_gain: FITTED, not from the code: with the formula alone the road came out 1.11-1.22x the game's on both
+		// CrownJewel's grid and Motegi (cause open: the grain's sampling?)
+		a = (g.rgb * tint0 + v * (g.rgb + tint1 - g.rgb * tint0)) * road1_gain;
 		spec_mask = g.a;
 		spec_skid = v.r;
 	} else if (mode == 17) {
