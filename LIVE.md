@@ -370,6 +370,24 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
     position in the car (CR-X: wheels 0, 1 front at z +0.874, 2, 3 at -1.426: wheelbase 2.30 m = the real car's;
     x -0.731 / +0.731 / +0.725 / -0.725, so 0 and 3 share a side), +108: radius 0.295. The own chase camera's FOV uses that speed when present.
   - Next: tyre slip / load / temperatures in the wheel blocks, suspension, the car's G (for the camera layers).
+- **Track fog (2026-11-25 evening; the viewer had none):** TrackSettings.xml `<Fog>` holds up to 8 settings (Enabled,
+  Angle = a heading in degrees, Color, Near / NearDensity, Far / FarDensity; parser `sub_8283CE78`, stored from +816 of
+  the settings object). The track vertex shaders compute f = clamp(distance x c241.y + c241.z, 0, c241.w) (FogConsts:
+  linear from NearDensity at Near to FarDensity at Far, capped there), the pixel shaders lerp their gamma-space colour
+  to c242 FogColor by f; the sky's shader and **the car shaders have no fog** (no fog constant in
+  `Media/Shaders/Cars/shaders_v11.fxobj`). The viewer: `fm3_track_export.track_fog` writes the enabled settings into
+  `<track>_track.json` 'Fog' (all 17 existing files patched in place), `world_view.gd _fog_update` blends the two
+  settings around the camera's heading each frame into the global shader parameters `fm3_fog_color` / `fm3_fog_k`
+  (project.godot `[shader_globals]`), which the track shaders apply (`fm3_fog.gdshaderinc`: fm3_baked, fm3_baked_blend,
+  fm3_blend, fm3_glass). The heading convention was measured on the live RoadAtlanta grid (settings at 30 / 170 / 270 /
+  305 deg, the 170 one blue): atan2(forward.x, forward.z) of the viewer's world gave 21.5 / 19.5 / 17.8, the other
+  three sign conventions 24.4-27.1, no fog 29.4 / 27.1 / 26.6. Strong fogs: RoadAtlanta 0.4-0.6, Mugello 0.54,
+  Silverstone 0.5, NewYork 0.4; CrownJewel's is weak (0.13 / 0.05). `FM3_NO_FOG=1` off, `FM3_FOG_HEADING=sx,sz,offset`
+  another convention, `FM3_FOG_PASS=1` a full-screen pass instead (`fm3_fog.gdshader`, fogs the cars too).
+- **The crowd** (NewYork's sidewalk people black in ours): the crowd cards are a lit material at TrackSettings' Crowds
+  dark factor (0.5), so cards with the sun behind them get only ambient; the game picks between its dark (0.5) and
+  light (1.25) factors per person (probably from where they stand). Its crowd shader is in the executable, not found
+  yet: open.
 - **Open:** bloom (bright pass: exposed scene + 0.42 x last frame's bloom - 1/255 - bloomCutoff, x bloomScale, on
   the HDR scene: needs values above 1, our picture is clipped at 1), the road specular's overshoot (re-check with the
   exposure), one opponent per race without an FM3N name (Silverstone's B.Giese: not the colour-file case); the palette barriers (`diff_clr_spec_2`: a per-model

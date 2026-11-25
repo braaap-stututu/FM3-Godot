@@ -4,6 +4,7 @@
 // All in gamma space like the game, then converted to linear for Godot's linear tone mapper.
 shader_type spatial;
 render_mode cull_disabled, ambient_light_disabled, specular_disabled, diffuse_lambert;
+#include "res://viewer/fm3_fog.gdshaderinc"
 
 uniform sampler2D albedo_tex : filter_linear_mipmap_anisotropic, repeat_enable, hint_default_white;
 uniform sampler2D light_tex : filter_linear_mipmap, repeat_enable, hint_default_white;
@@ -53,9 +54,9 @@ void fragment() {
 		// the game's own combine (DIFF_SPEC_REFL_NORM_4.fxobj, disassembled): (diffuse + P[0].x * spec.a * cube) * P[2].z,
 		// lit by the lightmap like every surface (the reflection is added, not blended: MapleValley's office front lost its
 		// window frames under a fully reflective blend)
-		ALBEDO = to_linear((base + t.a * tint0.x * env) * tint1.z * light);
+		ALBEDO = to_linear(fm3_fog((base + t.a * tint0.x * env) * tint1.z * light, VERTEX));
 	} else {
-		ALBEDO = to_linear(mix(base * light, glass, k));
+		ALBEDO = to_linear(fm3_fog(mix(base * light, glass, k), VERTEX));
 	}
 	if (debug_env_only) { ALBEDO = to_linear(env); }
 	if (debug_part == 1) { ALBEDO = to_linear(base * light); }

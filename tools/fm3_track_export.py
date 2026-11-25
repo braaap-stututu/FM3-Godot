@@ -682,6 +682,34 @@ def car_attrib(path, name):
     return float(e.get('value')) if e is not None and e.get('value') else None
 
 
+def track_fog(ts_text):
+    """TrackSettings.xml <Fog>: the enabled settings [{angle, color, near, near_d, far, far_d}] (+ 'curve'), or None.
+
+    The track shaders' fog (vertex shader, 2026-11-25): f = clamp(distance * c241.y + c241.z, 0, c241.w), the pixel
+    shader lerps its colour to c242 FogColor by f: linear from NearDensity at Near to FarDensity at Far. Up to 8
+    settings per track, each for a heading (Angle, degrees); the game blends them by the camera's heading."""
+    import xml.etree.ElementTree as ET
+    try:
+        fog = ET.fromstring(ts_text).find('Fog')
+    except ET.ParseError:
+        return None
+    if fog is None:
+        return None
+    out = []
+    for s in fog:
+        if not s.tag.startswith('Settings') or s.find('Enabled') is None or s.find('Enabled').get('value') != '1':
+            continue
+        c = s.find('Color')
+        out.append({'angle': float(s.find('Angle').get('value')),
+                    'color': [float(c.get(k)) for k in ('r', 'g', 'b')],
+                    'near': float(s.find('Near').get('value')), 'near_d': float(s.find('NearDensity').get('value')),
+                    'far': float(s.find('Far').get('value')), 'far_d': float(s.find('FarDensity').get('value'))})
+    if not out:
+        return None
+    cv = fog.find('Curve')
+    return {'curve': float(cv.get('value')) if cv is not None else 0.0, 'settings': out}
+
+
 def track_tone(ts_text):
     """TrackSettings' exposure values for the viewer (the game's final pass): {dark: [black, gamma, white, boost], light:
     [...], lum: [min, max], desat: DesaturateAmount}, or None."""
@@ -1028,6 +1056,9 @@ def main():
                                     for k in ('Top', 'Bottom', 'Dir')}
                 except KeyError:
                     pass
+            fog_ = track_fog(ts_text)
+            if fog_:
+                light_['Fog'] = fog_
             if light_:
                 with open(os.path.splitext(out)[0] + '_track.json', 'w', newline='') as f_:
                     json.dump(light_, f_)

@@ -19,3 +19,14 @@ window/vsync/vsync_mode=0
 [rendering]
 
 renderer/rendering_method="forward_plus"
+
+[shader_globals]
+
+fm3_fog_color={
+"type": "vec3",
+"value": Vector3(0.5, 0.5, 0.5)
+}
+fm3_fog_k={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}

@@ -543,6 +543,7 @@ func _init() -> void:
 	root.add_child(sun)
 	if lit:
 		_setup_exposure(gltf_path)
+		_setup_fog(gltf_path)
 	if lit and DYNLIT_SHADOWS and dynlit_set > 0:
 		# the sun of the track's sun-lit surfaces (fm3_dynlit), its shadows cast by everything incl. the static track
 		var sun2 := sun.duplicate() as DirectionalLight3D
@@ -1406,6 +1407,101 @@ var _expo_mat: ShaderMaterial = null
 var _expo_tone := {}
 var _expo_L := -1.0
 var _expo_last := 0
+
+
+# FM3's track fog: the track's TrackSettings <Fog> settings (<track>_track.json 'Fog', written by fm3_track_export.py),
+# blended by the camera's heading each frame (_fog_update) into the global shader parameters the track shaders read
+# (fm3_fog.gdshaderinc; the game's car shaders have no fog, so ours neither). FM3_NO_FOG=1: off. FM3_FOG_PASS=1: a
+# full-screen pass instead (fm3_fog.gdshader: fogs the cars too).
+var _fog_mat: ShaderMaterial = null
+var _fog_settings := []
+var _fog_mi: MeshInstance3D = null
+
+
+func _setup_fog(gltf_path: String) -> void:
+	if OS.get_environment("FM3_NO_FOG") != "":
+		return
+	var f := gltf_path.get_basename() + "_track.json"
+	var t = JSON.parse_string(FileAccess.get_file_as_string(f)) if FileAccess.file_exists(f) else null
+	if not (t is Dictionary) or not (t.get("Fog") is Dictionary):
+		return
+	_fog_settings = (t["Fog"]["settings"] as Array).duplicate()
+	_fog_settings.sort_custom(func(a, b): return float(a["angle"]) < float(b["angle"]))
+	print("fog: %d settings from %s" % [_fog_settings.size(), f])
+	if OS.get_environment("FM3_FOG_PASS") == "":
+		return
+	_fog_mat = ShaderMaterial.new()
+	_fog_mat.shader = load("res://viewer/fm3_fog.gdshader")
+	_fog_mat.render_priority = 127
+	var q := QuadMesh.new()
+	q.size = Vector2(1, 1)
+	_fog_mi = MeshInstance3D.new()
+	_fog_mi.mesh = q
+	_fog_mi.material_override = _fog_mat
+	_fog_mi.extra_cull_margin = 16384.0
+	_fog_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_fog_mi.layers = 1
+	root.add_child(_fog_mi)
+	# (the sky dome writes no depth: the pass leaves the far plane alone, as the game's sky shader has no fog)
+	for sk in _sky_nodes:
+		var mi := sk as MeshInstance3D
+		for si in mi.mesh.get_surface_count():
+			var m = mi.get_surface_override_material(si)
+			if m == null:
+				m = mi.mesh.surface_get_material(si)
+			if m is BaseMaterial3D:
+				(m as BaseMaterial3D).depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+
+
+# The settings for the camera's heading: each setting holds for its Angle (degrees), neighbours lerped in between.
+# The heading: atan2(forward.x, forward.z) in the viewer's world (0 = +z, 90 = +x), measured on the live RoadAtlanta
+# grid (four settings 30 / 170 / 270 / 305 deg, the 170 one blue): 21.5 / 19.5 / 17.8 against 24.4-27.1 for the other
+# sign conventions and 29.4 / 27.1 / 26.6 without fog (2026-11-25). FM3_FOG_HEADING = "sx,sz,offset": another.
+func _fog_update() -> void:
+	if _cam == null or _fog_settings.is_empty():
+		return
+	var conv := OS.get_environment("FM3_FOG_HEADING")
+	var sx := 1.0
+	var sz := 1.0
+	var off := 0.0
+	if conv != "":
+		sx = float(conv.get_slice(",", 0))
+		sz = float(conv.get_slice(",", 1))
+		off = float(conv.get_slice(",", 2))
+	var fwd := -_cam.global_transform.basis.z
+	var h := fposmod(rad_to_deg(atan2(sx * fwd.x, sz * fwd.z)) + off, 360.0)
+	var n := _fog_settings.size()
+	var a: Dictionary = _fog_settings[n - 1]
+	var b: Dictionary = _fog_settings[0]
+	for i in n:
+		if float(_fog_settings[i]["angle"]) > h:
+			b = _fog_settings[i]
+			a = _fog_settings[(i - 1 + n) % n]
+			break
+		a = _fog_settings[i]
+		b = _fog_settings[(i + 1) % n]
+	var span := fposmod(float(b["angle"]) - float(a["angle"]), 360.0)
+	var t := 0.0 if span <= 0.0 else clampf(fposmod(h - float(a["angle"]), 360.0) / span, 0.0, 1.0)
+	var ca: Array = a["color"]
+	var cb: Array = b["color"]
+	var col := Vector3(lerpf(ca[0], cb[0], t), lerpf(ca[1], cb[1], t), lerpf(ca[2], cb[2], t))
+	var nd := lerpf(float(a["near"]), float(b["near"]), t)
+	var nden := lerpf(float(a["near_d"]), float(b["near_d"]), t)
+	var fd := lerpf(float(a["far"]), float(b["far"]), t)
+	var fden := lerpf(float(a["far_d"]), float(b["far_d"]), t)
+	if _fog_mat != null:
+		_fog_mat.set_shader_parameter("fog_color", col)
+		_fog_mat.set_shader_parameter("near_dist", nd)
+		_fog_mat.set_shader_parameter("near_density", nden)
+		_fog_mat.set_shader_parameter("far_dist", fd)
+		_fog_mat.set_shader_parameter("far_density", fden)
+	else:
+		# (the game's FogConsts: slope, offset, cap = FarDensity)
+		var slope := (fden - nden) / maxf(fd - nd, 1e-3)
+		RenderingServer.global_shader_parameter_set("fm3_fog_color", col)
+		RenderingServer.global_shader_parameter_set("fm3_fog_k", Vector4(slope, nden - nd * slope, fden, 1.0))
+	if OS.get_environment("FM3_FOG_LOG") != "" and _frames % 120 == 0:
+		print("fog: heading %.0f between %.0f and %.0f (t %.2f)" % [h, float(a["angle"]), float(b["angle"]), t])
 
 
 func _setup_exposure(gltf_path: String) -> void:
@@ -2453,6 +2549,7 @@ func _car_in_frame(car: int, k: int):
 func _process(_delta: float) -> bool:
 	_frames += 1
 	_exposure_update()
+	_fog_update()
 	# the sky dome stays centred on the camera, as FM3 draws it (fm3_track_export.py: skydome_ nodes)
 	if _cam != null and _cam.is_inside_tree():
 		for sk in _sky_nodes:

@@ -7,6 +7,7 @@
 //   mode 4 edge: lerp(dirt (tex2 at CUSTOM0.xy * scale2), road, tex3.r at CUSTOM0.zw); mode 5 mix: lerp(base, layer, mask.r); mode 6 curb: t0 * lerp(tint0, 1, t1.g)
 //   mode 7 refl (windows): lerp(t0 lit, environment, t0.a * tint0.x * fresnel)
 // (fm3_blend.gdshader: opaque; fm3_blend_alpha.gdshader: FM3_ALPHA, modes 13-14 blend by their opacity)
+#include "res://viewer/fm3_fog.gdshaderinc"
 
 uniform sampler2D albedo_tex : filter_linear_mipmap_anisotropic, repeat_enable, hint_default_white;
 uniform sampler2D tex1 : filter_linear_mipmap_anisotropic, repeat_enable, hint_default_white;
@@ -173,7 +174,7 @@ void fragment() {
 		float fres = 0.35 + 0.65 * pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
 		c = mix(c, env, k * fres);  // reflective glazing replaces the base where the mask says so
 	}
-	ALBEDO = to_linear(c);
+	ALBEDO = to_linear(fm3_fog(c, VERTEX));
 #ifdef FM3_ALPHA
 	ALPHA = alpha_v;
 #endif

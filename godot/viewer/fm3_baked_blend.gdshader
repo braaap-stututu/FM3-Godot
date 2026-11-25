@@ -4,6 +4,7 @@
 // takes light away where a dynamic object (car, person) shadows the surface, as FM3's shadow map does over its baked world.
 shader_type spatial;
 render_mode cull_disabled, depth_draw_never, ambient_light_disabled, specular_disabled, diffuse_lambert;
+#include "res://viewer/fm3_fog.gdshaderinc"
 
 uniform sampler2D albedo_tex : filter_linear_mipmap_anisotropic, repeat_enable, hint_default_white;
 uniform sampler2D light_tex : filter_linear_mipmap, repeat_enable, hint_default_white;
@@ -21,7 +22,7 @@ vec3 to_linear(vec3 c) {
 void fragment() {
 	vec4 a = texture(albedo_tex, UV) * albedo_color;
 	vec3 lm = texture(light_tex, UV2).rgb;
-	ALBEDO = to_linear(a.rgb * mix(ambient, sun, lm) * gain);
+	ALBEDO = to_linear(fm3_fog(a.rgb * mix(ambient, sun, lm) * gain, VERTEX));
 	ALPHA = a.a;
 }
 
