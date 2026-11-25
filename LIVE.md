@@ -467,6 +467,11 @@ FM3's physics in Godot with FM3's physics files. Findings (full report: `FM3-fil
   (page: 93 / 108 / 116). Not yet: how throttle blends the two curves, the drivetrain losses / GameTorqueScale, drag
   units, the tyres. A longitudinal fit (torque through the gearing against the stream's acceleration) needs a
   recording with long full-throttle stretches: the race AI rarely holds full throttle (84 usable samples).
+  With every throttle level (three recordings, 2,365 samples in gears 2-3 away from shifts and brakes): torque =
+  closed + throttle x (full - closed) through the gearing explains 62% of the measured acceleration with sensible
+  values (drivetrain factor 0.73, drag 67 N at 30 m/s, rolling 858 N); throttle x full alone explains 61% but needs a
+  negative drag. Residual 1.2 m/s2 (corners, slopes, wheelspin): a straight-line recording is needed to settle it.
+  (The stream's "clutch" field, +2672, sits at ~0.13 while driving: not a plain pedal value.)
 
 ## Next for stage A (where to continue)
 
