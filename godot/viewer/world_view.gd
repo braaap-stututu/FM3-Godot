@@ -993,12 +993,14 @@ func needle_param(ticks: Array, value: float) -> float:
 # held 0.25 s so they do not flicker; reverse while moving backwards.
 # The player's engine sound (2026-11-25, fm3_engine_audio.gd): the game's own loops and tuning for the car FM3N names,
 # from out/audio/<car>/engine.json (tools/fm3_engine_audio.py <car>), driven by the stream's rpm ("FM3E"). Throttle is
-# not in the stream yet: estimated from how fast the rpm rises. FM3_NO_ENGINE_AUDIO=1: off.
+# the car's throttle ("FM3E" v4; estimated from the rpm's rise from older streams). FM3_NO_ENGINE_AUDIO=1: off.
 var _engine_audio: Node3D = null
 var _engine_audio_car := ""
 var _engine_rpm_prev := -1.0
 var _engine_throttle := 0.0
 var _engine_t_prev := 0
+var _player_throttle := -1.0  # the car's throttle 0..1 ("FM3E" v4; -1 = not in the stream)
+var _player_gear := -1
 
 
 func _update_engine_audio(player, moves: Dictionary) -> void:
@@ -1035,6 +1037,8 @@ func _update_engine_audio(player, moves: Dictionary) -> void:
 		var rise := 0.0 if _engine_rpm_prev < 0.0 else (_engine_rpm - _engine_rpm_prev) / dt
 		_engine_rpm_prev = _engine_rpm
 		var want := clampf(rise / 2500.0 + 0.3, 0.0, 1.0) * (1.0 - maxf(_player_brake, 0.0))
+		if _player_throttle >= 0.0:
+			want = _player_throttle  # (the car's own throttle, "FM3E" v4)
 		_engine_throttle = lerpf(_engine_throttle, want, 1.0 - exp(-dt * 6.0))
 		_engine_audio.set("rpm", _engine_rpm)
 		_engine_audio.set("throttle", _engine_throttle)
@@ -1873,6 +1877,10 @@ func _live_step() -> void:
 				_steer_lock = float(b.decode_u32(24))
 			if b.decode_u32(4) >= 3 and b.size() >= 40:
 				_player_brake = clampf(b.decode_float(28), 0.0, 1.0)
+			if b.decode_u32(4) >= 4 and b.size() >= 56:
+				# v4: the car's own controls and gear from its physics object (throttle, brake, gear, clutch)
+				_player_throttle = clampf(b.decode_float(40), 0.0, 1.0)
+				_player_gear = int(b.decode_u32(48))
 			continue
 		if b.size() == 280 and b.slice(0, 4).get_string_from_ascii() == "FM3W" and b.decode_u32(4) == 1:
 			# A car's four wheels as drawn (spin and steering), right after that car's datagram.
@@ -2017,12 +2025,96 @@ func _show_drawn(now: float) -> void:
 			s = _sample(t)
 	var cam: Transform3D = s["cam"]
 	var moves: Dictionary = s["moves"]
+	var own := _game_cam(cam, moves) if _game_cam_mode != "" else {}
+	if not own.is_empty():
+		cam = own["xf"]
 	_set_view(cam)
 	if _screens.is_empty():
-		_cam.fov = rad_to_deg(float(s["fov"]))
+		_cam.fov = float(own["fov"]) if not own.is_empty() else rad_to_deg(float(s["fov"]))
 	if not _car_attached:
 		return
 	_update_live_cars(cam, moves, s.get("wmoves", {}), now)
+
+
+# The game's own cameras computed here (2026-11-25), not taken from the stream: FM3_GAME_CAM = chase_near, chase_far,
+# hood, bumper or cockpit (the stream still gives the car's pose; the camera is the viewer's). From the game's files
+# (Media\Camera\CameraSettings.ini FollowLow/HighCam, HoodCam, BumperHighCam; gamedb CameraOverrides, CarPartPositions)
+# and measured on the running game while its AI drove the CR-X (tools/research/camrec.ps1 + tools/camfit.py: the drawn
+# camera in the car's frame, per camera class): chase near 82001C74 4.83 m behind / 1.82 up (2.08 above the ground =
+# HeightMinAboveGround), far 82001DB4 5.24 / 2.03 (2.29), both aimed at a point ~1.44 above the car's origin (pitch
+# -4.3 / -6.6 deg), yaw following the car through a spring (YRotSpringK 4.5, D 4.4, at most 2 rad/s) and the height
+# through another (K 30, D 11.85), FOV 54.6 + 0.085 deg per m/s (55 -> 58.7 between 5 and 50 m/s); hood 82001FF4
+# (0, 0.797, 0.78 ahead, FOV 53 fixed = HoodCam FOV0); bumper 82001F7C (0, 0.859, 1.225 ahead: 1.15 above the ground =
+# BumperHighCam RestHeightAboveGround 1.1); cockpit 8200206C = CarPartPositions part 4 + CamCockpitOffset (x 0.361,
+# y 0.815 measured = 0.3507 + 0.01, 0.5448 + 0.27), FOV 51.3. The car's frame: its matrix (z = backwards).
+# Measured on one car (the CR-X): the chase distance's rule per car (the bounding box + RadiusOffsetGlobal?) is open.
+var _game_cam_mode := OS.get_environment("FM3_GAME_CAM")
+var _gc_yaw := INF
+var _gc_yaw_v := 0.0
+var _gc_h := INF
+var _gc_h_v := 0.0
+var _gc_prev_pos := Vector3.ZERO
+var _gc_prev_t := 0
+var _gc_speed := 0.0
+const GAME_CAMS := {
+	"chase_near": {"dist": 4.83, "h": 1.82, "target": 1.44, "fov0": 54.6, "fovk": 0.085},
+	"chase_far": {"dist": 5.24, "h": 2.03, "target": 1.44, "fov0": 54.6, "fovk": 0.085},
+	"hood": {"local": Vector3(0.0, 0.797, -0.78), "fov0": 53.0, "fovk": 0.0},
+	"bumper": {"local": Vector3(0.0, 0.859, -1.225), "fov0": 54.6, "fovk": 0.085},
+	"cockpit": {"local": Vector3(0.361, 0.815, 0.127), "fov0": 51.3, "fovk": 0.0},
+}
+
+
+func _game_cam(drawn: Transform3D, moves: Dictionary) -> Dictionary:
+	if not GAME_CAMS.has(_game_cam_mode):
+		return {}
+	# the player: the car nearest the game's own camera
+	var player = null
+	var pd := INF
+	for car in moves:
+		if not _car_inv.has(car):
+			continue
+		var o: Vector3 = (moves[car] as Transform3D) * ((_car_inv[car] as Transform3D).affine_inverse().origin)
+		if o.distance_to(drawn.origin) < pd:
+			pd = o.distance_to(drawn.origin)
+			player = car
+	if player == null:
+		return {}
+	var m: Transform3D = (moves[player] as Transform3D) * (_car_inv[player] as Transform3D).affine_inverse()
+	var now := Time.get_ticks_usec()
+	var dt := 0.016 if _gc_prev_t == 0 else clampf((now - _gc_prev_t) / 1e6, 1e-4, 0.1)
+	if _gc_prev_t != 0:
+		_gc_speed = lerpf(_gc_speed, m.origin.distance_to(_gc_prev_pos) / dt, 1.0 - exp(-dt * 5.0))
+	_gc_prev_t = now
+	_gc_prev_pos = m.origin
+	var c: Dictionary = GAME_CAMS[_game_cam_mode]
+	var fov := float(c["fov0"]) + float(c["fovk"]) * _gc_speed
+	var up := Vector3.UP
+	if c.has("local"):
+		# rigid on the car: at the local point, looking along the car's forward (-z) axis
+		var p := m * (c["local"] as Vector3)
+		var back := (m.basis * Vector3(0, 0, 1)).normalized()
+		var cup := (m.basis * Vector3(0, 1, 0)).normalized()
+		var right := cup.cross(back).normalized()
+		return {"xf": Transform3D(Basis(right, back.cross(right), back), p), "fov": fov}
+	# chase: yaw towards the car's backward heading through a damped spring, height through another
+	var bwd := m.basis * Vector3(0, 0, 1)
+	var yaw_t := atan2(bwd.x, bwd.z)
+	if _gc_yaw == INF:
+		_gc_yaw = yaw_t
+		_gc_h = m.origin.y + float(c["h"])
+	var dy := wrapf(yaw_t - _gc_yaw, -PI, PI)
+	_gc_yaw_v += (4.5 * dy - 4.4 * _gc_yaw_v) * dt
+	_gc_yaw_v = clampf(_gc_yaw_v, -2.0, 2.0)
+	_gc_yaw += _gc_yaw_v * dt
+	var h_t := m.origin.y + float(c["h"])
+	_gc_h_v += (30.0 * (h_t - _gc_h) - 11.85 * _gc_h_v) * dt
+	_gc_h += _gc_h_v * dt
+	var d := float(c["dist"])
+	var p := Vector3(m.origin.x + sin(_gc_yaw) * d, _gc_h, m.origin.z + cos(_gc_yaw) * d)
+	var target := m.origin + up * float(c["target"])
+	var xf := Transform3D(Basis(), p).looking_at(target, up)
+	return {"xf": xf, "fov": fov}
 
 
 # The cars' state each frame from the moves of the moment shown (also from the hand-off path, where the game sends no

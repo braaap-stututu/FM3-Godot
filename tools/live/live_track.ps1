@@ -35,7 +35,7 @@ for ($k = 0; $k -lt $Cameras; $k++) { Fm3 'press RB 500' | Out-Null; Start-Sleep
 # the viewer beside it
 $godot = "$g\Godot_v4.7.2-stable_win64_console.exe"
 $liveOut = "$out\$Name-godot-raw.png"
-Remove-Item $liveOut, "$liveOut.shot" -ErrorAction SilentlyContinue
+Remove-Item $liveOut, "$liveOut.shot", "$out\$Name-godot.png", "$out\$Name-cmp.png" -ErrorAction SilentlyContinue  # (no stale picture: a viewer that failed to start once left the last run's to be compared)
 $vargs = @('--path', "`"$g\frame-ir\godot`"", '-s', 'res://viewer/world_view.gd', '--', '--gltf', "`"$Gltf`"", '--lit',
     '--live', '7342', '--size', '1280x720', '--out', "`"$liveOut`"") + @($ViewerArgs -split ' ' | Where-Object { $_ })
 $p = Start-Process $godot -ArgumentList $vargs -RedirectStandardOutput "$out\$Name-godot.log" `
