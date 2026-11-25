@@ -1248,10 +1248,10 @@ func _poll_liveries() -> void:
 
 var _track_light_cache := {}
 var _blend_mats := []  # the track's blend materials (their road specular needs the sun direction, set once it is known)
-# The road's sun specular (the game's formula, fm3_blend.gdshaderinc): opt-in with FM3_ROAD_SPEC=1 until the game's tone
-# curve is in. MapleValley facing the sun: without it the glare patches 66 / 92 vs the game's 193 / 187; with it 253 / 219
-# vs 176 / 120 (the game's highlights stop near 224: its post-process compresses them; frame 37.7 off, 41.3 on).
-var _no_road_spec := OS.get_environment("FM3_ROAD_SPEC") == ""
+# The road's sun specular (the game's formula, fm3_blend.gdshaderinc), on since the game's exposure is in (2026-11-25):
+# MapleValley facing the sun 36.1 -> 25.8 live (before the exposure it overshot: glare 253 vs 176); Motegi 23.4,
+# Catalunya 20.3 (no harm). FM3_NO_ROAD_SPEC=1: off.
+var _no_road_spec := OS.get_environment("FM3_NO_ROAD_SPEC") != ""
 
 
 # The static world's ambient / sun (c247 / c248) from the track's TrackSettings DarkColor / LightColor, written by
