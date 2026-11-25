@@ -597,6 +597,13 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   reflection is not missing sky. Their down face (the road seen from above in sun) is near white (248).
 - The roof: with the player's glass at full reflection the RSX's roof paint is 98-102 against the game's 112 (rows
   410-416 of the Sebring chase view); the "half as bright" roof above was mostly the dimmed sunroof glass.
+- **Reflection sharpness** (the user, 23:15: ours reflects the clouds, too blurry to recognise): the roof paint's detail
+  (mean neighbour difference, Sebring chase view, game 13.7) with the live cube at 128 / 256 / 512 px a face (4x MSAA
+  for the larger two, `FM3_LIVE_CUBE=<size>,6,4`): 6.1 / 7.2 / 8.5, the region's difference from the game 13.2 / 13.8 /
+  14.0. Size helps partly; even at twice the game's 256 the contrast is half the game's, so the cube's content is
+  softer than the game's. Next: the sky dome's texture as the cube's small views render it (its resolution / mip /
+  compression: `_bind_textures` compresses to BC1), whether the game's paint also sharpens with the static cube, and
+  what a 256 px cube costs in frame rate before making it the default (default stays 128).
 - Still open: the RSX's lenses are less pink than the game's (G 37 vs 65); a thin strip at the roof's rear edge is
   dark in ours (46) where the game's is bright (139); the top rows of the rear window are brighter in ours (54-60
   against 14-24).
