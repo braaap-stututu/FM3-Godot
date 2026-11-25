@@ -78,7 +78,10 @@ const DYNLIT_LAYER := 32  # (the track's sun-lit surfaces, fm3_dynlit: lit by th
 # sun scored the same average as Godot's lighting.
 var DYNLIT := OS.get_environment("FM3_DYNLIT") != ""
 var DYNLIT_SHADOWS := OS.get_environment("FM3_DYNLIT") == "1"  # (2 = the shader on the main sun, no static shadows)
-var CABIN_K := float(OS.get_environment("FM3_CABIN_K")) if OS.get_environment("FM3_CABIN_K") != "" else 1.0
+# The exterior model's own cabin seen through the windows (library cars): 1.0 -> 0.5 on 2026-11-25 (the game's rear
+# windows read as one dark tint with the seats barely visible; ours showed grey seats framed by the black trim):
+# Sebring RSX rear window 14 -> 10.5, CrownJewel CR-X 10.8 -> 11.5, Mazda 19.9 -> 19.7.
+var CABIN_K := float(OS.get_environment("FM3_CABIN_K")) if OS.get_environment("FM3_CABIN_K") != "" else 0.5
 const COCKPIT_GAIN := 1.0  # (fm3_cockpit.gdshader's light scale)
 # Cockpit mirrors (fm3_mirror.gdshader): one small viewport each, rendered only while the player's car is seen in-car.
 const MIRROR_SIZE := Vector2i(512, 256)
@@ -1878,6 +1881,10 @@ func _library_swap_test(spec: String) -> void:
 func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, metal: float) -> void:
 	mi.layers = 2
 	var nm := String(mi.name)
+	# (tests: FM3_HIDE_PARTS=<name part>,... hides library meshes whose names contain one, to find which part draws what)
+	for h in OS.get_environment("FM3_HIDE_PARTS").split(",", false):
+		if nm.contains(h):
+			mi.visible = false
 	for s in mi.mesh.get_surface_count():
 		var m0 := mi.mesh.surface_get_material(s) as BaseMaterial3D
 		if m0 == null:

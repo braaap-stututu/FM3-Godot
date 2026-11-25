@@ -568,9 +568,15 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   fitted before the exposure pass): CrownJewel CR-X rear window 16.6 -> 10.9 (21 / 25 / 23, game 20 / 25 / 29), the
   car 15.9 -> 15.1; Sebring RSX sunroof strip on the roof 58.8 -> 48.2 (it is player glass), rear window 13.6 -> 13.9,
   the car 19.4 -> 19.2.
-- Still open: the RSX's lenses are less pink than the game's (G 37 vs 65); a dark band frames the RSX's rear window
-  where the game's glass runs to the edge (the black-glass pass did not change it: find which mesh draws it); the
-  roof paint half as bright as the game's (above).
+- **The dark band round the RSX's rear window** (found by hiding library parts, `FM3_HIDE_PARTS=<name part>,...`): the
+  black trim inside the window framed a cabin that was too bright (grey seats; the game's window reads as one dark
+  tint). Library cabins now at `CABIN_K` 0.5 (was 1.0; `FM3_CABIN_K`): Sebring RSX rear window 14 -> 10.5, CrownJewel
+  CR-X 10.8 -> 11.5, Mazda 19.9 -> 19.7.
+- The live cube's faces (`FM3_DUMP_LIVE_CUBE=1`, Sebring) hold the horizon's clouds and buildings and a clear sky
+  with the sun overhead; from the chase camera the roof reflects the horizon (grazing angle), so the roof's dimmer
+  reflection is not missing sky. Their down face (the road seen from above in sun) is near white (248).
+- Still open: the RSX's lenses are less pink than the game's (G 37 vs 65); the roof paint half as bright as the
+  game's (above).
 - Paint sharpness: the game's car cube is six 256 x 256 faces with 4x MSAA, three a frame (NOTES); a 256 px / 4x MSAA
   live cube here (`--live-cube 256 --live-cube-faces 3 --live-cube-msaa 4`, or `FM3_LIVE_CUBE=256,3,4`) changed the
   RSX roof's detail 12.0 -> 12.7 only (game 23.0): resolution is not what makes ours softer. The roof reflects about
