@@ -616,7 +616,8 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
 - **Black glass without reflection again** (2026-11-26, 00:05): the top rows of the RSX's rear window, brighter than the
   game's, were the `black_glass` border under its reflection pass; that region 41.0 -> 11.3 with the pass off
   (`FM3_BLACK_GLASS=<scale>` turns it back on), the car 17.7 -> 16.7. Plain, it is still lighter than the game's
-  (32 / 35 / 40 against 18 / 27 / 39).
+  (32 / 35 / 40 against 18 / 27 / 39). CrownJewel: CR-X rear window 5.9 -> 4.7, the CR-X 14.6 -> 12.7, Eclipse 18.2 ->
+  17.9, Mazda 19.8 -> 19.7.
 - Lens pinkness, tried and rejected: doubling the reflectors, less texture tint, a lighter lens filter all bring the
   tails' mean closer (up to 104 / 87 / 82, game 114 / 64 / 63) but per pixel worse (36.2 / 29.2 -> 44-57): they add grey
   as fast as red, and our bulbs keep dark centres where the game's lamps are evenly pink.
