@@ -500,8 +500,14 @@ The user asked whether arcanite24's `pinyon-shift` / `cobalt-shift` recomps help
   = FM3's 1040-byte blocks (our +4164 wheel speed, +3440 suspension, +3492 tyre temps per 1040). Also FH1: ABS active
   +3020, TCS amount +3004, the game's own rumble inputs. **Our "+2672 clutch" is not a clutch**: 0.12 in 2nd, 0.5-1.0
   in 1st under wheelspin, 0.02-0.14 in 3rd (four recordings): a slip / traction value.
-  Next for telemetry: find FM3's slip ratio / slip angle / contact in its wheel blocks (FH1's order and the page
-  FRICTION as the check), then send a Data Out packet from the recomp too (SimHub, dashboards) beside FM3E.
+  **Done the same evening: Forza Data Out from the recomp** (FM3-ReGPU `src/hooks/data_out.cpp`, `FM3_DATA_OUT=1` or
+  the launcher's "Telemetry out (SimHub)"; FM7 Dash packets on 127.0.0.1:5300, checked on an AI race with
+  `tools/analysis/dataout_listen.py` there). New physics-object fields: +2544 position, +2560 velocity, +2512
+  acceleration (world; the body matrix's z axis points to the rear). Not found yet: slip ratio / angle. The FRICTION
+  page shows each tyre's grip use in % (eight shots with dumps, readings in `out\research\telepage5\
+  friction_readings.txt`): no per-wheel field fits (best +3480 + 1040 i, r 0.74). +4140 / +4152 + 1040 i behave like
+  tyre loads (front-heavy, up under braking and on the outside in corners). The FM3E stream (Godot) could carry the
+  new fields too.
 - **pinyon-shift-native** (a clean-room FH1 engine, C++20 / Vulkan; written from specs, not from game code): a full
   car simulation from the game's own data, validated against the real game within 2% (R34: 0-100 km/h 5.83 vs
   5.84 s, braking 8.42 vs 8.57 m/s2, a lap +1.08%, top speed 147.6 vs 147.5 km/h; `docs/SPEC_QUESTIONS.md` Q20-Q40).
