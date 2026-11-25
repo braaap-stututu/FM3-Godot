@@ -568,7 +568,7 @@ func _init() -> void:
 		_make_live_cube(best + Vector3(0, 0.8, 0))
 	if _live_port > 0:
 		_udp = PacketPeerUDP.new()
-		var err := _udp.bind(_live_port, "127.0.0.1")
+		var err := _udp.bind(_live_port, "127.0.0.1", 8 * 1024 * 1024)  # (8 MB: with the default 64 KB a busy viewer dropped packets, among them a car's once-a-second FM3N name: Silverstone drew one opponent less)
 		print("world_view: live camera on udp 127.0.0.1:%d (%s; start FM3 with FM3_LIVE=%d)" % [_live_port, "listening" if err == OK else "bind failed: %d" % err, _live_port])
 
 

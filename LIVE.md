@@ -203,8 +203,19 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
   full-screen pass in the viewer, relative to CrownJewel's (our calibration includes its exposure). L is not the
   scene's mean luminance (that estimate contradicts the measurements), and reading the 32x32 texture from guest memory
   gave zeros (resolves stay on the GPU; FM3_WRITEBACK=32x32 did not reach it).
-- **Open:** per-track brightness (LagunaSeca 1.25x brighter than ours, LeMans 0.88x: the exposure above), the road
-  specular's overshoot (the same exposure caps it); the palette barriers (`diff_clr_spec_2`: a per-model
+- **The exposure in the viewer (2026-11-25, `fm3_exposure.gdshader`, on for tracks with 'Tone' in their
+  `<track>_track.json`; `FM3_NO_EXPOSURE=1` off):** the final pass's formula as a canvas pass over the picture.
+  The luminance chain, decoded: the scene is downsampled 1280x720 -> 320x192 -> 64x32 -> 32x32 (plain averages,
+  ps c244a21ac3a9be63 / 98c51b1e094205eb), the luminance pass averages it and adapts 2% a frame. The viewer reads its
+  own picture back every 10 frames (64x36), undoes the current curve and adapts the same way. Calibration: our
+  picture matches CrownJewel's final picture, so S = picture x W_cj / 0.9874 with W_cj = 0.942, read from the running
+  game on the test grid by replacing the final pass's output with its interpolant r1.y = 0.1/W (debug server
+  `ps 5b7efac9b0c87a00 float4(r1.y * 4.0, ...)` with `REGPU_NO_GAMMA` on; tools/research `wread.ps1`). LagunaSeca:
+  game W 0.756, predicted 0.82 from its shot; the whole-frame mean fits, a centre strip did not. **LagunaSeca live
+  41.4 -> 18.4.**
+- **Open:** bloom (bright pass: exposed scene + 0.42 x last frame's bloom - 1/255 - bloomCutoff, x bloomScale, on
+  the HDR scene: needs values above 1, our picture is clipped at 1), the road specular's overshoot (re-check with the
+  exposure), one opponent per race without an FM3N name (Silverstone's B.Giese: not the colour-file case); the palette barriers (`diff_clr_spec_2`: a per-model
   palette row, ModelData c148), LeMans' `shldr_blnd_spec_vclr_dualmix_4`, reflective glass `diff_spec_opac_refl_3`,
   MapleValley's Castrol banners and asphalt tone, Catalunya's grass 25% dim.
 
