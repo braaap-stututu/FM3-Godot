@@ -621,6 +621,13 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
 - Lens pinkness, tried and rejected: doubling the reflectors, less texture tint, a lighter lens filter all bring the
   tails' mean closer (up to 104 / 87 / 82, game 114 / 64 / 63) but per pixel worse (36.2 / 29.2 -> 44-57): they add grey
   as fast as red, and our bulbs keep dark centres where the game's lamps are evenly pink.
+- **White specks along the Eclipse's tail lamps** (CrownJewel grid, AI car; the right lamp's region 34.5 against the
+  game): not a lamp material. They stay with the lenses, bulbs, reverse lamps or the reflection passes hidden
+  (`FM3_HIDE_PARTS`, `FM3_REFLECTOR=0`), and sit where the white kerb is behind the car: most likely gaps in the
+  library model round the lamp housings (seams / missing parts) showing the background. Next: render the Eclipse
+  alone against a coloured background, or check its part selection (`fm3_car_library.py` stock_parts).
+- The CrownJewel grid's largest differences otherwise: the game's lap counter overlay (top right, not ours to fix) and
+  the white kerb stripes on the right, brighter and crisper in ours (141-163 against 115-136): the road-lines item.
 - Still open: the RSX's lenses are less pink than the game's (G 37 vs 65); a thin strip at the roof's rear edge is
   dark in ours (46) where the game's is bright (139); the top rows of the rear window are brighter in ours (54-60
   against 14-24).
