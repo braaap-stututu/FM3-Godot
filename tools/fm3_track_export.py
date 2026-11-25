@@ -1123,6 +1123,11 @@ def main():
             if shader_.startswith('tree_') and me['stride'] == 24:
                 # tree card shaders read UV0 at byte 12 (where other layouts keep the normal): 12 of 13 captured draws
                 me = dict(me, uv0=fm3_track.uv_pair(me, 12))
+            if '_vert' in shader_ and me['stride'] >= 28:
+                # *_vert_* shaders (barr_shad_diff_spec_vert_1: MapleValley's Castrol barriers; diff_spec_vert_1): their vertex
+                # shader fetches position, normal (12), a vertex colour (16), then the texture's UV (20) and the lightmap's
+                # (24); read as UV0, the colour at 16 smeared the banners into a plain wall
+                me = dict(me, uv0=fm3_track.uv_pair(me, 20), uv1=fm3_track.uv_pair(me, 24))
             if shader_.startswith('anim_diff_scroll') and me['stride'] == 20:
                 # scrolling signs (anim_diff_scrollu_glow_1: NewYork's LED ticker, a 512 x 32 text strip): the texture's UV
                 # at byte 12 (0..1), byte 16 the lightmap's (as UV0 the text was a smear); the scroll by time is left out
