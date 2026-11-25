@@ -71,9 +71,12 @@ acceleration +2512; +2672 is not a clutch. **Forza Data Out** from the recomp (F
 `FM3_DATA_OUT=1` or the launcher's "Telemetry out (SimHub)": FM7 Dash packets for SimHub / motion rigs, checked on an
 AI race). User's list item "glass shininess" (LIVE.md "Next for stage A", all measured against the game): lamp lenses
 on the game's glass formula with mirror reflectors / bulbs / black glass behind them (`fm3_reflector.gdshader`; Sebring
-RSX tails 67.5 / 56.5 -> 40.4 / 29.9), the player's windows reflect at 0.5 (CR-X rear window 16.6 -> 10.9), library
-cabins at 0.5 (the RSX's rear-window band). Paint sharpness: a 256 px / 4x MSAA live cube (the game's size) changed
-nothing measurable; the roof reflects half as bright as the game's: open. Slip ratio / angle not found yet.
+RSX tails 67.5 / 56.5 -> 40.4 / 29.9), the player's windows at full reflection and library cabins at 0.5 (the user:
+the band under the rear window is hidden in the game by the glass's reflection; RSX rear window 14 -> 6.6, CR-X
+16.6 -> 11.0, the RSX's roof / sunroof 58.8 -> 35.2). Paint sharpness: a 256 px / 4x MSAA live cube (the game's size)
+changed nothing measurable; the roof paint is still dimmer than the game's: open. Slip ratio / angle not found yet.
+FM3E v8 streams the car-frame acceleration; the rebuilt cameras' G layers use it (hood camera as good as with the
+positions' G, gain 0.6 confirmed: the game's camera answers lateral G at 0.6).
 
 **Night of 2026-11-24/25: the other tracks** (LIVE.md "Other tracks"). All 15 Free Play tracks
 build and run live (`tools\live\live_track.ps1`); the car library has all 500 cars incl. Disc 2; track shaders are read
