@@ -106,6 +106,12 @@ def recipe(shader, params, stride, slots):
         return {'mode': 'opac2', 'src0': 16, 'src1': 24, 'mask': None, 'lm': 20, 'vclr': False,
                 'scale0': list(params[0][:2]), 'scale1': list(params[1][:2]), 'tint0': [1.0, 1.0, 1.0],
                 'tint1': [1.0, 1.0, 1.0], 'slots': slots[:2]}
+    if shader == 'rdline_blnd_diff_spec_opac_3' and len(slots) >= 3 and min(slots[:3]) >= 0 and len(params) >= 3 and stride >= 24:
+        # NewYork's road lines (disassembled): as rdline_blnd_spec_opac_3, but the opacity is a third texture's alpha
+        # (Opacity_Map, slot 2 = material slot 3 here, at UV 16 * P[2].xy); drawn opaque they were bright white bars
+        return {'mode': 'rdline3', 'src0': 16, 'src1': 20, 'mask': None, 'lm': 20, 'vclr': False,
+                'scale0': list(params[1][:2]), 'scale1': [1.0, 1.0], 'scale2': list(params[2][:2]),
+                'tint0': list(params[0][:3]), 'tint1': [params[1][2]] * 3, 'slots': slots[:3]}
     if shader in ('rdline_blnd_diff_opac_2', 'rdline_blnd_spec_opac_3') and len(slots) >= 2 and min(slots[:2]) >= 0 and len(params) >= 3 and stride >= 24:
         # road lines (both disassembled, the same code): lerp(P[0].rgb, t0, t1) * P[1].z, t0 at UV 16 * P[1].xy (opacity
         # t0.a), t1 (material slot 1, the road alpha) at UV 20 * P[2].xy, the lightmap at 20. (rdline_blnd_spec_opac_3 was

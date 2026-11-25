@@ -1123,6 +1123,10 @@ def main():
             if shader_.startswith('tree_') and me['stride'] == 24:
                 # tree card shaders read UV0 at byte 12 (where other layouts keep the normal): 12 of 13 captured draws
                 me = dict(me, uv0=fm3_track.uv_pair(me, 12))
+            if shader_.startswith('anim_diff_scroll') and me['stride'] == 20:
+                # scrolling signs (anim_diff_scrollu_glow_1: NewYork's LED ticker, a 512 x 32 text strip): the texture's UV
+                # at byte 12 (0..1), byte 16 the lightmap's (as UV0 the text was a smear); the scroll by time is left out
+                me = dict(me, uv0=fm3_track.uv_pair(me, 12), uv1=fm3_track.uv_pair(me, 16))
             if shader_.startswith('bush_') and me['stride'] == 20:
                 # tree walls (bush_diff_opac_2_2sd, Suzuka's Treewall): as the grass cards, the texture's UV at byte 12
                 # (0.06..1 across, repeating along the wall), byte 16 the 0..1 lightmap over the whole 300-600 m wall
@@ -1173,7 +1177,7 @@ def main():
                     mm_p = mesh_mat.get(me['index_offset'])
                     terms = fm3_trackshader.simple_terms(shader_files.get(sh, '')) if shader_files.get(sh) else {}
                     pr_ = mm_p[1].get('params') if mm_p else None
-                    if pr_ and not sh.startswith('rdline_'):
+                    if pr_ and not sh.startswith(('rdline_', 'anim_')):  # (anim_*: c120 x c0 is a scroll by time, not a scale: NewYork's LED ticker came out smeared)
                         # The base texture's terms from the shader's own code (tools/fm3_trackshader.py): UV0 x P[k].xy (the
                         # TextureMap uvOS scale; diff_spec_ovly_2's canopy burlap 15 x 15: unscaled, big grey blotches) and
                         # the colour x P[k].c (diff_spec_1 & co: P[0].z, e.g. 0.8-0.9)

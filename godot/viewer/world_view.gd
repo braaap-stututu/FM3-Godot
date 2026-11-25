@@ -730,7 +730,7 @@ func _load_tex(gltf_path: String, rel: String) -> Texture2D:
 
 func _blend_material(m: BaseMaterial3D, f: Dictionary, gltf_path: String) -> ShaderMaterial:
 	var sm := ShaderMaterial.new()
-	sm.shader = GLASS_SHADER if String(f["mode"]) == "refl" else (BLEND_ALPHA_SHADER if String(f["mode"]) in ["opac2", "rdline2"] else BLEND_SHADER)
+	sm.shader = GLASS_SHADER if String(f["mode"]) == "refl" else (BLEND_ALPHA_SHADER if String(f["mode"]) in ["opac2", "rdline2", "rdline3"] else BLEND_SHADER)
 	var tex: Array = f["tex"]
 	if String(f["mode"]) == "refl":
 		var cube := _env_cube(gltf_path, String(tex[0]).get_base_dir())
@@ -753,7 +753,7 @@ func _blend_material(m: BaseMaterial3D, f: Dictionary, gltf_path: String) -> Sha
 	if tex.size() > 3:
 		sm.set_shader_parameter("tex3", _load_tex(gltf_path, tex[3]))
 	var mode_name := String(f["mode"])
-	sm.set_shader_parameter("mode", {"blend": 1, "road": 2, "paint": 3, "edge": 4, "mix": 5, "curb": 6, "refl": 7, "ovly": 8, "blend3": 9, "road3": 10, "road2u": 11, "road2": 12, "opac2": 13, "rdline2": 14, "palette": 15, "dualmix": 16}.get(mode_name, 1))
+	sm.set_shader_parameter("mode", {"blend": 1, "road": 2, "paint": 3, "edge": 4, "mix": 5, "curb": 6, "refl": 7, "ovly": 8, "blend3": 9, "road3": 10, "road2u": 11, "road2": 12, "opac2": 13, "rdline2": 14, "palette": 15, "dualmix": 16, "rdline3": 17}.get(mode_name, 1))
 	if f.has("scale2"):
 		sm.set_shader_parameter("scale2", Vector2(f["scale2"][0], f["scale2"][1]))
 	sm.set_shader_parameter("vclr", bool(f.get("vclr", false)))
