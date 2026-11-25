@@ -157,6 +157,10 @@ def parse(data):
     if emitters > 64:
         raise CarbinError(f'{emitters} emitters at {r.o - 4:#x}')
     r.skip(140 * emitters)
+    # the vertices' baked SH transfer (4 x s16 at byte 20) is stored compressed: value = lo + (s + 1) / 2 x range, with
+    # (lo, range) at 0x19C of this block (the paint vertex shader's shCompressionFactors c126; 2026-11-25: on every car
+    # checked, e.g. the CR-X -0.3378 / 0.6887)
+    sh_factors = struct.unpack_from('>2f', data, r.o + 0x19C)
     r.skip(0x1AC)
     n = r.u32()
     if n > 16:
@@ -171,7 +175,22 @@ def parse(data):
     if r.o != len(data):
         raise CarbinError(f'{len(data) - r.o} bytes left after the trailer')
     return {'type': kind, 'brake': w4 == 0xD, 'emitters': emitters, 'see_through': lists[:n], 'opaque': lists[n:],
-            'parts': parts, 'trailer': trailer}
+            'parts': parts, 'trailer': trailer, 'sh_factors': sh_factors}
+
+
+# The game's reflection dimming per vertex (2026-11-25, paint vertex shader a102319a5aef757b, ps e41e183a423e6f1b):
+# d = dp4(transfer SH, shCubeMapDampnerLight), the latter the SH projection of a two-value hemisphere, TrackSettings
+# SHEnvMapTop / SHEnvMapBottom: dc = 5.3174 x (top + bottom) / 2, linear = -1.535 x (top - bottom) (fitted exactly on
+# MapleValley's capture, where the same constants give vc38-40 from SHTop 0.35). So d = top x a + bottom x b.
+SH_DC, SH_LIN = 5.3174, -1.535
+
+
+def env_sh(raw40, factors):
+    """(n, 2) per-vertex (a, b) of the stride-40 vertices: the reflection's sky weight d = top x a + bottom x b."""
+    n = len(raw40)
+    lo, rng = factors
+    t = lo + (raw40[:, 20:28].copy().view('>i2').astype(np.float64).reshape(n, 4) / 32767.0 + 1.0) * 0.5 * rng
+    return np.stack([t[:, 0] * SH_DC / 2 + t[:, 1] * SH_LIN, t[:, 0] * SH_DC / 2 - t[:, 1] * SH_LIN], axis=1)
 
 
 def vertices(part, lod0=False):
@@ -190,6 +209,7 @@ def vertices(part, lod0=False):
         # baked lighting, 8 bytes at 20 (EVO: FM4's SH0). Byte 20 behaves as a brightness (2026-11-23: CR-X cockpit
         # cabin median 43, hood / A-pillars 105-107, the most open); the other 7 bytes centre on 128 (signed terms).
         out['light'] = raw[:, 20].astype(np.float64)
+        out['raw40'] = raw
         out['normal'] = unpack111110(words(16))
         out['damage'] = unpack111110(words(28))
         out['bitangent'] = unpack111110(words(36))
@@ -214,7 +234,8 @@ def sections(car, lod):
         if not subs or v is None:
             continue
         out.append({'name': p['name'], 'offset': p['origin'], 'local': v['xyzw'][:, :3] * v['xyzw'][:, 3:4],
-                    'uv0': v['uv0'], 'normal': v.get('normal'), 'light': v.get('light'), 'subs': subs})
+                    'uv0': v['uv0'], 'normal': v.get('normal'), 'light': v.get('light'), 'subs': subs,
+                    'env_sh': env_sh(v['raw40'], car['sh_factors']) if 'raw40' in v else None})
     return out
 
 

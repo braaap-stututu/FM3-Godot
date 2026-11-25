@@ -226,6 +226,34 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
   front), the road sun specular on by default (MapleValley 36.1 -> 25.8). Still open: the road_blnd_2 x0.85's cause,
   the glare's texture (smoother than the game's), the player car's roof darker than the game's (its live cube
   reflection: Motegi 47 vs 104), `VW_BoraVR6_03` in no unpacked archive (a DLC pack?).
+- **Car paint reflection (2026-11-25, the car shaders disassembled):** `Media/Shaders/Cars/shaders_v11.fxobj` holds
+  every car shader (144 containers: 99 pixel, 45 vertex; `tools/fm3_trackshader.py` reads them): paint = container
+  47 (ps e41e183a423e6f1b), window glass = 60 (b117fbafcc1fa980). ReGPU's HLSL translations
+  (`FM3-ReGPU recomp/out/rga/ps_*.hlsl`) are the readable form. The paint's reflection, exactly:
+  `saturate(F x reflectionScaler x (1 - FresnelKill x lum(paint))) x env x CubeScale x 0.368 d x (1 - dampener x (1 -
+  track lightmap))`, F = clamp(FresnelScale x (1 - n.v)^FresnelPower, FresnelMin, FresnelMax) = (1, 1.5, 0.15, 1);
+  CubeScale 1.5, FresnelKill 0.2, dampener 0.3 (live cube, player) / 0.5 (static cube); added to the lit paint
+  unshadowed. d is per vertex: the vertex shader's `dp4(transfer SH, shCubeMapDampnerLight)`, where the transfer SH
+  is the car vertex's 4 x s16 at byte 20 (stride 40), stored as lo + (s/32767 + 1)/2 x range with (lo, range) at
+  0x19C of the carbin header's 0x1AC block (CR-X -0.3378 / 0.6887), and shCubeMapDampnerLight is the SH of a
+  hemisphere of TrackSettings SHEnvMapTop / SHEnvMapBottom (1 / 0.15 on every track): dc 5.3174 x (top + bottom)/2,
+  linear -1.535 x (top - bottom) (fits vc37-40 exactly). 0.368 = 0.2125 x sqrt(3), as the shader computes it. On the
+  CR-X body d is ~1.2 facing up, ~0.8 sideways, ~0.35 facing down: the older fit's up^3 weighting (8:1 roof to
+  flanks, offset by a 2.25x gain and Fresnel power 4 with no floor) was far steeper than the game's 1.4:1.
+  Built: `fm3_carbin.env_sh` (per vertex (a, b), d = top a + bottom b; checked against the vertex shader run in
+  fir_vs: max error 0.0008), the library writes it as TEXCOORD_1, `fm3_carpaint.gdshader` game_refl (on;
+  `FM3_OLD_PAINT_REFL=1` = the older term; `FM3_PAINT_ENV=<static gain>,<live scale>` for fitting). Glass (container 60) needs no change: lerp(glass, env x CubeScale x
+  lightmap dampener, clamp(c191 (1 - n.v)^c216, c189, c190)), the form fm3_carglass already has.
+  **Two viewer bugs found on the way (the real cause of the player's dark roof):** (1) the live cube was made only
+  when the scene glTF had cars, so on every capture-free track (all but CrownJewel) the player reflected the static
+  cube; (2) its six face textures went only to the car materials existing at that moment, so library cars (attached
+  later) had unbound samplers: a flat env of 1, a grey haze over the player's car. Both fixed in world_view.gd
+  (`_live_cube_texs`, has_live set at registration). **Motegi, same game view (RSX, black; boxes game / before /
+  after):** roof 100 / 51 / 62, deck lid 43 / 33 / 54, tail panel 8 / 9 / 17, bumper 6 / 5 / 14, flank 47 / 26 / 35;
+  frame 23.4 -> 22.7. CrownJewel grid: 21.1 / 20.1 / 19.5 against 21.3 / 20.2 / 19.7 with the older term (same boot
+  conditions). Left: our live cube's sky is dimmer and its road brighter than the game's cube (roof too dark, lower
+  body too light, at the game's own formula): next, dump the game's t6 faces (capture `res`) and compare them with
+  ours.
 - **Open:** bloom (bright pass: exposed scene + 0.42 x last frame's bloom - 1/255 - bloomCutoff, x bloomScale, on
   the HDR scene: needs values above 1, our picture is clipped at 1), the road specular's overshoot (re-check with the
   exposure), one opponent per race without an FM3N name (Silverstone's B.Giese: not the colour-file case); the palette barriers (`diff_clr_spec_2`: a per-model

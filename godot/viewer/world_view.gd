@@ -555,8 +555,10 @@ func _init() -> void:
 	print("world_view: %d mesh instances, camera fov %.2f near %.3f" % [meshes, cam.fov, cam.near])
 	if args.has("--library-swap"):
 		_library_swap_test(args[args.find("--library-swap") + 1])
-	if lit and _live_cube_size > 0 and not _car_mats.is_empty():
+	if lit and _live_cube_size > 0 and (not _car_mats.is_empty() or _live_port > 0):
 		# at the player car: the car meshes' centre nearest the camera, 0.8 m up (live: it follows that car)
+		# (2026-11-25: also live without cars in the scene, the capture-free tracks whose cars all come from the
+		# library: there the player had reflected the static cube, its roof Motegi 35 against the game's 100)
 		var co: Vector3 = cam.global_transform.origin if cam.is_inside_tree() else cam.transform.origin
 		var best := co
 		var best_d := INF
@@ -622,6 +624,10 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 	_car_mats.append(sm)
 	sm.set_shader_parameter("albedo_color", _vec4(m.albedo_color))
 	sm.set_shader_parameter("metallic", m.metallic)
+	# (the live cube's faces: materials made after the cube, the library cars, had none bound, and the player's
+	# paint read the samplers' default, a flat env of 1: a grey haze over the whole car; 2026-11-25)
+	for k_ in _live_cube_texs.size():
+		sm.set_shader_parameter("live%d" % k_, _live_cube_texs[k_])
 	if m.albedo_texture != null:
 		sm.set_shader_parameter("albedo_tex", m.albedo_texture)
 	var cube := _env_cube(gltf_path, gltf_path.get_file().get_basename() + "_tex")
@@ -633,6 +639,16 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 		var f := v.split_floats(",")
 		for k in mini(f.size(), names.size()):
 			sm.set_shader_parameter(names[k], f[k])
+	if shader == CARPAINT_SHADER:
+		# the game's paint reflection (fm3_carpaint.gdshader game_refl; LIVE.md "Car paint reflection"):
+		# FM3_OLD_PAINT_REFL=1 = the older fitted term (A/B); FM3_PAINT_ENV=<static cube gain>,<live cube scale>
+		if OS.get_environment("FM3_OLD_PAINT_REFL") != "":
+			sm.set_shader_parameter("game_refl", false)
+		var pe := OS.get_environment("FM3_PAINT_ENV").split_floats(",")
+		if pe.size() >= 1 and OS.get_environment("FM3_PAINT_ENV") != "":
+			sm.set_shader_parameter("game_env_gain", pe[0])
+		if pe.size() >= 2:
+			sm.set_shader_parameter("game_live_scale", pe[1])
 	for extra in [["_AMB", "ambient"], ["_GROUND", "ambient_ground"], ["_SUN", "sun"]]:
 		var e := OS.get_environment(env + extra[0])
 		if e != "":
@@ -668,6 +684,7 @@ var _live_cube_faces := 6
 var _live_cube_next := 0
 var _live_cube_vps := []
 var _live_cube_cams := []
+var _live_cube_texs := []  # (the six faces, for car materials made after the cube: the library cars)
 var _car_mats := []
 
 
@@ -690,6 +707,7 @@ func _make_live_cube(at: Vector3) -> void:
 		root.add_child(vp)
 		_live_cube_cams.append(c)
 		texs.append(vp.get_texture())
+	_live_cube_texs = texs
 	_place_live_cube(at)
 	_live_player = -2  # (has_live: the player's car only, set in _show_drawn)
 	for sm in _car_mats:
@@ -1043,6 +1061,10 @@ func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle
 			if not _car_shader_mats.has(car):
 				_car_shader_mats[car] = []
 			_car_shader_mats[car].append(sm2_)
+			# (a car attached after the player was chosen, e.g. its library model arriving a moment later: the
+			# player switch in _update_live_cars had already run, so its paint reflected the static cube; 2026-11-25)
+			if not _live_cube_cams.is_empty():
+				(sm2_ as ShaderMaterial).set_shader_parameter("has_live", car == _live_player)
 	var nm_ := String(m.name)
 	var kind_ := "brake" if nm_.contains("tail_light") or nm_.contains("brake_light") else ("reverse" if nm_.contains("reverse_light") else "")
 	if nm_.contains("detail_glass_red") or nm_.contains("red_glass"):

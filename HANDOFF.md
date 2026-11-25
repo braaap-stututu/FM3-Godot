@@ -25,7 +25,15 @@ cars match the captured ones (mirrored nodes + Color-to-vec4 linearisation, PLAN
 game's sky textures and sun (TrackSettings `ShadowLightDirection`), and the live capture-free CrownJewel grid
 measured 20.4 / 20.1 / 18.5 against the game by the afternoon.
 
-**Night of 2026-11-24/25 (where we stopped): the other tracks** (LIVE.md "Other tracks"). All 15 Free Play tracks
+**2026-11-25 (where we stopped): exposure and the car shaders.** The game's exposure runs in the viewer
+(`fm3_exposure.gdshader`), the road shaders and windows follow the game's code, and the car shaders were disassembled
+(`Media/Shaders/Cars/shaders_v11.fxobj`; LIVE.md "Car paint reflection"). Car paint now uses the game's exact
+reflection term, with the per-vertex sky weight baked in the car vertices (`fm3_carbin.env_sh`, library TEXCOORD_1;
+the library was rebuilt). Two viewer bugs behind the player's dark roof were fixed: no live cube on capture-free
+tracks, and library cars without its textures. Motegi frame 23.4 -> 22.7; CrownJewel grid 21.1 / 20.1 / 19.5. Next:
+compare our live cube with the game's (its sky is dimmer and its road brighter than the game's).
+
+**Night of 2026-11-24/25: the other tracks** (LIVE.md "Other tracks"). All 15 Free Play tracks
 build and run live (`tools\live\live_track.ps1`); the car library has all 500 cars incl. Disc 2; track shaders are read
 from the game's own `.fxobj` files (`tools/fm3_trackshader.py`) and many recipes written from that code; re-survey
 16.8 (Catalunya) to 41.4 (LagunaSeca). Found and decoded the game's auto-exposure / tone curve / bloom (final pass:

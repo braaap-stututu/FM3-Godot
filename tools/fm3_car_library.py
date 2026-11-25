@@ -84,7 +84,7 @@ class Gltf:
             self.mat_ids[key] = len(self.materials) - 1
         return self.mat_ids[key]
 
-    def mesh(self, node_name, P, T, U, N, lit, mat, flip=False, fz=False):
+    def mesh(self, node_name, P, T, U, N, lit, mat, flip=False, fz=False, U2=None):
         if not len(T):
             return
         # Raw car space, the file's winding (counter-clockwise = outside: its normals agree with the rebuilt ones on
@@ -114,6 +114,10 @@ class Gltf:
             N = N / np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-9)
         prim['attributes']['NORMAL'] = self.acc(N.astype(np.float32), 'VEC3')
         prim['attributes']['TEXCOORD_0'] = self.acc(U.astype(np.float32), 'VEC2')
+        if U2 is not None:
+            # (the paint's reflection sky weight per vertex, fm3_carbin.env_sh: d = top x u + bottom x v,
+            # fm3_carpaint.gdshader has_env_sh)
+            prim['attributes']['TEXCOORD_1'] = self.acc(U2.astype(np.float32), 'VEC2')
         if lit is not None:
             lit = lit.astype(np.float32)
             prim['attributes']['COLOR_0'] = self.acc(np.stack([lit, lit, lit, np.ones_like(lit)], axis=1), 'VEC4')
@@ -244,7 +248,7 @@ def build(car, cdir, wdir, db, outdir):
                 continue
             tris = fm3_car.triangles(sub['indices'], sub['prim'], restart=sub.get('restart', 0xFFFF))
             if len(tris) and tris.max() < len(P):
-                g.mesh(prefix, P, tris, sec['uv0'], Nf, lit, mat, flip, fz)
+                g.mesh(prefix, P, tris, sec['uv0'], Nf, lit, mat, flip, fz, U2=sec.get('env_sh'))
 
     settings = tx.car_settings(zdir)
     carmats, needles = {}, {}

@@ -87,6 +87,28 @@ uniform float env_up_power = 3.0;
 // Matching the game's bright end fully (up^4, env 1.5, pow 2: Mazda p90 155, Eclipse 75) put highlights where the game
 // has none (20.5): the game's sun-facing flanks are brighter and its top surfaces softer than ours.
 varying vec3 paint_gamma;
+// The game's reflection term (2026-11-25, from ReGPU's translation of ps e41e183a423e6f1b and its vertex shader;
+// LIVE.md "Car paint reflection"): refl = saturate(F x (1 - FresnelKill x lum(paint))) x env x CubeScale x 0.368 d
+// x (1 - dampener x (1 - track lightmap)), F = clamp((1 - n.v)^FresnelPower, FresnelMin, FresnelMax) (1.5, 0.15, 1),
+// added unshadowed to the lit paint. d = the vertex's baked sky visibility (SH transfer . the SHEnvMap hemisphere,
+// top 1 / bottom 0.15 on every track), from the library's UV2 (fm3_carbin.env_sh): roof ~1.2, flanks ~0.8, sills ~0.35.
+// 0.368 = 0.2125 x sqrt(3) as the shader computes it. Dampener 0.3 for the live cube (player), 0.5 for the static one;
+// the sun shadow stands in for the track lightmap under the car. FM3_OLD_PAINT_REFL=1: the older fitted term.
+uniform bool game_refl = true;
+uniform float game_fresnel_pow = 1.5;
+uniform float game_fresnel_min = 0.15;
+uniform float fresnel_kill = 0.2;
+uniform float env_sh_top = 1.0;
+uniform float env_sh_bottom = 0.15;
+uniform float lm_dampen_live = 0.3;
+uniform float lm_dampen_static = 0.5;
+uniform float game_env_gain = 1.0;  // our cube against the game's (1 = the same brightness)
+uniform float game_live_scale = 1.0;  // (the live cube in this term: live_scale belongs to the older fit)
+varying vec2 env_ab;
+
+void vertex() {
+	env_ab = UV2;
+}
 
 void fragment() {
 	vec4 t = texture(albedo_tex, UV);
@@ -115,6 +137,16 @@ void light() {
 		vec3 pg = paint_gamma * mix(1.0, mix(1.0 - flop, 1.0, pow(cosv, flop_power)), metallic);
 		vec3 flake = pg * sun * pow(rl, flake_power) * sh * flake_gain * metallic;
 		vec3 add = flake + env * fres * mix(env_bottom, env_top, pow(up, env_up_power)) * mix(refl_gain, refl_metal, metallic) * mix(1.0, sh, 0.3) + sun * spec * spec_gain;
+		if (game_refl) {
+			// (no UV2 = a mesh without the baked weight: the CR-X body's median d by facing, 0.82 + 0.40 n.y)
+			float d = (env_ab.x == 0.0 && env_ab.y == 0.0) ? 0.82 + 0.40 * (up * 2.0 - 1.0) : env_sh_top * env_ab.x + env_sh_bottom * env_ab.y;
+			float fg = clamp(pow(max(1.0 - cosv, 0.0), game_fresnel_pow), game_fresnel_min, 1.0);
+			fg = clamp(fg * (1.0 - fresnel_kill * dot(paint_gamma, vec3(0.2125, 0.7154, 0.0721))), 0.0, 1.0);
+			float damp = has_live ? lm_dampen_live : lm_dampen_static;
+			vec3 envg = has_live ? live_cube(r) * game_live_scale : env;
+			vec3 refl = envg * fg * cube_scale * 0.368 * max(d, 0.0) * (1.0 - damp * (1.0 - sh)) * game_env_gain * mix(refl_gain, refl_metal, metallic);
+			add = flake + refl + sun * spec * spec_gain;
+		}
 		if (gamma_sum) {
 			DIFFUSE_LIGHT += to_linear(pg * diff + add);
 		} else {
