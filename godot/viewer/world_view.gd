@@ -991,6 +991,52 @@ func needle_param(ticks: Array, value: float) -> float:
 
 # Brake and reverse lights per car (see _car_accel): the player's brake from its input, the others' from deceleration,
 # held 0.25 s so they do not flicker; reverse while moving backwards.
+# The player's engine sound (2026-11-25, fm3_engine_audio.gd): the game's own loops and tuning for the car FM3N names,
+# from out/audio/<car>/engine.json (tools/fm3_engine_audio.py <car>), driven by the stream's rpm ("FM3E"). Throttle is
+# not in the stream yet: estimated from how fast the rpm rises. FM3_NO_ENGINE_AUDIO=1: off.
+var _engine_audio: Node3D = null
+var _engine_audio_car := ""
+var _engine_rpm_prev := -1.0
+var _engine_throttle := 0.0
+
+
+func _update_engine_audio(player, moves: Dictionary) -> void:
+	if OS.get_environment("FM3_NO_ENGINE_AUDIO") != "" or player == null or int(player) < 0 or not _car_names.has(player):
+		return
+	var nm := String(_car_names[player]["name"])
+	if nm != _engine_audio_car:
+		_engine_audio_car = nm
+		if _engine_audio != null:
+			_engine_audio.queue_free()
+			_engine_audio = null
+		var dir := ProjectSettings.globalize_path("res://").path_join("../out/audio")
+		var path := ""
+		var d := DirAccess.open(dir)
+		if d != null:
+			for f in d.get_directories():
+				if f.to_lower() == nm.to_lower():
+					path = dir.path_join(f).path_join("engine.json")
+		var e := load("res://viewer/fm3_engine_audio.gd").new() as Node3D
+		root.add_child(e)
+		if path != "" and e.call("load_recipe", path):
+			_engine_audio = e
+			print("world_view: engine sound for %s (%s)" % [nm, path])
+		else:
+			e.queue_free()
+			print("world_view: no engine sound for %s (tools/fm3_engine_audio.py %s)" % [nm, nm])
+	if _engine_audio == null or not moves.has(player):
+		return
+	_engine_audio.global_transform = moves[player] as Transform3D
+	if _engine_rpm > 0.0:
+		var dt := maxf(get_process_delta_time(), 1e-3)
+		var rise := 0.0 if _engine_rpm_prev < 0.0 else (_engine_rpm - _engine_rpm_prev) / dt
+		_engine_rpm_prev = _engine_rpm
+		var want := clampf(rise / 2500.0 + 0.3, 0.0, 1.0) * (1.0 - maxf(_player_brake, 0.0))
+		_engine_throttle = lerpf(_engine_throttle, want, 1.0 - exp(-dt * 6.0))
+		_engine_audio.set("rpm", _engine_rpm)
+		_engine_audio.set("throttle", _engine_throttle)
+
+
 func _update_lights(player) -> void:
 	var dt := 1.0 / 60.0
 	for car in _light_mats:
@@ -1994,6 +2040,7 @@ func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, 
 		_was_in_car = in_car
 		_world_env.environment.tonemap_exposure = _base_exposure * (IN_CAR_EXPOSURE if in_car else 1.0)
 	_update_lights(player)
+	_update_engine_audio(player, moves)
 	if player != _live_player and not _live_cube_cams.is_empty():
 		_live_player = player
 		for c_ in _car_shader_mats:
