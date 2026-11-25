@@ -54,7 +54,16 @@ uniform float static_cube_gain = 1.0;
 // at 0.5: Sebring RSX rear window 10.4 -> 6.6, the band under it 7.9 -> 7.4, roof 51.0 -> 35.2, the car 18.5 -> 17.6;
 // CrownJewel CR-X rear window 11.6 -> 11.0, frame 18.9 / 18.5 / 17.8 -> 18.7 / 18.1 / 17.1. (1.0 with the cabin at 1.0:
 // RSX window 15.1, the seats show through.)
+// The player's glass takes the track's cube gain too (x2 off CrownJewel), as every other glass: RoadAtlanta RSX rear
+// window 20.6 -> 9.3, the car 15.5 -> 13.6, whole frame 23.0 -> 21.4 (2026-11-25, 23:00).
 uniform float player_env = 1.0;
+// The player's windows on the live cube, as the game's (2026-11-25, 23:20; FM3_LIVE_GLASS=0: the static cube x
+// player_env x the track's gain above, which fitted RoadAtlanta at 2 and Sebring at 1: the static cubes differ per
+// track) x live_glass_scale (FM3_LIVE_GLASS_SCALE; 0.5 worse everywhere). Rear windows against the game: Sebring RSX
+// 5.4 (14 / 21 / 27, game 12 / 20 / 26), RoadAtlanta RSX 3.5 (29 / 31 / 28, game 30 / 29 / 25), CrownJewel CR-X
+// 11.0 -> 5.7; the RSX's roof (sunroof) 17.6.
+uniform bool live_glass = true;
+uniform float live_glass_scale = 1.0;
 uniform bool player_glass = false;
 // A lamp lens drawn with this formula (world_view.gd FM3_LENS=game, 2026-11-25): it faces outwards, so the player's
 // own lenses reflect the surroundings like any car's (no player_env dimming).
@@ -93,7 +102,11 @@ vec3 to_linear(vec3 c) {
 
 void fragment() {
 	vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
-	vec3 env = (has_env ? texture(env_cube, r * env_flip).rgb : env_fallback) * cube_scale * ((has_live || player_glass) && !lens ? player_env : env_scale * (has_env ? static_cube_gain : 1.0));
+	vec3 env = (has_env ? texture(env_cube, r * env_flip).rgb : env_fallback) * cube_scale * ((has_live || player_glass) && !lens ? player_env : env_scale) * (has_env ? static_cube_gain : 1.0);
+	if (has_live && live_glass && !lens) {
+		// the player's windows reflect the per-frame cube rendered at the car, as the game's do (its t6)
+		env = live_cube(r) * cube_scale * live_glass_scale;
+	}
 	float cosv = clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0);
 	float f = clamp(fresnel_scale * pow(1.0 - cosv, fresnel_power), fresnel_min, fresnel_max) * reflection_scaler;
 	float a = min(f + glass_color.a + opacity, max_opacity);

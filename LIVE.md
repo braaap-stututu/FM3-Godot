@@ -581,6 +581,13 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   window 11.6 -> 11.0, whole frame 18.9 / 18.5 / 17.8 -> 18.7 / 18.1 / 17.1. Both are needed: 1.0 with the cabin at 1.0
   gives the RSX window 15.1 (the seats show through). So the player's glass is no longer dimmed (the 0.1 of 2026-11-24
   was fitted before the exposure pass).
+- **The player's windows reflect the live cube** (23:20, the final step): a scale on the static cube fitted each track
+  differently (RoadAtlanta wanted 2, Sebring 1: the static cubes differ), the game reflects its per-frame cube. With the
+  live cube at 1 (`FM3_LIVE_GLASS=0` = static, `FM3_LIVE_GLASS_SCALE`): rear windows Sebring RSX 5.4 (14 / 21 / 27,
+  game 12 / 20 / 26), RoadAtlanta RSX 20.6 -> 3.5 (29 / 31 / 28, game 30 / 29 / 25), CrownJewel CR-X 11.0 -> 5.7; the
+  RSX's roof (sunroof) 17.6 (was 51 at the start of the evening). **Measuring note:** whole-frame diffs between
+  viewer variants carry the viewer's auto-exposure state (it adapts over time; a Sebring pair differed by 1.2 over half
+  of all pixels where only the player's glass changed): judge such changes by regions.
 - **The dark band round the RSX's rear window** (found by hiding library parts, `FM3_HIDE_PARTS=<name part>,...`): the
   black trim inside the window framed a cabin that was too bright (grey seats; the game's window reads as one dark
   tint). Library cabins now at `CABIN_K` 0.5 (was 1.0; `FM3_CABIN_K`): Sebring RSX rear window 14 -> 10.5, CrownJewel
