@@ -72,12 +72,16 @@ def recipe(shader, params, stride, slots):
                 'tint0': tint0, 'tint1': tint1, 'slots': slots[:3]}
     pairs = list(range(16, stride - 3, 4))
     if REFL.match(shader) and slots and slots[0] >= 0 and params and pairs:
-        # windows and glazing (diff_spec_refl_norm_4 / diff_spec_refl_3; captured ps f4e339d2): base t0 at UV0 * P[0].yz,
-        # lightmap as usual, plus an environment cube reflection scaled by t0.a * P[0].x
+        # windows and glazing (diff_spec_refl_norm_4 / diff_spec_refl_3; captured ps f4e339d2): the SPEC mask t0 (slot 0)
+        # at UV0 * P[0].yz, its alpha x P[0].x the environment cube's reflection; the colour is the Diffuse texture,
+        # material slot 2 at UV0 * P[1].xy (the shaders' constant tables, every track; until 2026-11-25 the SPEC mask was
+        # drawn as the colour: MapleValley's glass office front a dark wall)
+        diff = slots[2] if len(slots) > 2 and slots[2] >= 0 else slots[0]
         return {'mode': 'refl', 'src0': pairs[0], 'src1': pairs[0], 'mask': None, 'lm': None, 'vclr': False,
-                'scale0': list(params[0][1:3]), 'scale1': [1.0, 1.0], 'tint0': [params[0][0]] * 3,
+                'scale0': list(params[0][1:3]), 'scale1': list(params[1][:2]) if len(params) > 1 else [1.0, 1.0],
+                'tint0': [params[0][0]] * 3,
                 'tint1': list(params[2][:3]) if len(params) > 2 else [1.0, 1.0, 1.0],  # reflection tint (teal glass)
-                'slots': [slots[0], slots[0]]}
+                'slots': [slots[0], diff], 'has_diffuse': diff != slots[0]}
     if shader in ('shldr_blnd_3', 'terr_blnd_3', 'terr_blnduv2_spec_3') and len(slots) >= 3 and min(slots[:3]) >= 0             and len(params) >= 3 and stride >= 28:
         # Disassembled (tools/fm3_trackshader.py): albedo = lerp(A, B, value) with per-shader parameters; UV pairs: A 16,
         # B 20 (terr_blnduv2: 16), value 24 (terr_blnduv2: 20), lightmap 24

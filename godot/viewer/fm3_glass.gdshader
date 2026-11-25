@@ -7,6 +7,9 @@ render_mode cull_disabled, ambient_light_disabled, specular_disabled, diffuse_la
 
 uniform sampler2D albedo_tex : filter_linear_mipmap_anisotropic, repeat_enable, hint_default_white;
 uniform sampler2D light_tex : filter_linear_mipmap, repeat_enable, hint_default_white;
+uniform sampler2D tex1 : filter_linear_mipmap_anisotropic, repeat_enable, hint_default_white;  // the Diffuse texture (slot 2)
+uniform bool has_diffuse = false;
+uniform vec2 scale1 = vec2(1.0);
 uniform samplerCube env_cube : filter_linear_mipmap;
 uniform bool has_env = false;
 uniform float base_keep = 0.0;  // where reflective: how much of the lit base remains
@@ -44,9 +47,11 @@ void fragment() {
 	float cosv = clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0);
 	float schlick = refl_f0 + (1.0 - refl_f0) * pow(1.0 - cosv, 5.0);
 	vec3 glass = body_level * mix(vec3(1.0), tint1, 0.4) + env * tint1 * schlick * env_gain;
-	ALBEDO = to_linear(mix(t.rgb * light, glass, k));
+	// (the colour: the Diffuse texture; albedo_tex is the SPEC mask, whose alpha k is; old scenes: the mask's rgb)
+	vec3 base = has_diffuse ? texture(tex1, UV * scale1).rgb : t.rgb;
+	ALBEDO = to_linear(mix(base * light, glass, k));
 	if (debug_env_only) { ALBEDO = to_linear(env); }
-	if (debug_part == 1) { ALBEDO = to_linear(t.rgb * light); }
+	if (debug_part == 1) { ALBEDO = to_linear(base * light); }
 	if (debug_part == 2) { ALBEDO = to_linear(env * tint1); }
 	if (debug_part == 3) { ALBEDO = to_linear(vec3(k)); }
 }

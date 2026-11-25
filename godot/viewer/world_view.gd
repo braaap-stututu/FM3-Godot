@@ -733,6 +733,7 @@ func _blend_material(m: BaseMaterial3D, f: Dictionary, gltf_path: String) -> Sha
 	sm.shader = GLASS_SHADER if String(f["mode"]) == "refl" else (BLEND_ALPHA_SHADER if String(f["mode"]) in ["opac2", "rdline2", "rdline3"] else BLEND_SHADER)
 	var tex: Array = f["tex"]
 	if String(f["mode"]) == "refl":
+		sm.set_shader_parameter("has_diffuse", bool(f.get("has_diffuse", false)))
 		var cube := _env_cube(gltf_path, String(tex[0]).get_base_dir())
 		sm.set_shader_parameter("has_env", cube != null)
 		if cube != null:
@@ -1631,10 +1632,21 @@ func _attach_cars() -> void:
 				if wk >= 0:
 					per_wheel[car] = per_wheel.get(car, 0) + 1
 				break
+	# A captured car has dozens of meshes; a few matched ones are scene meshes near a grid slot (Motegi: 1 mesh on the
+	# Charger, which then never got its library model): those stay static and the car is left to the car library.
+	for car in per_car.keys():
+		if int(per_car[car]) < 10:
+			_car_parts = _car_parts.filter(func(p): return p[1] != car)
+			_cars_with_parts.erase(car)
+			print("world_view: live car %08X: %d stray scene meshes left in place (the car library's model instead)" % [car, per_car[car]])
+			per_car[car] = 0
+			per_wheel[car] = 0
 	for car in _cars:
 		var o := car_transform(_cars[car], _live_axes).origin
 		print("world_view: live car %08X at (%.2f, %.2f, %.2f): %d meshes attached (%d on its wheels)" % [car, o.x, o.y, o.z,
 			per_car.get(car, 0), per_wheel.get(car, 0)])
+		if per_car.get(car, 0) == 0 and _car_names.has(car) and not _library_tried.has(car) and not _library_queue.has(car):
+			_library_queue.append(car)  # (its name came before this first attach)
 	if per_car.size() < _cars.size():
 		print("world_view: (a car with no meshes: the game was not at the glTF's grid when the viewer started, or its model is missing)")
 
