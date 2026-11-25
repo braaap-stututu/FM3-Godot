@@ -636,6 +636,16 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   (0.1 kept the dashes).
 - The CrownJewel grid's largest differences otherwise: the game's lap counter overlay (top right, not ours to fix) and
   the white kerb stripes on the right, brighter and crisper in ours (141-163 against 115-136): the road-lines item.
+- **Track stripes too clean and bright** (the user, 2026-11-26: they lack the worn, driven-over look of the game's
+  and its rough asphalt showing through). Cause in the code: the main road-line shader `rdline_blnd_spec_opac_3` is
+  baked by `tools/fm3_track_export.py` (~line 1209) as the line texture alone, alpha = its mask, dimmed by a fitted
+  0.6. The game's code (captured ps 94e08de1, PLAN-CARS "Road lines") is `lerp(c0 asphalt grey 0.157, t0 line,
+  t1 wear mask)`, t1 = material slot 1 (tyre marks / dirt, mostly white; on CrownJewel's start boxes id 632) at the
+  lightmap's UV x P2.xy: the mask is what lets the asphalt through where cars drive. Next: export these meshes as a
+  family record like `rdline_blnd_diff_spec_opac_3` (fm3_blend.gdshaderinc mode 17: `mix(tint0, t0, t1) * tint1.x`
+  with tex1 at uv23 x scale1), tint0 = the material's P0, scale1 = P2.xy, opacity from the mask; drop the fitted 0.6;
+  rebuild CrownJewel / Sebring and compare the stripes (CrownJewel grid's right-side kerb stripes: ours 141-163,
+  game 115-136).
 - Still open: the RSX's lenses are less pink than the game's (G 37 vs 65); a thin strip at the roof's rear edge is
   dark in ours (46) where the game's is bright (139); the top rows of the rear window are brighter in ours (54-60
   against 14-24).
