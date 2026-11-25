@@ -184,6 +184,18 @@ def main():
                                    'rpm_sample': float(lp.get('rpm_sample')), 'rpm_max': float(lp.get('rpm_max')),
                                    'volume': float(lp.get('volume', 1)), 'samples': samples, 'rate': rate})
             recipe['layers'].append(L)
+    # the engine's torque curves (fm3_car_physics.py; the full-throttle one matches the game's telemetry page): the FMOD
+    # curves' PosTorque / NegTorque inputs, as the torque at this rpm over the curve's peak
+    try:
+        sys.path.insert(0, HERE)
+        import fm3_car_physics
+        db = os.path.join(a.game, 'Media', 'DB', 'gamedb.slt')
+        ph = fm3_car_physics.car_physics(sqlite3.connect(db), a.car)['engine']
+        recipe['torque'] = {'max_rpm': ph['curve_max_rpm'],
+                            'full': [v * ph['torque_full']['scale'] for v in ph['torque_full']['values']],
+                            'zero': [v * ph['torque_zero']['scale'] for v in ph['torque_zero']['values']]}
+    except Exception as e:  # (a car without a stock camshaft row, say)
+        print('no torque curves:', e)
     with open(os.path.join(out_dir, 'engine.json'), 'w', newline='\n') as f:
         json.dump(recipe, f, indent=1)
     if '--preview' in sys.argv:

@@ -56,12 +56,34 @@ static func _curve(c, x: float) -> float:
 	return lerpf(k[3], k[5], clampf((x - k[2]) / maxf(k[4] - k[2], 1e-5), 0.0, 1.0))
 
 
+func _torque_at(curve: Array, max_rpm: float, r: float) -> float:
+	var x := clampf(r / max_rpm * curve.size(), 0.0, curve.size() - 1.0)
+	var i := int(x)
+	var j := mini(i + 1, curve.size() - 1)
+	return lerpf(float(curve[i]), float(curve[j]), x - i)
+
+
 func _input_of(c) -> float:
 	var idle := float(_recipe["idle"])
 	var red := float(_recipe["redline"])
 	var rn := clampf((_rpm_smooth - idle) / maxf(red - idle, 1.0), 0.0, 1.0)
 	var w: Array = c["coeff"]
-	return clampf(w[0] * rn + w[1] * throttle + w[2] * maxf(throttle - 0.5, 0.0) * 2.0 + w[3] * neg_torque, 0.0, 1.0)
+	# the torque inputs: from the engine's own curves when the recipe has them (fm3_car_physics.py: the full-throttle
+	# torque over its peak, the engine braking over its value at the redline, each weighted by the throttle), else
+	# the throttle alone stands in
+	var pos := maxf(throttle - 0.5, 0.0) * 2.0
+	var neg := neg_torque
+	if _recipe.get("torque") is Dictionary:
+		var t: Dictionary = _recipe["torque"]
+		var mr := float(t["max_rpm"])
+		var full: Array = t["full"]
+		var zero: Array = t["zero"]
+		var peak := 1.0
+		for v in full:
+			peak = maxf(peak, float(v))
+		pos = throttle * maxf(_torque_at(full, mr, _rpm_smooth), 0.0) / peak
+		neg = (1.0 - throttle) * absf(_torque_at(zero, mr, _rpm_smooth)) / maxf(absf(_torque_at(zero, mr, red)), 1.0)
+	return clampf(w[0] * rn + w[1] * throttle + w[2] * pos + w[3] * clampf(neg, 0.0, 1.0), 0.0, 1.0)
 
 
 func _process(delta: float) -> void:

@@ -315,8 +315,11 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
     writes the loops (WAV) + `engine.json` to `out/audio/<car>/`; `--preview` renders an idle -> redline sweep.
   - **Player.** `fm3_engine_audio.gd` plays the recipe as FMOD's harmonic engine does (crossfades over the rpm
     ranges' overlaps, pitch = rpm / rpm_sample, the gain curves: PhysicsCoeff weights -> three-point curve).
-    `world_view.gd` attaches it to the player's car once FM3N names it and drives it with the stream's rpm (FM3E);
-    throttle is estimated from the rpm's rise until the stream carries it.
+    `world_view.gd` attaches it to the player's car once FM3N names it and drives it with the stream's rpm and the
+    car's own throttle (FM3E v4+). The gain curves' torque inputs (PosTorque / NegTorque) come from the engine's own
+    torque curves since the evening (`engine.json` 'torque', from `fm3_car_physics.py`: throttle x full-throttle
+    torque / its peak, (1 - throttle) x |engine braking| / its value at the redline); the normalisation is our
+    assumption (FMOD's parameter ranges not read yet).
   - **Not yet:** the DSP blocks (expander, load PEQs), burbles / backfires, intake chuff, transmission / turbo /
     tyre / wind / collision sounds (the other .fev families), and the AI cars.
   - **FM2's port** (zer0ducksgiven, MIT): `tools/xmadecode.cpp` (FSB3 XMA decoding) and `tools/mkloops.py`
