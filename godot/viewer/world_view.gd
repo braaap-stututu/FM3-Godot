@@ -1001,6 +1001,8 @@ var _engine_throttle := 0.0
 var _engine_t_prev := 0
 var _player_throttle := -1.0  # the car's throttle 0..1 ("FM3E" v4; -1 = not in the stream)
 var _player_gear := -1
+var _player_speed := -1.0  # m/s from FM3E v5 (-1 = not sent)
+var _player_wheel_speed := [0.0, 0.0, 0.0, 0.0]
 
 
 func _update_engine_audio(player, moves: Dictionary) -> void:
@@ -1880,7 +1882,17 @@ func _live_step() -> void:
 			if b.decode_u32(4) >= 4 and b.size() >= 56:
 				# v4: the car's own controls and gear from its physics object (throttle, brake, gear, clutch)
 				_player_throttle = clampf(b.decode_float(40), 0.0, 1.0)
-				_player_gear = int(b.decode_u32(48))
+				var g_ := int(b.decode_u32(48))
+				if g_ != _player_gear and OS.get_environment("FM3_ENGINE_LOG") != "":
+					print("engine: gear %d -> %d at %.0f rpm, throttle %.2f, car brake %.2f, clutch %.2f, speed %.1f m/s" % [_player_gear, g_,
+						_engine_rpm, _player_throttle, b.decode_float(44), b.decode_float(52),
+						b.decode_float(56) if b.size() >= 76 else -1.0])
+				_player_gear = g_
+			if b.decode_u32(4) >= 5 and b.size() >= 76:
+				# v5: the car's speed and its four wheels' speeds, m/s
+				_player_speed = b.decode_float(56)
+				for i in 4:
+					_player_wheel_speed[i] = b.decode_float(60 + 4 * i)
 			continue
 		if b.size() == 280 and b.slice(0, 4).get_string_from_ascii() == "FM3W" and b.decode_u32(4) == 1:
 			# A car's four wheels as drawn (spin and steering), right after that car's datagram.
@@ -2070,6 +2082,118 @@ const GAME_CAMS := {
 }
 
 
+# The game's camera layers (Media/Camera/CameraPhysics.xml, read from the game's own file so a mod of it applies): per
+# camera a list of layers, each an input (here the deterministic ones: Gs_Longitudinal, Gs_Lateral; the Simplex / Sin
+# noise shakes, slips, collisions and bumps are left out) through a three-point curve (mirrored: odd in the input)
+# times Param (x, y, z) into an offset (CarSpaceXYZOffset metres; CarSpace / CameraSpaceYPROffset degrees: x yaw,
+# y pitch, z roll), optionally through a damped spring (SpringK, SpringD). FollowCam's only such layer is a 2-5 cm lift
+# under acceleration: its roll layers are noise.
+const GC_LAYER_BLOCK := {"chase_near": "FollowCam", "chase_far": "FollowCam2", "cockpit": "DriverCam",
+	"hood": "Hood", "bumper": "BumperHigh"}
+var _gc_layers = null  # Array of layer dicts (with their spring state) for _game_cam_mode
+var _gc_vel := Vector3.ZERO  # the car's velocity in its own frame (smoothed)
+var _gc_acc := Vector3.ZERO  # its acceleration in G, car frame (smoothed)
+# (the Gs inputs' gains, FM3_GAME_CAM_GGAIN="lon,lat". Measured live on the hood camera (FM3_GAME_CAM_LOG, the game's
+# drawn camera against ours in the stream's car frame, 205 moving samples): the game's pitch does not follow our
+# longitudinal G (0.00 deg per G; with the layer at gain 1 ours went 0.75 deg per G, rms 0.85 deg against 0.49 without),
+# its yaw and roll follow the lateral G with the layers' signs but at ~0.6 of ours (yaw -0.40 vs -0.79, roll -0.33 vs
+# -0.51 deg per G): our G from the stream's positions runs larger than the game's own. Defaults 0, 0.6.)
+var _gc_gsign := Vector2(float(OS.get_environment("FM3_GAME_CAM_GGAIN").get_slice(",", 0)) if OS.get_environment("FM3_GAME_CAM_GGAIN") != "" else 0.0,
+	float(OS.get_environment("FM3_GAME_CAM_GGAIN").get_slice(",", 1)) if OS.get_environment("FM3_GAME_CAM_GGAIN") != "" else 0.6)
+
+
+func _gc_load_layers() -> Array:
+	var out := []
+	var path := OS.get_environment("FM3_CAMERA_XML")
+	if path == "":
+		path = ProjectSettings.globalize_path("res://").path_join("../../../FM3-files/game/Media/Camera/CameraPhysics.xml").simplify_path()
+	if not FileAccess.file_exists(path) or not GC_LAYER_BLOCK.has(_game_cam_mode):
+		return out
+	var want: String = GC_LAYER_BLOCK[_game_cam_mode]
+	var p := XMLParser.new()
+	if p.open(path) != OK:
+		return out
+	var inside := false
+	while p.read() == OK:
+		if p.get_node_type() == XMLParser.NODE_ELEMENT_END and p.get_node_name() == want:
+			break
+		if p.get_node_type() != XMLParser.NODE_ELEMENT:
+			continue
+		if p.get_node_name() == want:
+			inside = true
+			continue
+		if not inside or p.get_node_name() != "Layer":
+			continue
+		var a := {}
+		for i in p.get_attribute_count():
+			a[p.get_attribute_name(i)] = p.get_attribute_value(i)
+		if a.get("Enabled", "0") != "1" or a.get("NoiseType", "") != "None":
+			continue
+		if not (a.get("InputType", "") in ["Gs_Longitudinal", "Gs_Lateral"]):
+			continue
+		if not (a.get("OutputType", "") in ["CarSpaceXYZOffset", "CarSpaceYPROffset", "CameraSpaceYPROffset"]):
+			continue
+		var curve := []
+		if a.get("InputToParamMapping", "") == "ThreePoint":
+			for k in 3:
+				curve.append(float(a.get("InputToParamCurveInput%d" % k, "0")))
+				curve.append(float(a.get("InputToParamCurveOutput%d" % k, "0")))
+		out.append({"in": a["InputType"], "out": a["OutputType"], "curve": curve,
+			"mir": a.get("InputToParamCurveMirrored", "0") == "1",
+			"lo": float(a.get("InputClampMin", "-1e9")), "hi": float(a.get("InputClampMax", "1e9")),
+			"param": Vector3(float(a.get("Param.x", "0")), float(a.get("Param.y", "0")), float(a.get("Param.z", "0"))),
+			"sprung": a.get("Sprung", "0") == "1", "k": float(a.get("SpringK", "0")), "d": float(a.get("SpringD", "0")),
+			"v": Vector3.ZERO, "dv": Vector3.ZERO})
+	print("game_cam: %d CameraPhysics layers for %s from %s" % [out.size(), want, path])
+	return out
+
+
+static func _gc_curve(c: Array, x: float) -> float:
+	if c.is_empty():
+		return x
+	if x <= c[2]:
+		return lerpf(c[1], c[3], clampf((x - c[0]) / maxf(c[2] - c[0], 1e-5), 0.0, 1.0))
+	return lerpf(c[3], c[5], clampf((x - c[2]) / maxf(c[4] - c[2], 1e-5), 0.0, 1.0))
+
+
+# The layers' summed offsets this frame: {"xyz": car-space metres, "car_ypr", "cam_ypr": degrees}
+func _gc_eval_layers(dt: float) -> Dictionary:
+	var res := {"xyz": Vector3.ZERO, "car_ypr": Vector3.ZERO, "cam_ypr": Vector3.ZERO}
+	if _gc_layers == null:
+		_gc_layers = _gc_load_layers()
+	for l in _gc_layers:
+		# (Gs: longitudinal positive = accelerating forwards (the car's -z), lateral positive = towards the car's +x)
+		var x: float = -_gc_acc.z * _gc_gsign.x if l["in"] == "Gs_Longitudinal" else _gc_acc.x * _gc_gsign.y
+		x = clampf(x, l["lo"], l["hi"])
+		var y: float
+		if l["mir"]:
+			y = signf(x) * _gc_curve(l["curve"], absf(x))
+		else:
+			y = _gc_curve(l["curve"], x)
+		var target: Vector3 = l["param"] * y
+		if l["sprung"] and dt < 0.5:
+			# (semi-implicit, substepped: K up to ~1000 at 60 fps)
+			var n := int(ceil(dt / 0.002))
+			var h := dt / maxf(n, 1)
+			for _i in n:
+				l["dv"] += (l["k"] * (target - l["v"]) - l["d"] * l["dv"]) * h
+				l["v"] += l["dv"] * h
+		else:
+			l["v"] = target
+		var key := "xyz" if l["out"] == "CarSpaceXYZOffset" else ("car_ypr" if l["out"] == "CarSpaceYPROffset" else "cam_ypr")
+		res[key] += l["v"]
+	return res
+
+
+static func _gc_ypr_basis(ypr_deg: Vector3) -> Basis:
+	# yaw about y, pitch about x, roll about z (the camera looks along -z). The game's frames are left-handed (D3D):
+	# into Godot's right-handed ones z is mirrored, which turns yaw and pitch around but not roll. Measured on the
+	# game's recorded hood / bumper / cockpit cameras (tools/camrec.py; angles in the car's frame against the car's G):
+	# they look up 0.7-0.95 deg per G of forward acceleration (the layers' pitch Param is negative) and the hood yaws
+	# -0.52 / rolls -0.78 deg per G towards +x (its yaw Param positive, its roll Param negative).
+	return Basis(Vector3.UP, deg_to_rad(-ypr_deg.x)) * Basis(Vector3.RIGHT, deg_to_rad(-ypr_deg.y)) * Basis(Vector3.BACK, deg_to_rad(ypr_deg.z))
+
+
 func _game_cam(drawn: Transform3D, moves: Dictionary) -> Dictionary:
 	if not GAME_CAMS.has(_game_cam_mode):
 		return {}
@@ -2093,20 +2217,38 @@ func _game_cam(drawn: Transform3D, moves: Dictionary) -> Dictionary:
 	var dt := 0.016 if _gc_prev_t == 0 else clampf((now - _gc_prev_t) / 1e6, 1e-4, 0.1)
 	if _gc_prev_t != 0 and m.origin.is_equal_approx(_gc_prev_pos):
 		dt = 1e-6  # (the world stopped: the game's camera stops with it, its springs as they were)
-	if _gc_prev_t != 0:
-		_gc_speed = lerpf(_gc_speed, m.origin.distance_to(_gc_prev_pos) / dt, 1.0 - exp(-dt * 5.0))
+	if _gc_prev_t != 0 and dt > 1e-5:
+		var spd := _player_speed if _player_speed >= 0.0 else m.origin.distance_to(_gc_prev_pos) / dt  # (the car's own speed, FM3E v5)
+		_gc_speed = lerpf(_gc_speed, spd, 1.0 - exp(-dt * 5.0))
+		# the acceleration in the car's frame, in G (world velocity's change, then into the car's axes: so a corner's
+		# centripetal pull shows as lateral G)
+		var vel := (m.origin - _gc_prev_pos) / dt
+		var acc_w := (vel - _gc_vel) / dt / 9.81
+		_gc_vel = vel
+		var acc_c := m.basis.orthonormalized().inverse() * acc_w
+		_gc_acc = _gc_acc.lerp(acc_c.clamp(Vector3(-3, -3, -3), Vector3(3, 3, 3)), 1.0 - exp(-dt * 8.0))
 	_gc_prev_t = now
 	_gc_prev_pos = m.origin
 	var c: Dictionary = GAME_CAMS[_game_cam_mode]
 	var fov := float(c["fov0"]) + float(c["fovk"]) * _gc_speed
-	var up := Vector3.UP
+	var lay := _gc_eval_layers(dt) if OS.get_environment("FM3_GAME_CAM_NO_LAYERS") == "" else {"xyz": Vector3.ZERO, "car_ypr": Vector3.ZERO, "cam_ypr": Vector3.ZERO}
 	if c.has("local"):
-		# rigid on the car: at the local point, looking along the car's forward (-z) axis
-		var p := m * (c["local"] as Vector3)
+		# rigid on the car: at the local point, looking along the car's forward (-z) axis; then the layers' offsets
+		var p: Vector3 = m * ((c["local"] as Vector3) + (lay["xyz"] as Vector3))
 		var back := (m.basis * Vector3(0, 0, 1)).normalized()
 		var cup := (m.basis * Vector3(0, 1, 0)).normalized()
 		var right := cup.cross(back).normalized()
-		return {"xf": Transform3D(Basis(right, back.cross(right), back), p), "fov": fov}
+		var b := Basis(right, back.cross(right), back) * _gc_ypr_basis(lay["car_ypr"] + lay["cam_ypr"])
+		if OS.get_environment("FM3_GAME_CAM_LOG") != "" and Engine.get_frames_drawn() % 6 == 0:
+			# (the game's drawn camera's and ours as pitch / yaw / roll in the car's frame, degrees, with the car's G)
+			var mb := m.basis.orthonormalized().inverse()
+			var ang := func(bb: Basis) -> Vector3:
+				var f: Vector3 = mb * (-bb.z)
+				var r: Vector3 = mb * bb.x
+				return Vector3(rad_to_deg(asin(clampf(f.y, -1, 1))), rad_to_deg(atan2(-f.x, -f.z)), rad_to_deg(atan2(r.y, r.x)))
+			print("game_cam_ang: t %.3f glon %.3f glat %.3f game %s ours %s" % [Time.get_ticks_msec() / 1000.0, -_gc_acc.z, _gc_acc.x,
+				ang.call(drawn.basis), ang.call(b)])
+		return {"xf": Transform3D(b, p), "fov": fov}
 	# chase: held in the car's frame, its yaw lagging the car's heading through a damped spring (YRotSpringK 4.5,
 	# YRotSpringD 4.4, YRotMaxSpeed 2 rad/s): the offset turned about the car's up axis by the lag
 	var bwd := m.basis * Vector3(0, 0, 1)
@@ -2124,11 +2266,12 @@ func _game_cam(drawn: Transform3D, moves: Dictionary) -> Dictionary:
 	var lag := wrapf(_gc_yaw - yaw_t, -PI, PI)
 	# (in the frame of m itself, as FM3_GAME_CAM_LOG measures; a mirrored m only flips the lag's side)
 	var turn := Basis(Vector3.UP, lag)
-	var local := turn * Vector3(0.0, float(c["h"]), float(c["dist"]))
+	var local := turn * Vector3(0.0, float(c["h"]), float(c["dist"])) + (lay["xyz"] as Vector3)
 	var p := m * local
 	var pr := deg_to_rad(float(c["pitch"]))
 	var dir := (m.basis * (turn * Vector3(0.0, sin(pr), -cos(pr)))).normalized()
 	var xf := Transform3D(Basis(), p).looking_at(p + dir, (m.basis * Vector3.UP).normalized())
+	xf.basis = xf.basis * _gc_ypr_basis(lay["car_ypr"] + lay["cam_ypr"])
 	if OS.get_environment("FM3_GAME_CAM_LOG") != "" and Engine.get_frames_drawn() % 30 == 0:
 		# (the game's drawn camera and ours in the car's frame, to tune the rig)
 		var mi := m.affine_inverse()

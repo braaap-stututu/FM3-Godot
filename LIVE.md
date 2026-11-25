@@ -343,19 +343,67 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
     The chase cameras swing out +-0.6 m in corners (the yaw spring).
   - `world_view.gd _game_cam` builds them from the player car's pose (still from the stream, until the physics runs
     in Godot) with the INI's springs.
-  - **Open:** the chase distance's rule per car (one car measured), the CameraPhysics layers (sway / shake), the
-    replay cameras.
+  - **The game's camera layers** (`Media/Camera/CameraPhysics.xml`, read by `_gc_load_layers` from the game's own
+    file, `FM3_CAMERA_XML` = another copy, e.g. a mod; `FM3_GAME_CAM_NO_LAYERS=1` off): per camera (FollowCam =
+    chase_near, FollowCam2 = chase_far, DriverCam = cockpit, Hood, BumperHigh) the deterministic layers are applied:
+    Gs_Longitudinal / Gs_Lateral (the car's acceleration in its own frame, in G) through the three-point curve
+    (mirrored = odd), x Param into a car-space offset (metres) or car / camera-space yaw-pitch-roll (degrees), through
+    the layer's spring (K, D). The chase cams have only one such layer (a 2.5-4.75 cm lift under acceleration): their
+    roll layers are Simplex noise, so the chase gap is not sway. Hood / bumper / cockpit get pitch under acceleration
+    (up to ~2 deg), yaw / roll in corners (0.35-2 deg). Left out: noise shakes, slip, collision impulses, surface
+    bumps, the speed FOV layer. The game's frames are left-handed: yaw and pitch turn around into Godot's, roll does
+    not. **Measured live on the hood camera** (`FM3_GAME_CAM_LOG=1` prints the game's drawn camera and ours as
+    pitch / yaw / roll in the stream's car frame with the car's G; 208 moving samples): the game's pitch does not follow
+    the longitudinal G there, yaw and roll follow the lateral G at ~0.6 of our G estimate. With those gains
+    (`FM3_GAME_CAM_GGAIN`, default `0,0.6`) yaw rms 0.25 -> 0.19 deg, roll 0.13 -> 0.07, pitch unchanged 0.55.
+    Whole-frame diffs can't show this: two runs with the same settings differ by up to 5 (the race's positions).
+    (The offline recordings, `tools/camrec.py`, fitted in the car's frame, said the in-car cameras look up 0.7-0.95
+    deg per G of forward acceleration; in the viewer's frame the live log shows none: open.)
+  - **Open:** the chase distance's rule per car (one car measured), the layers' signs, the replay cameras.
 - **Telemetry from the car-physics object (FM3E v4, FM3-ReGPU b213457):**
   - Dumping the player's physics object while the AI drove found throttle +3408, brake +3412, steering +3416 (the
     block repeats at +2744 / +2780), gear byte +1937, clutch +2672. Engine speed +324 and redline +452 are FH1's
     ICarDynamics offsets; FM3's controls are elsewhere than FH1's +3904.
   - The stream sends them (56-byte packet); the engine sound uses the throttle.
-  - Next: speed, wheel / tyre data (FH1 keeps wheels from +3936, stride 1024) for a full telemetry packet.
+  - **v5 (FM3-ReGPU, 76 bytes):** + the car's speed, m/s (+2792: within 3% of the speed from its positions) and four
+    wheel speeds (+4164 + 1040 x i: four 1040-byte wheel blocks; FH1's are 1024 from +3936). In each block, +284 after the speed: the wheel's
+    position in the car (CR-X: wheels 0, 1 front at z +0.874, 2, 3 at -1.426: wheelbase 2.30 m = the real car's;
+    x -0.731 / +0.731 / +0.725 / -0.725, so 0 and 3 share a side), +108: radius 0.295. The own chase camera's FOV uses that speed when present.
+  - Next: tyre slip / load / temperatures in the wheel blocks, suspension, the car's G (for the camera layers).
 - **Open:** bloom (bright pass: exposed scene + 0.42 x last frame's bloom - 1/255 - bloomCutoff, x bloomScale, on
   the HDR scene: needs values above 1, our picture is clipped at 1), the road specular's overshoot (re-check with the
   exposure), one opponent per race without an FM3N name (Silverstone's B.Giese: not the colour-file case); the palette barriers (`diff_clr_spec_2`: a per-model
   palette row, ModelData c148), LeMans' `shldr_blnd_spec_vclr_dualmix_4`, reflective glass `diff_spec_opac_refl_3`,
   MapleValley's Castrol banners and asphalt tone, Catalunya's grass 25% dim.
+
+## Physics in Godot: feasibility (2026-11-25)
+
+The user asked whether zer0ducksgiven/Forza-Motorsport-2-ReGPU (`FM2-decomp` and its other branches) could help run
+FM3's physics in Godot with FM3's physics files. Findings (full report: `FM3-files\research\fm2-decomp-report.md`):
+
+- **No branch has physics, FMOD or camera code.** `FM2-decomp` is a Ghidra decompilation pipeline with 13 small
+  replaced functions (C runtime, a name hash, one matrix product); its author keeps decompiled game code out of the
+  repository on purpose. Useful bits: FM2's physics timing notes (fixed substeps), the XMA / FSB handling through
+  FFmpeg (we decode FM3's FSBs the same way now), loop tooling. MIT licence.
+- **FM3's physics data is all readable:** `Media\Physics\PhysicsSettings.ini` (~200 tunables: friction scales,
+  TCS / ABS / ACS, gravity, shifting), `surfaceTypes.xml` (per-surface friction, rolling resistance, bumps),
+  `CollObjects.xml`, per car `physics\maxdata.xml` (collision box + spheres), and the database (`gamedb.slt`:
+  `Data_Car`, `Data_Engine`, `List_TorqueCurve`, `List_TireFrictionCurve`, the 47 `List_Upgrade*` tables: mass,
+  weight split, springs, dampers, anti-roll bars, gearing, aero, tyre compounds). The executable reads them with the
+  SQL strings at 820F7FEE onwards; the physics step runs at `CarPhysicsUpdateHz` 359 (set in `sub_827C9B50`).
+- **What the data does not give:** the model itself (how tyre curves, load, slip, camber, temperature and pressure
+  combine; the drivetrain and differential; aero). That lives only in the recompiled PowerPC code
+  (`out/ppc-rexenon`, thousands of functions, no names).
+- **Two ways:**
+  1. Reverse-engineer FM3's own model from the recompiled code (find the 359 Hz step, follow it into the tyre / engine
+     functions, rewrite them in GDScript / C++ for Godot, check against the live telemetry stream: the FM3E packet
+     already carries rpm, throttle, brake, gear, clutch, speed and wheel speeds). Exact, but weeks of work per
+     subsystem.
+  2. Write a new Godot vehicle model (Godot's own `VehicleBody3D` is too simple; a custom raycast-wheel model with a
+     Pacejka-like tyre fitted to FM3's friction curves) fed by FM3's data. Drives like a Forza-ish car within days,
+     but not like FM3.
+  Recommended: 2 for a playable prototype, with 1 used subsystem by subsystem (engine torque and gearing first: the
+  easiest to verify against the stream's rpm / gear / speed).
 
 ## Next for stage A (where to continue)
 

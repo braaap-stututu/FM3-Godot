@@ -1,4 +1,4 @@
-# HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-24)
+# HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-25)
 
 Read this first on a new machine or in a new session. Then **`LIVE.md`** (the current work: running the game live
 into Godot), `M1.md` (the detailed log of the offline pipeline, newest work at the end of stage 2), `FM3-FORMATS.md`
@@ -41,6 +41,19 @@ reflection term, with the per-vertex sky weight baked in the car vertices (`fm3_
 the library was rebuilt). Two viewer bugs behind the player's dark roof were fixed: no live cube on capture-free
 tracks, and library cars without its textures. Motegi frame 23.4 -> 22.7; CrownJewel grid 21.1 / 20.1 / 19.5. Next:
 our live cube matches the game's (its x8 exponent adjust), the paint terms match per term; per-track car light from SHDir / SHTop (LIVE.md "Car paint reflection").
+
+**2026-11-25 afternoon: moving game systems into Godot** (LIVE.md "Engine sound in Godot", "The game's cameras in
+Godot", "Telemetry from the car-physics object", "Physics in Godot: feasibility"):
+- display toe (the game's DC_LUT) in the exposure pass; survey 12.7 (Catalunya) to 25.4 (NewYork), RoadAtlanta 33.4
+  (sun haze); Tsukuba (Ribbon_01) 17.8 / 17.1 / 20.9, Motegi 15.1;
+- engine sound from the game's files (`tools/fm3_engine_audio.py`, `fm3_engine_audio.gd`): FSB loops pitched and
+  crossfaded by rpm, live from the stream's rpm and throttle;
+- the game's cameras rebuilt in Godot without the game's camera (`FM3_GAME_CAM=chase_near|chase_far|hood|bumper|
+  cockpit`), the chase spring from CameraSettings.ini, the deterministic CameraPhysics.xml layers read from the game's
+  own file;
+- telemetry FM3E v5 (FM3-ReGPU 838763d, local): throttle, brake, gear, clutch, speed, wheel speeds;
+- physics: no usable code in the FM2 repository; FM3's data is all readable, its model is only in the recompiled
+  code: options and a recommendation in LIVE.md.
 
 **Night of 2026-11-24/25: the other tracks** (LIVE.md "Other tracks"). All 15 Free Play tracks
 build and run live (`tools\live\live_track.ps1`); the car library has all 500 cars incl. Disc 2; track shaders are read
