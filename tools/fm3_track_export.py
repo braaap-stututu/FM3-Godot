@@ -1474,8 +1474,7 @@ def main():
             # 1 (x2) on every race track but CrownJewel (0, x1), 3 (x8) in the menu scenes (2026-11-25)
             d3 = struct.unpack_from('>I', open(cube_path, 'rb').read(), 0x64)[0]
             exp_ = ((d3 >> 13) & 63) - (64 if (d3 >> 13) & 32 else 0)
-            with open(os.path.join(tex_out, 'envcube.json'), 'w', newline='
-') as f_:
+            with open(os.path.join(tex_out, 'envcube.json'), 'w', newline='') as f_:
                 json.dump({'gain': 2.0 ** exp_, 'source': os.path.basename(os.path.dirname(cube_path))}, f_)
     if '--carbins' in sys.argv:
         CARBIN_DIRS.extend(sys.argv[sys.argv.index('--carbins') + 1].split(';'))
