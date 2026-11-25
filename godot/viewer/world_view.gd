@@ -1107,6 +1107,8 @@ var _player_speed := -1.0  # m/s from FM3E v5 (-1 = not sent)
 var _player_wheel_speed := [0.0, 0.0, 0.0, 0.0]  # FL FR RR RL
 var _player_tyre_temp := [0.0, 0.0, 0.0, 0.0]  # deg C, FL FR RR RL (FM3E v6)
 var _player_suspension := [0.0, 0.0, 0.0, 0.0]  # m, FL FR RR RL (FM3E v7)
+var _player_acc := Vector3.ZERO  # m/s2, car frame: x right, y up, z forward (FM3E v8)
+var _player_acc_ok := false
 
 
 func _update_engine_audio(player, moves: Dictionary) -> void:
@@ -2113,6 +2115,10 @@ func _live_step() -> void:
 				# v7: the suspension's position, m (the telemetry page's travel = its change from rest)
 				for i in 4:
 					_player_suspension[i] = b.decode_float(92 + 4 * i)
+			if b.decode_u32(4) >= 8 and b.size() >= 120:
+				# v8: the car's acceleration in its own frame, m/s2 (x right, y up, z forward: the physics object's own)
+				_player_acc = Vector3(b.decode_float(108), b.decode_float(112), b.decode_float(116))
+				_player_acc_ok = _player_acc != Vector3.ZERO or _player_acc_ok
 			continue
 		if b.size() == 280 and b.slice(0, 4).get_string_from_ascii() == "FM3W" and b.decode_u32(4) == 1:
 			# A car's four wheels as drawn (spin and steering), right after that car's datagram.
@@ -2313,6 +2319,7 @@ const GC_LAYER_BLOCK := {"chase_near": "FollowCam", "chase_far": "FollowCam2", "
 var _gc_layers = null  # Array of layer dicts (with their spring state) for _game_cam_mode
 var _gc_vel := Vector3.ZERO  # the car's velocity in its own frame (smoothed)
 var _gc_acc := Vector3.ZERO  # its acceleration in G, car frame (smoothed)
+var _gc_acc_derived := Vector3.ZERO  # (the same from the stream's positions)
 # (the Gs inputs' gains, FM3_GAME_CAM_GGAIN="lon,lat". Measured live on the hood camera (FM3_GAME_CAM_LOG, the game's
 # drawn camera against ours in the stream's car frame, 205 moving samples): the game's pitch does not follow our
 # longitudinal G (0.00 deg per G; with the layer at gain 1 ours went 0.75 deg per G, rms 0.85 deg against 0.49 without),
@@ -2446,7 +2453,16 @@ func _game_cam(drawn: Transform3D, moves: Dictionary) -> Dictionary:
 		var acc_w := (vel - _gc_vel) / dt / 9.81
 		_gc_vel = vel
 		var acc_c := m.basis.orthonormalized().inverse() * acc_w
-		_gc_acc = _gc_acc.lerp(acc_c.clamp(Vector3(-3, -3, -3), Vector3(3, 3, 3)), 1.0 - exp(-dt * 8.0))
+		_gc_acc_derived = _gc_acc_derived.lerp(acc_c.clamp(Vector3(-3, -3, -3), Vector3(3, 3, 3)), 1.0 - exp(-dt * 8.0))
+		# the game's own acceleration (FM3E v8: the physics object's, in the car's frame) when the stream has it, into
+		# this frame (z backwards) in G; FM3_GAME_CAM_ACC=derived: the positions' second difference as before
+		if _player_acc_ok and OS.get_environment("FM3_GAME_CAM_ACC") != "derived":
+			var ga := Vector3(_player_acc.x, _player_acc.y, -_player_acc.z) / 9.81
+			_gc_acc = _gc_acc.lerp(ga.clamp(Vector3(-3, -3, -3), Vector3(3, 3, 3)), 1.0 - exp(-dt * 8.0))
+		else:
+			_gc_acc = _gc_acc_derived
+		if OS.get_environment("FM3_ACC_LOG") != "" and Engine.get_frames_drawn() % 6 == 0:
+			print("acc_log: derived %s stream %s" % [_gc_acc_derived, Vector3(_player_acc.x, _player_acc.y, -_player_acc.z) / 9.81])
 	_gc_prev_t = now
 	_gc_prev_pos = m.origin
 	var c: Dictionary = GAME_CAMS[_game_cam_mode]
