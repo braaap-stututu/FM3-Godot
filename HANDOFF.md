@@ -77,6 +77,12 @@ the live cube as the game's do: rear windows against the game Sebring RSX 5.4, R
 CrownJewel CR-X 5.7 (was 16.6), the RSX's roof / sunroof 58.8 -> 17.6. Paint sharpness: a 256 px / 4x MSAA live cube (the game's size)
 changed nothing measurable; the roof's "half as bright" was the dimmed sunroof glass (roof paint now 98-102 against
 112). Slip ratio / angle not found yet.
+After midnight (the user: 90 more minutes on the known differences): reflection blur is not the cube's clipping
+(floating-point faces, `FM3_LIVE_CUBE_HDR`, change nothing) and only partly its size; our reflected clouds have less
+contrast than the game's (open, LIVE.md "Next for stage A"). Fixed: the black-glass reflection pass off (the RSX
+rear window's bright top border 41.0 -> 11.3, the CR-X 14.6 -> 12.7) and no sun highlight on car glass (the white
+dashes on the Eclipse's lamp covers, 34.3 -> 24.7). The viewer can render a car library model alone now
+(`--look-from` makes a camera; `FM3_HIDE_PARTS`, `FM3_BG_COLOR` for part hunts).
 FM3E v8 streams the car-frame acceleration; the rebuilt cameras' G layers use it (hood camera as good as with the
 positions' G, gain 0.6 confirmed: the game's camera answers lateral G at 0.6).
 
