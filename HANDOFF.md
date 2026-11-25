@@ -53,7 +53,10 @@ Godot", "Telemetry from the car-physics object", "Physics in Godot: feasibility"
   own file;
 - telemetry FM3E v5 (FM3-ReGPU 838763d, local): throttle, brake, gear, clutch, speed, wheel speeds;
 - physics: no usable code in the FM2 repository; FM3's data is all readable, its model is only in the recompiled
-  code: options and a recommendation in LIVE.md.
+  code: options and a recommendation in LIVE.md;
+- **track fog** (the viewer had none): TrackSettings `<Fog>`'s directional settings, applied by the track shaders as
+  the game does (cars unfogged); RoadAtlanta 29.4 -> 21.5 live; a full survey with fog: LIVE.md "Track fog";
+- all 451 FSB sound banks decode (the 23 FSB3 'basic header' banks too: `FM3-files\tools\fsb_extract.py`).
 
 **Night of 2026-11-24/25: the other tracks** (LIVE.md "Other tracks"). All 15 Free Play tracks
 build and run live (`tools\live\live_track.ps1`); the car library has all 500 cars incl. Disc 2; track shaders are read

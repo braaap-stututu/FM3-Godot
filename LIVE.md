@@ -384,6 +384,13 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
   three sign conventions 24.4-27.1, no fog 29.4 / 27.1 / 26.6. Strong fogs: RoadAtlanta 0.4-0.6, Mugello 0.54,
   Silverstone 0.5, NewYork 0.4; CrownJewel's is weak (0.13 / 0.05). `FM3_NO_FOG=1` off, `FM3_FOG_HEADING=sx,sz,offset`
   another convention, `FM3_FOG_PASS=1` a full-screen pass instead (`fm3_fog.gdshader`, fogs the cars too).
+  **Survey with fog** (live, each track's Free Play grid; before -> after): RoadAtlanta 33.4 -> 21.7 / 21.2 / 19.5,
+  Tsukuba 17.8 -> 15.8, AmalfiGP 24.8 -> 23.0, Catalunya 12.7 -> 11.9, SunsetInfield 19.6 -> 18.9, LeMans 16.4 -> 16.1,
+  LagunaSeca 17.2 -> 17.1, Mugello 18.0 -> 17.8, Silverstone 17.0 -> 16.9, RoadAmerica 22.1 -> 21.7, NewYork 25.4 ->
+  24.7, Motegi 15.1 -> 15.4, Suzuka 15.9 -> 17.0, Sebring 22.2 -> 23.7, MapleValley 24.0 -> 30.5. MapleValley is the
+  same without fog (30.6: the grid slot differs between runs, "3/8" here, which moves a track by several points):
+  there the road's sun specular comes out as a hard-edged white patch where the game has a broad grey sheen (with the
+  specular off: 39.5, the road dark brown): the specular's shape / mask is wrong on that road: open.
 - **The crowd** (NewYork's sidewalk people black in ours): the crowd cards are a lit material at TrackSettings' Crowds
   dark factor (0.5), so cards with the sun behind them get only ambient; the game picks between its dark (0.5) and
   light (1.25) factors per person (probably from where they stand). Its crowd shader is in the executable, not found
