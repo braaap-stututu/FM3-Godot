@@ -4,6 +4,15 @@ Read this first on a new machine or in a new session. Then **`LIVE.md`** (the cu
 into Godot), `M1.md` (the detailed log of the offline pipeline, newest work at the end of stage 2), `FM3-FORMATS.md`
 (every file format we decoded) and `ARCHITECTURE.md` (the long-term plan).
 
+**Every game file, unpacked (2026-11-25):** `..\..\FM3-files\` (beside `Godot\` and `FM3-ReGPU recomp\`; game data,
+never commit it). `game\` is the game's `game:\` drive with Disc 1 and all 8 DLC packs mounted as the game mounts
+them (194,424 files, 27.6 GB, every zip member CRC-checked); `manifest.csv` gives each file's source. **Read
+`FM3-files\CATALOGUE.md` before looking for any game data:** what every file type is, what reads it, what links to
+what (database columns, executable paths), and the traps:
+- every `.tga` name means the `.xds`;
+- the game's database is `gamedb.slt` + `Media\DB\patch\*`;
+- DLC zips mount per `zipmount.xml`.
+
 **Where we stopped (2026-11-23, second PC):** the live mirror (LIVE.md stage A) works: FM3 streams its camera and
 cars over UDP (`FM3_LIVE=1`), `live.cmd` draws the same race in Godot, smooth after the fixes of that day (frozen
 viewer frames 0.4%, speed jitter median 7.7% over a minute). Open question to the user: chase the remaining uneven
