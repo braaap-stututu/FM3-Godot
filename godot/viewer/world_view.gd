@@ -1980,6 +1980,10 @@ func _live_step() -> void:
 			if b.decode_u32(4) >= 4 and b.size() >= 56:
 				# v4: the car's own controls and gear from its physics object (throttle, brake, gear, clutch)
 				_player_throttle = clampf(b.decode_float(40), 0.0, 1.0)
+				# (the brake lights follow the car's own brake, not the pad's: it also brakes by itself, e.g. held on the
+				# grid before the start, where the game's tail lights are lit and ours were dark; FM3_PAD_BRAKE_LIGHTS=1: old)
+				if OS.get_environment("FM3_PAD_BRAKE_LIGHTS") == "":
+					_player_brake = clampf(b.decode_float(44), 0.0, 1.0)
 				var g_ := int(b.decode_u32(48))
 				if g_ != _player_gear and OS.get_environment("FM3_ENGINE_LOG") != "":
 					print("engine: gear %d -> %d at %.0f rpm, throttle %.2f, car brake %.2f, clutch %.2f, speed %.1f m/s" % [_player_gear, g_,
