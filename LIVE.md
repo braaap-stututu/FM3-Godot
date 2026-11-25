@@ -359,7 +359,11 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
     Whole-frame diffs can't show this: two runs with the same settings differ by up to 5 (the race's positions).
     (The offline recordings, `tools/camrec.py`, fitted in the car's frame, said the in-car cameras look up 0.7-0.95
     deg per G of forward acceleration; in the viewer's frame the live log shows none: open.)
-  - **Open:** the chase distance's rule per car (one car measured), the layers' signs, the replay cameras.
+  - **A second car** (the Acura RSX Type-S on Catalunya's Free Play race, the race AI driving, `tools/camrec.py`):
+    chase near 4.95 m behind / 1.89 up, far 5.29 / 2.09, against the CR-X's 4.83 / 1.82 and 5.24 / 2.03 (car frames,
+    medians). The RSX is 0.6 m longer and 0.11 m taller but also drove faster (median 33 against 21 m/s): size and
+    speed are not separated, and the fixed rig is within 0.12 m for both cars.
+  - **Open:** a per-car rule if a bigger car shows one (a truck or a long GT), the replay cameras.
 - **Telemetry from the car-physics object (FM3E v4, FM3-ReGPU b213457):**
   - Dumping the player's physics object while the AI drove found throttle +3408, brake +3412, steering +3416 (the
     block repeats at +2744 / +2780), gear byte +1937, clutch +2672. Engine speed +324 and redline +452 are FH1's
@@ -398,7 +402,8 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
   24.7, Motegi 15.1 -> 15.4, Suzuka 15.9 -> 17.0, Sebring 22.2 -> 23.7, MapleValley 24.0 -> 30.5. MapleValley is the
   same without fog (30.6: the grid slot differs between runs, "3/8" here, which moves a track by several points):
   there the road's sun specular comes out as a hard-edged white patch where the game has a broad grey sheen (with the
-  specular off: 39.5, the road dark brown): the specular's shape / mask is wrong on that road: open.
+  specular off: 39.5, the road dark brown): the specular's shape / mask is wrong on that road: open (the skid lerp's
+  ends swapped: 33.3, worse; MapleValley's RoadSkid2 2.01 makes m up to ~3.4 where the skid channel is 0).
 - **The crowd** (NewYork's sidewalk people black in ours): the crowd cards are a lit material at TrackSettings' Crowds
   dark factor (0.5), so cards with the sun behind them get only ambient; the game picks between its dark (0.5) and
   light (1.25) factors per person (probably from where they stand). Its crowd shader is in the executable, not found
