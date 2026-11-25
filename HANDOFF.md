@@ -67,8 +67,13 @@ FM3-ReGPU commits (pushed to origin/main, 580ecb6..f4cb614 and on). Their questi
 car-physics object (engine +324 / redline +452 identical) and sends Forza Data Out packets; its clean-room sibling
 `pinyon-shift-native` simulates FH1's cars from the game's own tables within 2% of the real game: the template for
 physics in Godot (LIVE.md "arcanite24's Forza ports"). Found in our dumps: world position +2544, velocity +2560,
-acceleration +2512; +2672 is not a clutch. User's list item "glass shininess": the lamp lenses now use the game's
-glass formula and the reflectors behind them a mirror pass (`fm3_reflector.gdshader`; LIVE.md "Next for stage A").
+acceleration +2512; +2672 is not a clutch. **Forza Data Out** from the recomp (FM3-ReGPU `src/hooks/data_out.cpp`,
+`FM3_DATA_OUT=1` or the launcher's "Telemetry out (SimHub)": FM7 Dash packets for SimHub / motion rigs, checked on an
+AI race). User's list item "glass shininess" (LIVE.md "Next for stage A", all measured against the game): lamp lenses
+on the game's glass formula with mirror reflectors / bulbs / black glass behind them (`fm3_reflector.gdshader`; Sebring
+RSX tails 67.5 / 56.5 -> 40.4 / 29.9), the player's windows reflect at 0.5 (CR-X rear window 16.6 -> 10.9), library
+cabins at 0.5 (the RSX's rear-window band). Paint sharpness: a 256 px / 4x MSAA live cube (the game's size) changed
+nothing measurable; the roof reflects half as bright as the game's: open. Slip ratio / angle not found yet.
 
 **Night of 2026-11-24/25: the other tracks** (LIVE.md "Other tracks"). All 15 Free Play tracks
 build and run live (`tools\live\live_track.ps1`); the car library has all 500 cars incl. Disc 2; track shaders are read

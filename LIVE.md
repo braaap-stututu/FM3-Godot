@@ -551,7 +551,8 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   0 = 15% opaque head-on); the CR-X's red lens is nearly opaque (GlassColor (0.6, 0, 0, 0.7), max 0.9).
 - Lenses now use the game's glass formula (`fm3_carglass.gdshader` with `lens`: no player dimming, no highlight
   glints) instead of the fitted multiply / cloud / reflection chain (`FM3_LENS=filter` = the old chain), plus two
-  fitted terms: the lens tints what is behind it (`lens_filter` 0.8: the RSX's pink G / R 0.55 in the game) and its own
+  fitted terms: the lens tints what is behind it (`lens_filter` 0.65; 0.8 matched the RSX's colour, 0.65 scores
+  better on both grids' whole frames, Sebring 22.7 -> 21.9) and its own
   colour is lit at 0.35 (`lens_light`: the CR-X's opaque lens 60 / 23 / 20 in the shade of its rear).
 - Reflectors, tail-lamp bulbs and black glass get a reflection pass over their lit texture (`fm3_reflector.gdshader`,
   `_add_reflector_pass`): the static car cube x CubeScale x the game's Fresnel (reflector 1.5, bulbs 0.2, black glass

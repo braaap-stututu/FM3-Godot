@@ -645,9 +645,10 @@ static func _lens_shader() -> Shader:
 	return CARLENS_SHADER if OS.get_environment("FM3_LENS") == "filter" else CARGLASS_SHADER
 
 
-# How far a lens tints what is behind it (fm3_carglass.gdshader lens_filter); FM3_LENS_FILTER=<k>. 0.8 fitted on the
-# Sebring RSX (tails G / R 0.55 in the game; 0.85 at 0, 0.69 at 0.5, 0.60 at 0.8; 2026-11-25).
-const LENS_FILTER := 0.8
+# How far a lens tints what is behind it (fm3_carglass.gdshader lens_filter); FM3_LENS_FILTER=<k>. First fitted at 0.8
+# on the Sebring RSX's colour (tails G / R 0.55 in the game); with the final chain 0.65 scores better: whole frames
+# Sebring 22.7 -> 21.9, CrownJewel 18.7 -> 18.6, RSX rear 19.6 -> 18.5, CR-X rear 17.6 -> 18.1 (0.5: RSX 18.1, CR-X 18.3).
+const LENS_FILTER := 0.65
 # How far a reflector's reflection takes its texture's colour (fm3_reflector.gdshader tint_amount): 1 made the RSX's
 # tails 67 / 32 / 26 (game 114 / 65 / 63), 0 greyed the CR-X's red reflector panel (G / B +16).
 const REFLECTOR_TINT := 0.5
