@@ -2056,33 +2056,43 @@ var _gc_h_v := 0.0
 var _gc_prev_pos := Vector3.ZERO
 var _gc_prev_t := 0
 var _gc_speed := 0.0
+var _gc_player = null
+var _gc_yaw_t_prev := INF
+# (Offsets in the viewer's car frame: the game's car frame + 0.27 m along z, the car node's origin against the game's
+# matrix, measured with FM3_GAME_CAM_LOG=1: the game's near chase camera at (0.03, 1.81, 5.10), pitch -4.15 deg, held
+# in the car's frame (its height and pitch barely move as the car pitches); only its yaw lags.)
 const GAME_CAMS := {
-	"chase_near": {"dist": 4.83, "h": 1.82, "target": 1.44, "fov0": 54.6, "fovk": 0.085},
-	"chase_far": {"dist": 5.24, "h": 2.03, "target": 1.44, "fov0": 54.6, "fovk": 0.085},
-	"hood": {"local": Vector3(0.0, 0.797, -0.78), "fov0": 53.0, "fovk": 0.0},
-	"bumper": {"local": Vector3(0.0, 0.859, -1.225), "fov0": 54.6, "fovk": 0.085},
-	"cockpit": {"local": Vector3(0.361, 0.815, 0.127), "fov0": 51.3, "fovk": 0.0},
+	"chase_near": {"dist": 5.10, "h": 1.81, "pitch": -4.15, "fov0": 54.6, "fovk": 0.085},
+	"chase_far": {"dist": 5.51, "h": 2.03, "pitch": -6.6, "fov0": 54.6, "fovk": 0.085},
+	"hood": {"local": Vector3(0.0, 0.797, -0.51), "fov0": 53.0, "fovk": 0.0},
+	"bumper": {"local": Vector3(0.0, 0.859, -0.955), "fov0": 54.6, "fovk": 0.085},
+	"cockpit": {"local": Vector3(0.361, 0.815, 0.397), "fov0": 51.3, "fovk": 0.0},
 }
 
 
 func _game_cam(drawn: Transform3D, moves: Dictionary) -> Dictionary:
 	if not GAME_CAMS.has(_game_cam_mode):
 		return {}
-	# the player: the car nearest the game's own camera
-	var player = null
-	var pd := INF
-	for car in moves:
-		if not _car_inv.has(car):
-			continue
-		var o: Vector3 = (moves[car] as Transform3D) * ((_car_inv[car] as Transform3D).affine_inverse().origin)
-		if o.distance_to(drawn.origin) < pd:
-			pd = o.distance_to(drawn.origin)
-			player = car
-	if player == null:
-		return {}
+	# the player: the car nearest the game's own camera when this starts, then kept (an AI car passing close to the
+	# camera must not take it over)
+	var player = _gc_player
+	if player == null or not moves.has(player):
+		var pd := INF
+		for car in moves:
+			if not _car_inv.has(car):
+				continue
+			var o: Vector3 = (moves[car] as Transform3D) * ((_car_inv[car] as Transform3D).affine_inverse().origin)
+			if o.distance_to(drawn.origin) < pd:
+				pd = o.distance_to(drawn.origin)
+				player = car
+		if player == null:
+			return {}
+		_gc_player = player
 	var m: Transform3D = (moves[player] as Transform3D) * (_car_inv[player] as Transform3D).affine_inverse()
 	var now := Time.get_ticks_usec()
 	var dt := 0.016 if _gc_prev_t == 0 else clampf((now - _gc_prev_t) / 1e6, 1e-4, 0.1)
+	if _gc_prev_t != 0 and m.origin.is_equal_approx(_gc_prev_pos):
+		dt = 1e-6  # (the world stopped: the game's camera stops with it, its springs as they were)
 	if _gc_prev_t != 0:
 		_gc_speed = lerpf(_gc_speed, m.origin.distance_to(_gc_prev_pos) / dt, 1.0 - exp(-dt * 5.0))
 	_gc_prev_t = now
@@ -2097,23 +2107,36 @@ func _game_cam(drawn: Transform3D, moves: Dictionary) -> Dictionary:
 		var cup := (m.basis * Vector3(0, 1, 0)).normalized()
 		var right := cup.cross(back).normalized()
 		return {"xf": Transform3D(Basis(right, back.cross(right), back), p), "fov": fov}
-	# chase: yaw towards the car's backward heading through a damped spring, height through another
+	# chase: held in the car's frame, its yaw lagging the car's heading through a damped spring (YRotSpringK 4.5,
+	# YRotSpringD 4.4, YRotMaxSpeed 2 rad/s): the offset turned about the car's up axis by the lag
 	var bwd := m.basis * Vector3(0, 0, 1)
 	var yaw_t := atan2(bwd.x, bwd.z)
 	if _gc_yaw == INF:
 		_gc_yaw = yaw_t
-		_gc_h = m.origin.y + float(c["h"])
 	var dy := wrapf(yaw_t - _gc_yaw, -PI, PI)
-	_gc_yaw_v += (4.5 * dy - 4.4 * _gc_yaw_v) * dt
+	# (damped towards the car's own yaw rate x YRotCarDampScale 0.76, not towards rest: with plain damping the
+	# camera swung out 0.95-1.5 m in a corner where the game's goes 0.34-0.63)
+	var car_rate := 0.0 if _gc_yaw_t_prev == INF else wrapf(yaw_t - _gc_yaw_t_prev, -PI, PI) / dt
+	_gc_yaw_t_prev = yaw_t
+	_gc_yaw_v += (4.5 * dy + 4.4 * (0.76 * car_rate - _gc_yaw_v)) * dt
 	_gc_yaw_v = clampf(_gc_yaw_v, -2.0, 2.0)
 	_gc_yaw += _gc_yaw_v * dt
-	var h_t := m.origin.y + float(c["h"])
-	_gc_h_v += (30.0 * (h_t - _gc_h) - 11.85 * _gc_h_v) * dt
-	_gc_h += _gc_h_v * dt
-	var d := float(c["dist"])
-	var p := Vector3(m.origin.x + sin(_gc_yaw) * d, _gc_h, m.origin.z + cos(_gc_yaw) * d)
-	var target := m.origin + up * float(c["target"])
-	var xf := Transform3D(Basis(), p).looking_at(target, up)
+	var lag := wrapf(_gc_yaw - yaw_t, -PI, PI)
+	# (in the frame of m itself, as FM3_GAME_CAM_LOG measures; a mirrored m only flips the lag's side)
+	var turn := Basis(Vector3.UP, lag)
+	var local := turn * Vector3(0.0, float(c["h"]), float(c["dist"]))
+	var p := m * local
+	var pr := deg_to_rad(float(c["pitch"]))
+	var dir := (m.basis * (turn * Vector3(0.0, sin(pr), -cos(pr)))).normalized()
+	var xf := Transform3D(Basis(), p).looking_at(p + dir, (m.basis * Vector3.UP).normalized())
+	if OS.get_environment("FM3_GAME_CAM_LOG") != "" and Engine.get_frames_drawn() % 30 == 0:
+		# (the game's drawn camera and ours in the car's frame, to tune the rig)
+		var mi := m.affine_inverse()
+		var gl := mi * drawn.origin
+		var ol := mi * xf.origin
+		var gf := mi.basis * (-drawn.basis.z)
+		var of_ := mi.basis * (-xf.basis.z)
+		print("game_cam: speed %.1f game pos %s dir %s | ours pos %s dir %s" % [_gc_speed, gl, gf.normalized(), ol, of_.normalized()])
 	return {"xf": xf, "fov": fov}
 
 

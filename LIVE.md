@@ -322,6 +322,35 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
   - **FM2's port** (zer0ducksgiven, MIT): `tools/xmadecode.cpp` (FSB3 XMA decoding) and `tools/mkloops.py`
     (seamless-loop fixes) are worth reading; it has no FMOD reimplementation.
     `FM3-files/research/fm2-decomp-report.md` has the full research.
+- **The game's cameras in Godot (2026-11-25, first version, `FM3_GAME_CAM`):**
+  - **Sources.** `Media\Camera\CameraSettings.ini` has the in-race cameras' parameters (FollowLowCam / FollowHighCam:
+    height above the ground, radius / target offsets, FOV against speed, yaw and height springs; HoodCam, BumperHigh /
+    LowCam, CockpitCam, WheelCam). `CameraPhysics.xml` has 29 G-force / slip driven sway and shake layers per camera.
+    The database adds per-car `CameraOverrides` and `CarPartPositions` (part 4 = the driver's eye).
+    `CarRelativeCams.xml` holds the replay / TV cameras (bounding-box-space keys, 155 cams in groups).
+  - **Measured on the running game** (`tools/research/camrec.ps1`: the race AI drives the player's CR-X, RB cycles
+    the views, `tools/camrec.py` records the drawn camera + cars, `tools/camfit.py` gives the camera in the car's
+    frame), per camera class:
+
+    | Class | Camera | Offset in the car's frame (z = backwards) | FOV |
+    |---|---|---|---|
+    | 82001C74 | chase near | 4.83 m behind, 1.82 up (2.08 above the ground = HeightMinAboveGround) | 55 -> 58.7 deg, 5 -> 50 m/s |
+    | 82001DB4 | chase far | 5.24 behind, 2.03 up (2.29) | as near |
+    | 8200206C | cockpit | 0.361 / 0.815 / 0.127 = part 4 + CamCockpitOffset in x and y | 51.3 deg |
+    | 82001FF4 | hood | 0.78 ahead, 0.797 up | 53 fixed (HoodCam FOV0) |
+    | 82001F7C | bumper | 1.225 ahead, 0.859 up (1.15 above the ground = BumperHighCam RestHeightAboveGround 1.1) | varies with speed |
+
+    The chase cameras swing out +-0.6 m in corners (the yaw spring).
+  - `world_view.gd _game_cam` builds them from the player car's pose (still from the stream, until the physics runs
+    in Godot) with the INI's springs.
+  - **Open:** the chase distance's rule per car (one car measured), the CameraPhysics layers (sway / shake), the
+    replay cameras.
+- **Telemetry from the car-physics object (FM3E v4, FM3-ReGPU b213457):**
+  - Dumping the player's physics object while the AI drove found throttle +3408, brake +3412, steering +3416 (the
+    block repeats at +2744 / +2780), gear byte +1937, clutch +2672. Engine speed +324 and redline +452 are FH1's
+    ICarDynamics offsets; FM3's controls are elsewhere than FH1's +3904.
+  - The stream sends them (56-byte packet); the engine sound uses the throttle.
+  - Next: speed, wheel / tyre data (FH1 keeps wheels from +3936, stride 1024) for a full telemetry packet.
 - **Open:** bloom (bright pass: exposed scene + 0.42 x last frame's bloom - 1/255 - bloomCutoff, x bloomScale, on
   the HDR scene: needs values above 1, our picture is clipped at 1), the road specular's overshoot (re-check with the
   exposure), one opponent per race without an FM3N name (Silverstone's B.Giese: not the colour-file case); the palette barriers (`diff_clr_spec_2`: a per-model
