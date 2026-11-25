@@ -56,7 +56,10 @@ Godot", "Telemetry from the car-physics object", "Physics in Godot: feasibility"
   code: options and a recommendation in LIVE.md;
 - **track fog** (the viewer had none): TrackSettings `<Fog>`'s directional settings, applied by the track shaders as
   the game does (cars unfogged); RoadAtlanta 29.4 -> 21.5 live; a full survey with fog: LIVE.md "Track fog";
-- all 451 FSB sound banks decode (the 23 FSB3 'basic header' banks too: `FM3-files\tools\fsb_extract.py`).
+- all 451 FSB sound banks decode (the 23 FSB3 'basic header' banks too: `FM3-files\tools\fsb_extract.py`);
+- telemetry checked against the game's own telemetry screen (d-pad UP in a race): FM3E v6 tyre temperatures, v7
+  suspension positions (FM3-ReGPU f4cb614, local); `tools/fm3_car_physics.py` exports a car's drivetrain, and its
+  engine torque / power equal the telemetry page's (145.4 / 151.4 / 150.8 N m); the engine sound's torque inputs use it.
 
 **Night of 2026-11-24/25: the other tracks** (LIVE.md "Other tracks"). All 15 Free Play tracks
 build and run live (`tools\live\live_track.ps1`); the car library has all 500 cars incl. Disc 2; track shaders are read

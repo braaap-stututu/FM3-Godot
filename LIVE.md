@@ -387,7 +387,11 @@ Both boot FM3's test grid themselves (minimized; the game must be closed and the
     page's travel (cm) = (value - rest) x 100 (slopes 0.0095-0.0103 m per cm on all four wheels, correlation
     0.85-0.99 with the shot ~0.2 s from the read). Other page values to find the same way: friction % of peak
     (no single-sample match), camber, pressure (cold setting 30 psi at +188 of the wheel block), wear.
-  - Next: the FRICTION page's fields, the car's G (for the camera layers).
+  - Not found (8 page samples each, `telepage.ps1`-style runs with the readouts read): BODY ACCELERATION's total G
+    (0.34-0.69 G; no vector in the first 8 KB has that magnitude in G or m/s2, the best correlation needs a scale of
+    18.9 and an offset: the page probably shows a smoothed value), FRICTION's % of peak per tyre (best fields near
+    +4080 + 1040 x i correlate 0.56-0.94 across the wheels: not conclusive).
+  - Next: the car's G (for the camera layers: our G from the stream's positions runs ~1.6x the game's), friction.
 - **Track fog (2026-11-25 evening; the viewer had none):** TrackSettings.xml `<Fog>` holds up to 8 settings (Enabled,
   Angle = a heading in degrees, Color, Near / NearDensity, Far / FarDensity; parser `sub_8283CE78`, stored from +816 of
   the settings object). The track vertex shaders compute f = clamp(distance x c241.y + c241.z, 0, c241.w) (FogConsts:
