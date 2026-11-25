@@ -1,4 +1,14 @@
-# HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-25)
+# HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-26)
+
+**Start the next session here (stopped 2026-11-26 ~00:40, the user: "we'll continue next session").** Everything is
+committed and pushed: frame-ir `live-mirror` = master (ff77c0d), FM3-ReGPU `origin/main` (fbd2a02; the user allowed
+pushing FM3-ReGPU on 2026-11-25). The open list, in the order the user raised it, is LIVE.md "Next for stage A":
+1. **Track stripes** (the user's last point): they lack the game's worn / driven-over look; cause found (the road-line
+   shader's wear mask is not exported), plan written there; offered as the first job next session.
+2. Reflection sharpness: our reflected clouds have less contrast than the game's (not the cube's clipping, only
+   partly its size).
+3. The RSX's lenses less pink than the game's; slip ratio / angle for the telemetry (Data Out sends 0).
+The evening of 2026-11-25 below has what was done (glass / lamps / Data Out / FM3E v8 / arcanite24's ports).
 
 Read this first on a new machine or in a new session. Then **`LIVE.md`** (the current work: running the game live
 into Godot), `M1.md` (the detailed log of the offline pipeline, newest work at the end of stage 2), `FM3-FORMATS.md`
