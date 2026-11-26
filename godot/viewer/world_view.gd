@@ -1094,6 +1094,13 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 				sm.set_shader_parameter("game_amb_k", float(OS.get_environment("FM3_GAME_AMB_K")))
 		# the game's paint reflection (fm3_carpaint.gdshader game_refl; LIVE.md "Car paint reflection"):
 		# FM3_OLD_PAINT_REFL=1 = the older fitted term (A/B); FM3_PAINT_ENV=<static cube gain>,<live cube scale>
+		if OS.get_environment("FM3_ENV_FLIP") != "":
+			var ef := OS.get_environment("FM3_ENV_FLIP").split_floats(",")  # (tests: the static cube's axis flips)
+			sm.set_shader_parameter("env_flip", Vector3(ef[0], ef[1], ef[2]))
+		if OS.get_environment("FM3_ENV_YAW") != "":
+			sm.set_shader_parameter("env_yaw", float(OS.get_environment("FM3_ENV_YAW")))
+		if OS.get_environment("FM3_ENV_LOD") != "":
+			sm.set_shader_parameter("env_lod", float(OS.get_environment("FM3_ENV_LOD")))  # (tests: the static cube's blur level)
 		if OS.get_environment("FM3_PAINT_DEBUG") != "":
 			sm.set_shader_parameter("debug_out", int(OS.get_environment("FM3_PAINT_DEBUG")))
 		if OS.get_environment("FM3_OLD_PAINT_REFL") != "":

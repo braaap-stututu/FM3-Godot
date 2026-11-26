@@ -17,7 +17,8 @@ uniform float env_lod = 2.5;
 // The player's live cube (has_live) against the static cube the paint was fitted on: brighter (open sky, no cars)
 uniform float live_scale = 0.3;  // (fitted live: the CR-X 24.9 at 1.0, 14.0 at 0.5, 10.4 at 0.3; static cube 12.5)
 uniform vec3 env_fallback = vec3(0.45, 0.52, 0.56);
-uniform vec3 env_flip = vec3(-1.0, 1.0, 1.0);  // (this scene's x is the game's mirrored)
+uniform vec3 env_flip = vec3(-1.0, 1.0, 1.0);
+uniform float env_yaw = 0.0;  // (tests: the static cube turned about the vertical, degrees; FM3_ENV_YAW)  // (this scene's x is the game's mirrored)
 // Fitted on the grid (tools/car_regions.py, 7 cars). Refitted 2026-11-23 for the LOD 0 bodies with the file's own
 // normals (they face the sky more than the old rebuilt ones): sky 0.5 -> 0.24; CR-X mean colour then 135 vs the game's
 // 136. The highlights are still weaker than the game's (CR-X 90th percentile 150 vs 187).
@@ -141,6 +142,11 @@ uniform bool cull_back = false;
 // headrests where the game's stay grey. CrownJewel grid: whole frame 15.42 -> 15.07, the cars' area 13.66 -> 13.61.
 uniform float hdr_clamp = 1.0;  // (tests: FM3_CULL_BACK=1, back faces discarded as the game culls them)
 
+vec3 yaw_dir(vec3 d) {
+	float a = radians(env_yaw);
+	return vec3(cos(a) * d.x + sin(a) * d.z, d.y, -sin(a) * d.x + cos(a) * d.z);
+}
+
 void fragment() {
 	if (cull_back && !FRONT_FACING) {
 		discard;
@@ -167,7 +173,7 @@ void light() {
 			diff = amb + sh_dir * o2w * x * x * (3.0 - 2.0 * x) * sh;
 		}
 		vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
-		vec3 env = has_live ? live_cube(r) * live_scale : (has_env ? textureLod(env_cube, r * env_flip, env_lod).rgb : env_fallback);
+		vec3 env = has_live ? live_cube(r) * live_scale : (has_env ? textureLod(env_cube, yaw_dir(r) * env_flip, env_lod).rgb : env_fallback);
 		float cosv = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 		// the game's Fresnel (ShaderSettings body: FresnelMin 0.15, Max 1, Power 1.5, CubeScale 1.5), the reflected
 		// brightness at the windows' measured env_scale (the same, darker, game cube): replaces the fitted f0 0.02 /

@@ -829,6 +829,22 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   content, not the lighting.
   The same-boot probe: scratch `lensiter.ps1 -Probe` (t0 / W / 0.5 shots after the variants); `wtrack.ps1` numbers
   repeated modes (w1, w1-1).
+- **The AI cars' static-cube reflection is looked up wrongly** (2026-11-26 late; the user: the game's Eclipse shows
+  a faint white line and blue higher up that ours lacks). Not screen-space: AI cars reflect the track's static car
+  cube (their bool word 0x14 sets useStaticCubeMap, b130; the player's 0x13 reads the per-frame cube). The paint's
+  reflection term alone (`gridterms.ps1` mode 3 against `FM3_PAINT_DEBUG=3`) shows it: the game's Eclipse flank
+  reflects a bright white / yellow band (the grid stripes and kerb), ours is dark there, and ours puts an orange kerb
+  on the rear bumper where the game's is grey. Lookup variants on the term (Eclipse paint |d|, all cars): as is 30.2 /
+  18.8; x unflipped (`FM3_ENV_FLIP=1,1,1`) 28.7 / 18.0; yaw 90 / -90 (`FM3_ENV_YAW`) worse; yaw 180 (= a z mirror
+  instead of x) 26.5 / 17.7; sharper (`FM3_ENV_LOD=1`) 31.2. Full render with the z mirror: Eclipse paint 13.10 ->
+  12.87 but the AI cars 14.18 -> 14.48, whole frame unchanged, the flank too orange: no single flip is right.
+  The game's cube drawn as tiles over the paint (`gridterms.ps1` mode 20: TFetch(7) at cube coordinates (1 + s,
+  1 + t, face) in 64 px tiles) matched against our six faces under 8 orientations: mostly weak (0.2-0.3; few
+  pixels per tile), but **the game's face 3 (-Y) correlates 0.66 with our face 2 (+Y, the sky)**: the face order or
+  the face images are not what the lookup assumes. **Next:** probe the game's t7 with explicit directions (the
+  shader's own CubeOp path, e.g. the six axes and diagonals, one constant colour per shot or one per screen region)
+  and sample ours with the same game direction; that fixes face order, flips and env_flip together, and applies to
+  every shader reading the static cube (carglass, glass, lamp, lamp_game, lensrefl all use env_flip (-1, 1, 1)).
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended
