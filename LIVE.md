@@ -659,6 +659,10 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   18.7 -> 19.5. Still darker than the game's overall; the amber corners read yellow where the game's are orange. A
   separate light for amber lenses (`FM3_AMBER_LIGHT`, test switch; default = the 0.35 of all lenses): 0.7 / 1.0 gave
   mixed small changes (corner 33.7 -> 32.6 / 36.5, whole frame 22.2 -> 22.5 / 23.5): left as is.
+  Brighter reflectors (`FM3_REFLECTOR` 1.5 / 2) with the opaque lamps: tails 23.5 / 24.3 -> 23.3 / 24.8 / 25.3 / 27.3,
+  flat: the lamps' remaining darkness (85 / 55 / 49 against 114 / 65 / 63) is not the reflectors' strength. Next to
+  try: the bulb texture itself (dark dimpled red: what the game's tail_light shader does with it) and the lens's own
+  reflection (lerp(GlassColor, env, f)) at the game's cube brightness.
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended
