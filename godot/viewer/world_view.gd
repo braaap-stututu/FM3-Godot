@@ -573,7 +573,7 @@ func _init() -> void:
 		print("world_view: sun from the glTF")
 	sun.light_energy = (1.45 if filmic else 1.3) if lit else 1.0  # (linear tone mapping: calibrated on the grid's cars)
 	sun.light_color = Color(1.0, 0.97, 0.92)
-	sun.shadow_enabled = (lit or grey_shadow) and not no_shadows
+	sun.shadow_enabled = (lit or grey_shadow) and not no_shadows and OS.get_environment("FM3_NO_SHADOWS") == ""  # (FM3_NO_SHADOWS=1: tests)
 	# Edges: FM3 renders with MSAA (its 720p 2x, the recomp up to 4x); live, the main view does too (--msaa N, default 4,
 	# --msaa 1 = off)
 	if _live_port > 0 and _triple_layout == "":

@@ -647,6 +647,14 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   last night's final: right stripes 28.4 -> 10.5 (ours 94 / 92 / 84, game 93 / 93 / 89), left stripes 24.1 -> 20.0,
   road 9.8 -> 9.0, the CR-X 12.9 -> 11.4, the grandstand 16.1 -> 16.7; **whole frame 18.4 / 17.8 / 16.9 -> 16.8 /
   16.7 / 16.3** (the rebuild also carries every exporter change since 2026-11-24).
+- **RoadAtlanta's car shadows are wrong** (found 2026-11-26, open): our cars throw long, dark sun shadows forward and to
+  the right across the road where the game's car shadow is short, under the car; the right side of the road 49 / 48 /
+  50 against the game's 130 / 127 / 127 in one boot; with the viewer's sun shadows off (`FM3_NO_SHADOWS=1`, test
+  switch; `--no-shadows`) 121 / 119 / 123, whole frame 16.8 -> 15.9 (last night's runs show the same). The viewer
+  casts them along TrackSettings `ShadowLightDirection` (RoadAtlanta: (0.787, -0.480, 0.615), 29 degrees high, with
+  `OverrideShadowLightDirection` 1; Sebring's is steep, -0.79, and looks right). Next: find which direction the game
+  uses for car shadows (the override flag suggests the track's direction is not the cars'; check the sign / axis
+  conversion against a game shot with a long shadow), and the shadows' darkness (ShadowColor 0.49 / 0.50 / 0.53).
 - **The asphalt's fine grain** (the user's "rough asphalt look"): our road recipes equal the game's code (Sebring's
   `road_2blnd_3` decoded: grain at world xz x P1.x, the second layer at UV x P1.yz, v = the blend value's green;
   colour g x P0 + A x v x (g + P2 - g x P0)), and the grain textures have their full mip chains (BIX0: 512 x 512, 10
