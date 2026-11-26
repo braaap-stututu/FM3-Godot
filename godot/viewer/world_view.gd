@@ -95,7 +95,7 @@ var _mirrors_on := true
 var _car_lead := 0.0
 var _mirror_turn := 0
 var _mirrors := []  # [{mesh, car, centre, normal, radius (mesh space), mat, vp, cam}]
-const IN_CAR_EXPOSURE := 1.5
+const IN_CAR_EXPOSURE := 1.0  # (was 1.5, fitted before the exposure pass; with the cockpit lum limits 1.0: in-car 29.3 -> 23.2, 2026-11-27)
 
 
 static func _in_car_exposure() -> float:

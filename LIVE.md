@@ -774,6 +774,8 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   `fm3_track_export.track_tone` writes Tone 'cockpit_lum' (all scenes patched), `_expo_k` uses it in-car
   (`FM3_NO_COCKPIT_LUM=1` = before). In-car **29.3 / 27.4 / 22.8** (W 0.739), grid and chase views unchanged. Still
   in-car: our cabin is near black where the game's dash is grey (the cockpit shader's light), the hands.
+  Then the fitted in-car x1.5 (`IN_CAR_EXPOSURE`, from before the exposure pass) set to 1.0: in-car **23.2 / 22.5 /
+  19.5** (grid and chase unchanged).
 - **The car paint's light, decoded** (2026-11-26 evening; the user: "are we using the game's GI?"). The paint (ps
   e41e183a423e6f1b, vs a102319a5aef757b; register names from shaders_v11.fxobj container 47 and the car vertex
   shaders' tables) computes, in gamma space:
