@@ -239,6 +239,12 @@ func _init() -> void:
 	if fullscreen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 	root.mesh_lod_threshold = 0.0  # full detail: merged meshes span the whole track, their LOD pick would drop parts
+	# (tests: FM3_MIPBIAS=<bias>: finer (negative) or coarser texture mips in the main view)
+	if OS.get_environment("FM3_MIPBIAS") != "":
+		root.texture_mipmap_bias = float(OS.get_environment("FM3_MIPBIAS"))
+	# (tests: FM3_ANISO=2 / 4 / 8 / 16: the main view's anisotropic filtering; the project default is 4x)
+	if OS.get_environment("FM3_ANISO") != "":
+		root.anisotropic_filtering_level = {2: Viewport.ANISOTROPY_2X, 4: Viewport.ANISOTROPY_4X, 8: Viewport.ANISOTROPY_8X, 16: Viewport.ANISOTROPY_16X}.get(int(OS.get_environment("FM3_ANISO")), Viewport.ANISOTROPY_4X)
 	var doc := GLTFDocument.new()
 	var state := GLTFState.new()
 	# Textures GPU-compressed (2026-11-24): uncompressed, Ladera's 2,072 textures took ~2.8 GB of video memory (RGBA8 +

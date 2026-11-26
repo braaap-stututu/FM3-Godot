@@ -647,6 +647,13 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   last night's final: right stripes 28.4 -> 10.5 (ours 94 / 92 / 84, game 93 / 93 / 89), left stripes 24.1 -> 20.0,
   road 9.8 -> 9.0, the CR-X 12.9 -> 11.4, the grandstand 16.1 -> 16.7; **whole frame 18.4 / 17.8 / 16.9 -> 16.8 /
   16.7 / 16.3** (the rebuild also carries every exporter change since 2026-11-24).
+- **16x anisotropic filtering** (project.godot; was Godot's 4x; the user: the asphalt lacks its rough look in
+  general): the road is seen almost edge-on from the cameras, where 4x falls back to blurred mips. One Sebring boot:
+  road regions 20.5 / 20.4 / 20.5 -> 19.9 / 19.6 / 20.1, wall 15.9 -> 15.3, whole frame 22.4 -> 21.8; CrownJewel grid
+  17.0 / 16.9 / 16.5 -> **16.7 / 16.5 / 16.0**. A finer mip bias (`FM3_MIPBIAS=-0.5 / -1`, test switch) adds detail
+  that is not the game's (per pixel worse); `FM3_ANISO=<n>` overrides the level for tests. Still half the game's
+  fine detail on the far road (3.7-4.0 against 7.1-11.3, mean neighbour difference): our mips are Godot's box-filtered
+  ones from the top level, the game's files carry their own mip chains (not used yet: `_bind_textures` regenerates).
 - (Before that) **Track stripes too clean and bright** (the user, 2026-11-26: they lack the worn, driven-over look of the game's
   and its rough asphalt showing through). Cause in the code: the main road-line shader `rdline_blnd_spec_opac_3` is
   baked by `tools/fm3_track_export.py` (~line 1209) as the line texture alone, alpha = its mask, dimmed by a fitted
