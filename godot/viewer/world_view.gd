@@ -119,6 +119,8 @@ var _clock_off := INF  # Godot clock minus game clock (smallest seen)
 var _frame_dt := 1.0 / 120.0  # the game's frame interval (smoothed)
 var _live_raw := false  # --live-raw: the newest frame, no interpolation
 var _live_last_now := 0.0
+var _engine_redline := -1.0  # (FM3E: the player's redline, rpm; the HUD's red zone)
+var _hud: Control = null  # fm3_hud.gd (live only; FM3_HUD=0: off)
 var _engine_rpm := -1.0  # the player's engine speed ("FM3E"; -1 = none yet): the cockpit tach
 # The cockpit steering wheel (--steering-wheel game|input|off, F7 cycles them while running):
 #   game  = as FM3 turns it: player 1's steering input x the car's wheel angle (carattribs, STEER_GAME_DEG)
@@ -1022,6 +1024,31 @@ func _car_solid_material(m: BaseMaterial3D, nm: String, mesh: Mesh, s: int) -> S
 	return sm
 
 
+# The race HUD (fm3_hud.gd): made on the first live frame, fed the stream's telemetry and the cars' positions.
+func _hud_feed(player: int, moves: Dictionary) -> void:
+	if OS.get_environment("FM3_HUD") == "0":
+		return
+	if _hud == null:
+		var layer := CanvasLayer.new()
+		layer.layer = 100  # (over the exposure pass, layer 90: the HUD is not exposed)
+		_hud = load("res://viewer/fm3_hud.gd").new()
+		layer.add_child(_hud)
+		root.add_child(layer)
+	var pos := {}
+	for car in moves:
+		var o: Vector3 = (moves[car] as Transform3D) * ((_car_inv[car] as Transform3D).affine_inverse().origin)
+		pos[car] = Vector2(o.x, o.z)
+	_hud.call("feed", {"speed": _player_speed, "rpm": _engine_rpm, "redline": _engine_redline, "gear": _player_gear,
+		"throttle": maxf(_player_throttle, 0.0), "brake": maxf(_player_brake, 0.0), "cars": pos, "player": player,
+		"info": "game frames every %.1f ms" % (_frame_dt * 1000.0)})
+
+
+# The AI cars' paint reflecting the per-frame cube too (2026-11-26 late: the game's AI paint reads a near-field dynamic
+# cube through its "static" slot t7, not the track's static car cube; LIVE.md). FM3_AI_LIVE=0: the static cube again.
+func _ai_live(sm: ShaderMaterial) -> bool:
+	return OS.get_environment("FM3_AI_LIVE") != "0" and sm.shader == CARPAINT_SHADER
+
+
 # The track's SHLighting top / bottom / dir colours (<track>_track.json 'SH'), or {} when it has none.
 func _track_sh(gltf_path: String) -> Dictionary:
 	var f := gltf_path.get_basename() + "_track.json"
@@ -1627,7 +1654,7 @@ func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle
 			# (a car attached after the player was chosen, e.g. its library model arriving a moment later: the
 			# player switch in _update_live_cars had already run, so its paint reflected the static cube; 2026-11-25)
 			if not _live_cube_cams.is_empty():
-				(sm2_ as ShaderMaterial).set_shader_parameter("has_live", car == _live_player)
+				(sm2_ as ShaderMaterial).set_shader_parameter("has_live", car == _live_player or _ai_live(sm2_))
 	var nm_ := String(m.name)
 	var kind_ := "brake" if nm_.contains("tail_light") or nm_.contains("brake_light") else ("reverse" if nm_.contains("reverse_light") else "")
 	if nm_.contains("detail_glass_red") or nm_.contains("red_glass"):
@@ -2546,6 +2573,7 @@ func _live_step() -> void:
 			# The player's engine speed (rpm) and redline: only the player's cockpit is shown, so its tach takes this;
 			# v2 also player 1's steering input and the racing wheel's lock (the cockpit steering wheel).
 			_engine_rpm = b.decode_float(12)
+			_engine_redline = b.decode_float(16)
 			if b.decode_u32(4) >= 2 and b.size() >= 40:
 				_steer = clampf(b.decode_float(20), -1.0, 1.0)
 				_steer_lock = float(b.decode_u32(24))
@@ -3003,11 +3031,12 @@ func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, 
 		_world_env.environment.tonemap_exposure = _base_exposure * (_in_car_exposure() if in_car else 1.0)
 	_update_lights(player)
 	_update_engine_audio(player, moves)
+	_hud_feed(player, moves)
 	if player != _live_player and not _live_cube_cams.is_empty():
 		_live_player = player
 		for c_ in _car_shader_mats:
 			for sm_ in _car_shader_mats[c_]:
-				(sm_ as ShaderMaterial).set_shader_parameter("has_live", c_ == player)
+				(sm_ as ShaderMaterial).set_shader_parameter("has_live", c_ == player or _ai_live(sm_))
 	for part in _car_parts:
 		var mine: bool = int(part[1]) == player and in_car
 		var gi := part[0] as GeometryInstance3D

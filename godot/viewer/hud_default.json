@@ -1,0 +1,8 @@
+{
+  "units": "kmh",
+  "tach": {"enabled": true, "anchor": "br", "offset": [30, 30], "scale": 1.0},
+  "speed": {"enabled": false, "anchor": "br", "offset": [230, 40], "scale": 1.0},
+  "pedals": {"enabled": true, "anchor": "br", "offset": [230, 40], "scale": 1.0},
+  "map": {"enabled": true, "anchor": "bl", "offset": [30, 30], "scale": 1.0},
+  "info": {"enabled": false, "anchor": "tl", "offset": [20, 20]}
+}

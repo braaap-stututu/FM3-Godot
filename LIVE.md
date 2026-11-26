@@ -845,6 +845,15 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   shader's own CubeOp path, e.g. the six axes and diagonals, one constant colour per shot or one per screen region)
   and sample ours with the same game direction; that fixes face order, flips and env_flip together, and applies to
   every shader reading the static cube (carglass, glass, lamp, lamp_game, lensrefl all use env_flip (-1, 1, 1)).
+  **Resolved the same night: it is not the static cube.** The game's t7 drawn as panoramas through the shader's own
+  CubeOp lookup (`gridterms.ps1` mode 22: 128 x 64 px tiles of directions, x0.3; the picture repeats at exactly 128 /
+  64 px, so the probe works) shows a dark near-field view (road lines, a car body, low sky), not CrownJewel's static
+  car cube (mountains, stands, the grid's white stripes): on the grid the AI cars' "static" slot holds a per-frame
+  dynamic cube. So the AI paint now reflects our live cube too (`FM3_AI_LIVE=0` = the static cube): the Eclipse's
+  reflection term 30.2 -> 22.6, the Eclipse's paint 13.1 -> 11.3, all AI paint 14.3 -> 13.3, whole frame 14.20 ->
+  14.17; its flank shows the near lines as in the game (`out/live/eclipse_ai_livecube.png`). Its dampener stays the
+  live one (0.3; the game's AI path uses the static 0.5, not tried). The panorama also looks vertically inverted
+  against our GL-convention reading, which needs checking before the same change goes to AI glass and lamps.
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended
