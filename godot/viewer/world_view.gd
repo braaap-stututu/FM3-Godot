@@ -990,6 +990,8 @@ func _blend_material(m: BaseMaterial3D, f: Dictionary, gltf_path: String) -> Sha
 		sm.set_shader_parameter("tint2", Vector3(f["tint2"][0], f["tint2"][1], f["tint2"][2]))
 	if f.has("chan"):
 		sm.set_shader_parameter("paint_chan", float(f["chan"]))
+	if OS.get_environment("FM3_GRAIN_BIAS") != "":
+		sm.set_shader_parameter("grain_bias", float(OS.get_environment("FM3_GRAIN_BIAS")))
 	if mode_name in ["road", "paint", "edge"]:
 		var g := _load_tex(gltf_path, tex[0])
 		if g != null:

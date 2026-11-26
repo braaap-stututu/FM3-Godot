@@ -647,6 +647,15 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   last night's final: right stripes 28.4 -> 10.5 (ours 94 / 92 / 84, game 93 / 93 / 89), left stripes 24.1 -> 20.0,
   road 9.8 -> 9.0, the CR-X 12.9 -> 11.4, the grandstand 16.1 -> 16.7; **whole frame 18.4 / 17.8 / 16.9 -> 16.8 /
   16.7 / 16.3** (the rebuild also carries every exporter change since 2026-11-24).
+- **The asphalt's fine grain** (the user's "rough asphalt look"): our road recipes equal the game's code (Sebring's
+  `road_2blnd_3` decoded: grain at world xz x P1.x, the second layer at UV x P1.yz, v = the blend value's green;
+  colour g x P0 + A x v x (g + P2 - g x P0)), and the grain textures have their full mip chains (BIX0: 512 x 512, 10
+  mips), but our box-filtered mips averaged the speckle away a few metres out. A mip bias on the base texture only
+  (`fm3_blend.gdshaderinc` grain_bias, default -1; `FM3_GRAIN_BIAS`): road detail (mean neighbour difference) Sebring
+  near / ahead / right 14.2 / 7.5 / 6.1 -> 16.9 / 10.0 / 7.7 (game 17.1 / 10.3 / 8.3); CrownJewel whole frame 6.6 ->
+  8.0 (game 8.7), stripes 9.7 -> 13.6 (game 14.3). Per pixel: Sebring about the same (-2 better: 23.9 -> 23.0),
+  CrownJewel 15.3 -> 15.7 (added detail is never pixel-aligned with the game's). A judgement call for the look:
+  `FM3_GRAIN_BIAS=0` = before.
 - **Per-vertex light for the `*_nolm` track shaders** (2026-11-26 morning): the CrownJewel pit wall (`facility_R`,
   `barr_shad_diff_spec_nolm_1`) had no lightmap in our scene and fell back to Godot's own lighting (greyer, darker).
   Disassembled: texture x lerp(DarkColor c247, LightColor c248, vertex light), the light baked per vertex as an ARGB8
