@@ -2092,10 +2092,12 @@ func _exposure_update() -> void:
 	if _expo_L < 0.0 or _expo_instant:
 		_expo_L = y_s
 	else:
-		# (the game adapts 2% a game frame, at 60 a second: by time here, so a slow viewer adapts as fast as the game)
+		# (the game adapts by the track's ToneMapeDelay a game frame (MapleValley's 0.02 = the 2% measured; CrownJewel
+		# 0.05, Tsukuba 1 = at once), at 60 a second: by time here, so a slow viewer adapts as fast as the game)
 		var dt := float(Time.get_ticks_msec() - _expo_ms) / 1000.0
 		var steps := float(n) if _expo_old else clampf(dt * 60.0, float(n), 600.0)
-		_expo_L += (1.0 - pow(0.98, steps)) * (y_s - _expo_L)
+		var keep := 1.0 - clampf(float(_expo_tone.get("delay", 0.02)), 0.0, 1.0)
+		_expo_L += (1.0 - pow(keep, steps)) * (y_s - _expo_L)
 	_expo_ms = Time.get_ticks_msec()
 	_expo_dl = absf(_expo_L - l_before) if l_before >= 0.0 else 1.0
 	_expo_apply(_expo_k(_expo_L))

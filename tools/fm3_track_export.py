@@ -712,17 +712,20 @@ def track_fog(ts_text):
 
 def track_tone(ts_text):
     """TrackSettings' exposure values for the viewer (the game's final pass): {dark: [black, gamma, white, boost], light:
-    [...], lum: [min, max], desat: DesaturateAmount}, or None."""
+    [...], lum: [min, max], desat: DesaturateAmount, delay: ToneMapeDelay}, or None."""
     mo = re.search(r'<ToneMappingLevels ([^>]*)/>', ts_text)
     lm = re.search(r'<TrackLumLimits min="([-0-9.e]+)" max="([-0-9.e]+)"', ts_text)
     if not mo or not lm:
         return None
     a = {k: float(v) for k, v in re.findall(r'(\w+)="([-0-9.e]+)"', mo.group(1))}
     ds = re.search(r'<DesaturateAmount value="([-0-9.e]+)"', ts_text)
+    # ToneMapeDelay: the luminance pass's blend a frame (MapleValley's 0.02 = the 2% measured in its capture; 2026-11-26)
+    dl = re.search(r'<ToneMapeDelay val="([-0-9.e]+)"', ts_text)
     try:
         return {'dark': [a['DarkCurveBlackPoint'], a['DarkCurveGamma'], a['DarkCurveWhitePoint'], a['DarkCurveBoost']],
                 'light': [a['LightCurveBlackPoint'], a['LightCurveGamma'], a['LightCurveWhitePoint'], a['LightCurveBoost']],
-                'lum': [float(lm.group(1)), float(lm.group(2))], 'desat': float(ds.group(1)) if ds else 1.0}
+                'lum': [float(lm.group(1)), float(lm.group(2))], 'desat': float(ds.group(1)) if ds else 1.0,
+                'delay': float(dl.group(1)) if dl else 0.02}
     except KeyError:
         return None
 

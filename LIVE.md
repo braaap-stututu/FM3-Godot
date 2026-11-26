@@ -800,6 +800,17 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   .. 0.362): the picture now waits until L changes by < 0.002 an update. RoadAtlanta (identical runs 0.01 apart),
   old car light -> decoded paint + parts: whole frame 17.1 / 17.7 / 18.9 -> 17.0 / 17.5 / 18.7, the pixels it changes
   23.96 -> 20.30, the RSX 13.82 -> 13.66 (the same scene measured 20.2-22 before the exposure waited: that was noise).
+  **The adaptation speed per track:** TrackSettings `ToneMapeDelay` is the luminance pass's blend a frame (MapleValley
+  0.02 = the 2% measured in its capture): CrownJewel 0.05, RoadAtlanta 0.023, LeMans 0.15, NewYork 0.1, SunsetInfield /
+  Tsukuba 1 (no adaptation lag), RoadAmerica 0.01. `fm3_track_export.track_tone` writes it as Tone 'delay' (all 17
+  scenes patched); the viewer adapts by it (frozen-frame tests unaffected: they adapt at once).
+  **RoadAtlanta's exposure (open):** the game's W there is 1.024 (`wtrack.ps1 -Index 16`), ours settles at 0.80 on the
+  same moment: the game's scene before the exposure is ~1.15-1.25x ours (per pixel, uniform over sky / road / walls,
+  more in the darks: an offset of ~0.07 fits as well as a scale), while Sebring's matched (0.953 vs 0.946-0.966). A
+  x1.25 scene scale made RoadAtlanta worse (23.8 -> 24.8, another boot): not a plain scale. Our darks there are ~14
+  levels too light (the black RSX's paint reflects bluer and brighter than the game's: rear window 54 / 55 / 51 vs
+  46 / 42 / 37; the HUD's dark gauges). Next: which of RoadAtlanta's values differs (skyGain 0.15, DarkColor -0.1,
+  LightCurveBlackPoint 10 / Boost -1 are its unusual ones).
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended
