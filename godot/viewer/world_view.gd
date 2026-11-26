@@ -104,6 +104,7 @@ var _shot_held_since := -1  # (ms: a requested picture waiting for the library c
 var _shot_settle := 3
 var _cars_with_parts := {}  # cars with meshes attached
 var _sun_to := Vector3(0, 1, 0)  # towards the sun (glass highlights)
+var _car_lamps := {}  # library car stem -> its lamp parameters (<car>_lamps.json; _lamp_settings)
 var _carmats := {}  # car mesh node name -> its glass parameters from the game's shader settings (<gltf>_carmaterials.json)
 var _needles := {}  # cockpit gauge needle node name -> {pivot, axis, mid, max, gauge, ticks} (<gltf>_needles.json)
 var _wheel_inv := {}  # car -> its four wheel matrices at attach time, inverted
@@ -696,6 +697,10 @@ const BULB_REFL := 15.0
 # 0.45 since the lamps' reflection is drawn opaque (fm3_lamp.gdshader) and so passes through this filter too (2026-11-26):
 # Sebring RSX tails 33.6 / 30.6 -> 25.2 / 23.2 (with BULB_REFL 15), CrownJewel CR-X rear 14.8 -> 13.0, Eclipse 18.7 -> 19.5.
 const LENS_FILTER := 0.45
+# A textured reflector's reflection gain with the car's own settings (_lamp_settings; 2026-11-26). Fitted on the Sebring
+# RSX, whose textured_reflector (as 8 other cars') sets CubeMultiplier 2.2, Fresnel min 2.11 > max 0.86 (so a flat 0.86):
+# x1 its tails went 137 / 102 / 101 (game 114 / 64 / 62); x0.3 tails 24.1 / 24.1, the old defaults 25.4 / 23.3.
+const TEXTURED_REFL := 0.3
 # How far a reflector's reflection takes its texture's colour (fm3_reflector.gdshader tint_amount): 1 made the RSX's
 # tails 67 / 32 / 26 (game 114 / 65 / 63), 0 greyed the CR-X's red reflector panel (G / B +16).
 const REFLECTOR_TINT := 0.5
@@ -711,6 +716,32 @@ static func _lens_filter() -> float:
 # A library lamp part (reflector, textured reflector, tail-lamp bulb) as one opaque material: the lit texture plus the
 # cube reflection as emission (fm3_lamp.gdshader), so the red lenses in front tint it as the game's do; null for other
 # parts. FM3_LAMP_PASS=1: the older plain material + additive reflection pass (_add_reflector_pass).
+const LAMP_NAMES := ["textured_reflector", "reverse_light", "tail_light_2", "tail_light2", "brake_light", "tail_light", "reflector"]
+
+
+# A library car lamp part's own parameters (2026-11-26): <car>_lamps.json (tools/fm3_car_lamps.py), the car's
+# shadersettings.xml against Normal.xml's: {cube: reflection scale over the default's, fresnel_*: the car's, glow: brake /
+# reverse colour over the default's red}. Node names are carbin_<car>_<material>_<n>. FM3_LAMP_DEFAULTS=1: none (as
+# before, every car on the defaults). {} for other parts.
+func _lamp_settings(nm: String, gltf_path := "") -> Dictionary:
+	if OS.get_environment("FM3_LAMP_DEFAULTS") == "1":
+		return {}
+	if gltf_path != "":
+		var stem_ := gltf_path.get_file().get_basename()
+		if not _car_lamps.has(stem_):
+			var p_ := gltf_path.get_basename() + "_lamps.json"
+			var d_ = JSON.parse_string(FileAccess.get_file_as_string(p_)) if FileAccess.file_exists(p_) else {}
+			_car_lamps[stem_] = d_ if d_ is Dictionary else {}
+	for stem in _car_lamps:
+		if not nm.begins_with("carbin_" + stem + "_"):
+			continue
+		for mat in LAMP_NAMES:
+			if nm.contains("_" + mat + "_"):
+				return (_car_lamps[stem] as Dictionary).get(mat, {})
+		return {}
+	return {}
+
+
 func _lamp_material(m: BaseMaterial3D, nm: String, gltf_path: String) -> ShaderMaterial:
 	if OS.get_environment("FM3_LAMP_PASS") == "1" or nm.begins_with("cockpit_") or m.albedo_texture == null:
 		return null
@@ -722,6 +753,8 @@ func _lamp_material(m: BaseMaterial3D, nm: String, gltf_path: String) -> ShaderM
 		k = float(OS.get_environment("FM3_BULB")) if OS.get_environment("FM3_BULB") != "" else BULB_REFL
 	elif OS.get_environment("FM3_REFLECTOR") != "":
 		k = float(OS.get_environment("FM3_REFLECTOR"))
+	elif nm.contains("textured_reflector") and not _lamp_settings(nm, gltf_path).is_empty():
+		k = TEXTURED_REFL
 	var sm := ShaderMaterial.new()
 	sm.shader = LAMP_SHADER
 	sm.set_shader_parameter("albedo_tex", m.albedo_texture)
@@ -733,6 +766,12 @@ func _lamp_material(m: BaseMaterial3D, nm: String, gltf_path: String) -> ShaderM
 		sm.set_shader_parameter("env_cube", cube)
 		sm.set_shader_parameter("static_cube_gain", _env_cube_gain(gltf_path))
 	sm.set_shader_parameter("cube_scale", 0.2 if bulb else (1.0 if nm.contains("textured_reflector") else 1.5))
+	var ls := _lamp_settings(nm, gltf_path)
+	if not ls.is_empty():
+		sm.set_shader_parameter("cube_scale", float(sm.get_shader_parameter("cube_scale")) * float(ls.get("cube", 1.0)))
+		for p_ in ["fresnel_min", "fresnel_max", "fresnel_scale", "fresnel_power"]:
+			if ls.has(p_):
+				sm.set_shader_parameter(p_, float(ls[p_]))
 	sm.set_shader_parameter("refl", k)
 	# (the bulbs' own texture is a dark dimpled red: tinted by it, their reflection all but vanished; the game's domes
 	# read as pink chrome through the lens)
@@ -1362,6 +1401,20 @@ func _bind_textures(state: GLTFState, gltf_path: String, compress := true) -> vo
 
 # One car mesh joins the live cars: it follows its car (wk -1) or wheel wk at <offset> (global = move * offset), with
 # its speed blur, cockpit flag, needle, paint / glass materials (the player's live cube) and brake / reverse lights.
+# A brake / reverse lamp's glow colour: the default red / warm white, times the car's own BrakeColor / ReverseLightColor
+# over the default's (_lamp_settings; 75 different brake colours, 2.6 .. 15 against 3.6 / lod0 7). Above 1 it is HDR
+# (emission, so the glow follows the game's brightness ratios); FM3_LAMP_GLOW_MAX caps it (default 4).
+func _lamp_glow(nm: String, kind: String) -> Vector3:
+	var c := Vector3(1.0, 0.0, 0.0) if kind == "brake" else Vector3(1.0, 1.0, 0.95)
+	var g = _lamp_settings(nm).get("glow")
+	if g is Array and g.size() >= 3:
+		var cap := float(OS.get_environment("FM3_LAMP_GLOW_MAX")) if OS.get_environment("FM3_LAMP_GLOW_MAX") != "" else 4.0
+		var gv := Vector3(float(g[0]), float(g[1]), float(g[2]))
+		gv = gv * minf(1.0, cap / maxf(gv.x, 1e-3))
+		c = gv if kind == "brake" else gv * c
+	return c
+
+
 func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle = null) -> void:
 	if String(m.name).contains("_cockpit_mirror"):
 		_add_mirror(m, car)
@@ -1397,7 +1450,7 @@ func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle
 		for si_ in m.get_surface_override_material_count():
 			var lm_ = m.get_surface_override_material(si_)
 			if lm_ is ShaderMaterial and (lm_ as ShaderMaterial).shader == LAMP_SHADER:
-				(lm_ as ShaderMaterial).set_shader_parameter("glow_color", Vector3(1.0, 0.0, 0.0) if kind_ == "brake" else Vector3(1.0, 1.0, 0.95))
+				(lm_ as ShaderMaterial).set_shader_parameter("glow_color", _lamp_glow(nm_, kind_))
 				if not _light_mats.has(car):
 					_light_mats[car] = []
 				_light_mats[car].append([lm_, kind_ + "_lamp"])
@@ -1406,7 +1459,8 @@ func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle
 				var bm_ := lm_ as BaseMaterial3D
 				bm_.emission_enabled = true
 				bm_.emission_texture = bm_.albedo_texture
-				bm_.emission = Color(1.0, 0.0, 0.0) if kind_ == "brake" else Color(1.0, 1.0, 0.95)
+				var gc_ := _lamp_glow(nm_, kind_)
+				bm_.emission = Color(gc_.x, gc_.y, gc_.z)
 				bm_.emission_energy_multiplier = 0.0
 				if not _light_mats.has(car):
 					_light_mats[car] = []
@@ -1884,6 +1938,7 @@ func _attach_library_car(car) -> void:
 	var scene_ := doc.generate_scene(st)
 	root.add_child(scene_)
 	var base := path.get_basename()
+	_lamp_settings("", path)  # (loads <car>_lamps.json for _lamp_glow)
 	var cm = JSON.parse_string(FileAccess.get_file_as_string(base + "_carmaterials.json")) if FileAccess.file_exists(base + "_carmaterials.json") else {}
 	var nd = JSON.parse_string(FileAccess.get_file_as_string(base + "_needles.json")) if FileAccess.file_exists(base + "_needles.json") else {}
 	var cols = JSON.parse_string(FileAccess.get_file_as_string(base + "_colors.json")) if FileAccess.file_exists(base + "_colors.json") else {}

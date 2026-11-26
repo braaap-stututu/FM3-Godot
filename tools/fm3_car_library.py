@@ -15,7 +15,8 @@ stock wheel zip (--wheel-files). Writes per car <out>/<car>.gltf (+ .bin, <car>_
     nodamage_lod0 x the colour (white here: the viewer sets the database colour from FM3N), with a metallic-roughness
     texture so the viewer gives it the paint shader;
   - <car>_colors.json: the database's Combo_Colors for the car {Sequence: [r, g, b, metallic]} (sRGB 0..1),
-    <car>_carmaterials.json (glass parameters by node), <car>_needles.json (needle / steering turns, car space).
+    <car>_carmaterials.json (glass parameters by node), <car>_needles.json (needle / steering turns, car space),
+    <car>_lamps.json (the car's own lamp parameters against the defaults, fm3_track_export.lamp_params).
 """
 import json
 import os
@@ -373,7 +374,8 @@ def build(car, cdir, wdir, db, outdir):
                             flat_mat(mname if mname in tx.CAR_FLAT else 'black'), None, fz=True)
     out = os.path.join(outdir, car + '.gltf')
     g.write(out)
-    for suffix, data in (('_colors.json', car_colors(db, car)), ('_carmaterials.json', carmats), ('_needles.json', needles)):
+    for suffix, data in (('_colors.json', car_colors(db, car)), ('_carmaterials.json', carmats), ('_needles.json', needles),
+                         ('_lamps.json', tx.lamp_params(zdir))):
         with open(os.path.join(outdir, car + suffix), 'w', newline='\n') as f:
             json.dump(data, f, indent=1)
     return f'{car}: {len(g.meshes)} meshes ({nb} body groups, {nw} wheel groups), {len(needles)} needles, ' \

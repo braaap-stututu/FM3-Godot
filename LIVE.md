@@ -663,6 +663,18 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   flat: the lamps' remaining darkness (85 / 55 / 49 against 114 / 65 / 63) is not the reflectors' strength. Next to
   try: the bulb texture itself (dark dimpled red: what the game's tail_light shader does with it) and the lens's own
   reflection (lerp(GlassColor, env, f)) at the game's cube brightness.
+- **Per-car lamp values** (2026-11-26, the user asked whether taillights differ per car: they do). 393 cars carry
+  their own `shadersettings.xml` over `Media\Cars\ShaderSettings\Normal.xml`: `tail_light(_lod0)` BrakeColor in 124
+  cars (75 values, 2.6 .. 15 against the default 3.6 / lod0 7), `detail_glass_red` in 148 (43 colours, 27 opacities;
+  most CubeScale 1.0 / Fresnel max 0.4 against 1.5 / 1.0), reverse colours in ~120, `textured_reflector` in 14 (9 with
+  the RSX's set: CubeMultiplier 2.2, Fresnel min 2.11 > max 0.86, power 7). The lenses already took them
+  (`_carmaterials.json`); the lamp parts and glow did not. Now `<car>_lamps.json` (`tools/fm3_car_lamps.py` for built
+  libraries, `fm3_car_library.py` for new ones; `fm3_track_export.lamp_params`): reflection scale over the default's,
+  the car's Fresnel (the game's min(max(.., min), max)), glow colour over the default's (capped at 4x,
+  `FM3_LAMP_GLOW_MAX`). Viewer: `_lamp_settings` / `_lamp_glow`; `FM3_LAMP_DEFAULTS=1` = before. On the RSX the own
+  textured-reflector values at x1 made the tails 137 / 102 / 101 (game 114 / 64 / 62): gain `TEXTURED_REFL` 0.3 fitted
+  (tails 24.8 / 25.1 against the defaults' 26.0 / 24.5, whole frame 22.5 both): neutral there. The brake glow
+  differences (the bulk of the per-car values) show only on braking cars: not yet measured against the game.
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended
