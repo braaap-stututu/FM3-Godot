@@ -1036,15 +1036,33 @@ func _crowd3d() -> void:
 	if not FileAccess.file_exists(jf) or not FileAccess.file_exists(idx_path):
 		print("world_view: no 3D crowd (%s / %s)" % [jf, idx_path])
 		return
-	var people: Array = JSON.parse_string(FileAccess.get_file_as_string(jf))["people"]
+	var cj: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(jf))
+	var people: Array = cj["people"]
+	# (the game draws 3D people within TrackSettings' SpriteDistance of the camera and sprites beyond it: the cards stay
+	# for the far crowd, faded out inside the distance, and the 3D people are hidden beyond it, _crowd3d_update)
+	# (off by default: our far "sprites" are the track's 7-figure card sheet, not the game's sprite renders of these
+	# people (Media/Spectators/sprites.xds): every person in 3D measured better, CrownJewel 14.12 -> 13.92;
+	# FM3_CROWD3D_SPRITES=1 switches at SpriteDistance)
+	_crowd_sd = float(cj.get("sprite_distance", 0.0)) if OS.get_environment("FM3_CROWD3D_SPRITES") == "1" else 0.0
 	var figs: Array = JSON.parse_string(FileAccess.get_file_as_string(idx_path))
 	var sit := []
 	for f in figs:
 		if f.has("sit"):
 			sit.append(f["sit"])
 	var hidden := 0
+	var shade := Color(1, 1, 1)  # (the cards' colour factor: the track's TrackSettings Crowds dark colour, fm3_track_export)
 	for n in root.find_children("crowd_people*", "MeshInstance3D", true, false):
-		(n as MeshInstance3D).visible = false
+		var cm := (n as MeshInstance3D).get_active_material(0) as BaseMaterial3D
+		if cm != null:
+			shade = cm.albedo_color
+		if _crowd_sd > 0.0 and cm != null:
+			var fm := cm.duplicate() as BaseMaterial3D
+			fm.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_DITHER
+			fm.distance_fade_min_distance = _crowd_sd - 4.0
+			fm.distance_fade_max_distance = _crowd_sd
+			(n as MeshInstance3D).material_override = fm
+		else:
+			(n as MeshInstance3D).visible = false
 		hidden += 1
 	var groups := {}
 	for p in people:
@@ -1075,15 +1093,58 @@ func _crowd3d() -> void:
 		mm.mesh = mesh
 		var g: Array = groups[key]
 		mm.instance_count = g.size()
+		var xfs := []
 		for i in g.size():
 			var q: Array = g[i]
 			var b := Basis(Vector3.UP, float(q[5]) + yaw0)
-			mm.set_instance_transform(i, Transform3D(b, Vector3(q[2], q[3], q[4])))
+			xfs.append(Transform3D(b, Vector3(q[2], q[3], q[4])))
+			mm.set_instance_transform(i, xfs[i])
+		_crowd_sets.append([mm, xfs])
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
+		if OS.get_environment("FM3_CROWD3D_SHADE") == "dark" and mesh.get_surface_count() > 0:
+			# (tests: unshaded, the texture x the track's crowd dark colour, as the cards)
+			var m0s := mesh.surface_get_material(0) as BaseMaterial3D
+			if m0s != null:
+				var m1s := m0s.duplicate() as BaseMaterial3D
+				m1s.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+				m1s.albedo_color = shade
+				mmi.material_override = m1s
+		elif OS.get_environment("FM3_CROWD3D_K") != "0" and mesh.get_surface_count() > 0:
+			# (the people's brightness under Godot's light: x0.7 fitted (CrownJewel people 38.8 -> 29.5, mean 69 / 63 / 57
+			# against the game's 70 / 65 / 61); the game's own crowd shading (TrackSettings Crowds dark / light) is not
+			# decoded: its dark colour alone, unshaded (FM3_CROWD3D_SHADE=dark), 31.2. FM3_CROWD3D_K=<k>; 0 = Godot's as is)
+			var m0 := mesh.surface_get_material(0) as BaseMaterial3D
+			if m0 != null:
+				var m1 := m0.duplicate() as BaseMaterial3D
+				var kk := float(OS.get_environment("FM3_CROWD3D_K")) if OS.get_environment("FM3_CROWD3D_K") != "" else 0.7
+				m1.albedo_color = Color(kk, kk, kk, 1.0)
+				mmi.material_override = m1
 		root.add_child(mmi)
 		sc.free()
 	print("world_view: 3D crowd: %d people in %d groups (%d card meshes hidden)" % [people.size(), groups.size(), hidden])
+
+
+var _crowd_sets := []  # [MultiMesh, [Transform3D per person]]
+var _crowd_sd := 0.0  # SpriteDistance (m); 0 = every person in 3D
+
+
+# Every 10 frames: the 3D people beyond SpriteDistance of the camera hidden (scaled to nothing), the near ones shown.
+func _crowd3d_update() -> void:
+	if _crowd_sets.is_empty() or _crowd_sd <= 0.0 or _frames % 10 != 0:
+		return
+	var cam := root.get_camera_3d()
+	if cam == null:
+		return
+	var c := cam.global_position
+	var sd2 := _crowd_sd * _crowd_sd
+	var none := Transform3D(Basis().scaled(Vector3.ZERO), Vector3.ZERO)
+	for set_ in _crowd_sets:
+		var mm: MultiMesh = set_[0]
+		var xfs: Array = set_[1]
+		for i in xfs.size():
+			var x: Transform3D = xfs[i]
+			mm.set_instance_transform(i, x if x.origin.distance_squared_to(c) < sd2 else none)
 
 
 # The race HUD (fm3_hud.gd): made on the first live frame, fed the stream's telemetry and the cars' positions.
@@ -3284,6 +3345,7 @@ func _process(_delta: float) -> bool:
 	_frames += 1
 	if _frames == 3:
 		_crowd3d()
+	_crowd3d_update()
 	_exposure_update()
 	_fog_update()
 	# the sky dome stays centred on the camera, as FM3 draws it (fm3_track_export.py: skydome_ nodes)

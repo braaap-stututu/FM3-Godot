@@ -8,6 +8,8 @@ The viewer (world_view.gd, FM3_CROWD3D) draws them with tools/fm3_spectators.py'
 MultiMesh per figure and texture set, in place of the 'crowd_people' cards.
 """
 import json
+import os
+import re
 import struct
 import sys
 
@@ -32,7 +34,13 @@ def people(path):
 def main():
     out = sys.argv[2][:-5] + '_crowd.json' if sys.argv[2].endswith('.gltf') else sys.argv[2]
     ps = people(sys.argv[1])
-    json.dump({'people': ps, 'source': sys.argv[1].replace('\\', '/').split('/')[-1]}, open(out, 'w', newline='\n'))
+    # the distance beyond which the game draws its crowd as sprites (TrackSettings <Crowds SpriteDistance>), metres
+    ts = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[1]))), 'TrackSettings.xml')
+    m = re.search(r'SpriteDistance="([-0-9.e]+)"', open(ts, errors='replace').read()) if os.path.exists(ts) else None
+    sd = float(m.group(1)) if m else 0.0
+    json.dump({'people': ps, 'sprite_distance': sd, 'source': sys.argv[1].replace('\\', '/').split('/')[-1]},
+              open(out, 'w', newline='\n'))
+    print('sprite distance %g m' % sd)
     figs = sorted(set(p[0] for p in ps))
     print('%d people, figures %s, sets %s -> %s' % (len(ps), figs, sorted(set(p[1] for p in ps)), out))
 

@@ -884,6 +884,12 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   16.60 -> 16.62. Not yet: the animations (PLAN-NEXT 2), the game's
   crowd shading (TrackSettings Crowds dark / light: Godot's lighting here), the far crowd's sprites (the 'crowds'
   cards stay), pit crew / marshals (placement unknown).
+  Then (00:00): the people's brightness x0.7 (fitted; the game's dark / light crowd shading not decoded) and every
+  person in 3D (the game switches to sprites past TrackSettings' SpriteDistance, 150 m on CrownJewel, but its sprites
+  are renders of these people; our only far "sprites" are the track's card sheet: `FM3_CROWD3D_SPRITES=1` does the
+  switch, cards faded in past the distance). CrownJewel grid, one boot: cards 14.35, people x0.7 + sprites 14.12,
+  the track's dark colour unshaded 14.19, **x0.7, all 3D 13.92** (the people's pixels 38.8 -> 29.3, mean 70 / 64 / 58
+  against the game's 70 / 65 / 61). Viewer speed with the crowd (live_smooth, 30 s): 23 -> 22 fps.
   Measuring note: two boots' viewer pictures differed by 1.44 on average with the same settings (247 pixels by more
   than 10): a small whole-frame shift between boots; compare variants within one boot.
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
