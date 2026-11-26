@@ -109,6 +109,26 @@ uniform float game_live_scale = 1.0;  // (the live cube in this term: live_scale
 // sky ~0.3 / road ~0.16, half the game's live cube (0.6 / 0.34). 2026-11-25.
 uniform float static_cube_gain = 2.0;
 varying vec2 env_ab;
+// The game's car ambient (decoded 2026-11-26 from the paint vs a102319a5aef757b / ps e41e183a423e6f1b): the vertex
+// shader's o[5].xyz = transfer SH . shHemisphericalLightR/G/B (c38-40), the SH of TrackSettings SHTop / SHBottom per
+// channel with the same hemisphere projection as shCubeMapDampnerLight, so per vertex SHTop x a + SHBottom x b with the
+// (a, b) of fm3_carbin.env_sh (UV2); the pixel shader adds paint x o[5].xyz unshadowed, in gamma space. game_amb
+// replaces the fitted mix(ambient_ground, ambient, up) on meshes with UV2 (world_view.gd FM3_GAME_AMB=0: off).
+uniform bool game_amb = false;
+uniform vec3 sh_top = vec3(0.33, 0.34, 0.36);
+uniform vec3 sh_bottom = vec3(0.0);
+uniform float game_amb_k = 1.0;
+// ... and its sun: the vertex shader's o[2].w = transfer SH . shDirectionalLightI (c36), measured against the game on
+// the CrownJewel grid (its o[2].w output by a live ps edit, per pixel against our n.l: 0.375 + 0.541 n.l, rms 0.09: the
+// SH-projected cosine); the pixel shader: paint x SHDir x o2w x smoothstep((o2w SHDir.r - (T - W)) / 2W) (ShaderSettings
+// body SHTransition 0.5, Width 0.3), times the shadow max(shadow map, MinShadowValue 0.25) (and the track lightmap's
+// smoothstep, ~1 on the road). Replaces the fitted sun x pow(n.l, 2) (world_view.gd FM3_GAME_SUN=0: off).
+uniform bool game_sun = false;
+uniform vec3 sh_dir = vec3(0.78, 0.76, 0.73);
+uniform vec2 sun_sh = vec2(0.375, 0.541);
+uniform float sh_transition = 0.5;
+uniform float sh_transition_width = 0.3;
+uniform float min_shadow = 0.25;
 uniform int debug_out = 0;
 
 void vertex() {
@@ -137,7 +157,15 @@ void light() {
 		float sh = 1.0 - shadow_strength + shadow_strength * ATTENUATION;
 		float ndl = max(dot(NORMAL, LIGHT), 0.0);
 		float up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y * 0.5 + 0.5;
-		vec3 diff = mix(ambient_ground, ambient, up) + sun * pow(ndl, sun_pow) * sh;
+		bool has_ab = !(env_ab.x == 0.0 && env_ab.y == 0.0);
+		vec3 amb = (game_amb && has_ab) ? max(sh_top * env_ab.x + sh_bottom * env_ab.y, vec3(0.0)) * game_amb_k : mix(ambient_ground, ambient, up);
+		vec3 diff = amb + sun * pow(ndl, sun_pow) * sh;
+		if (game_sun) {
+			float o2w = max(sun_sh.x + sun_sh.y * dot(NORMAL, LIGHT), 0.0);
+			float x = clamp((o2w * sh_dir.r - (sh_transition - sh_transition_width)) / (2.0 * sh_transition_width), 0.0, 1.0);
+			sh = max(ATTENUATION, min_shadow);
+			diff = amb + sh_dir * o2w * x * x * (3.0 - 2.0 * x) * sh;
+		}
 		vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
 		vec3 env = has_live ? live_cube(r) * live_scale : (has_env ? textureLod(env_cube, r * env_flip, env_lod).rgb : env_fallback);
 		float cosv = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
@@ -166,6 +194,10 @@ void light() {
 			if (debug_out == 1) { dbg = refl; }
 			if (debug_out == 2) { dbg = vec3(fg); }
 			if (debug_out == 3) { dbg = refl / max(fg, 1e-4); }
+			if (debug_out == 13) { dbg = amb; }  // (the ambient: the game's o[5].xyz)
+			if (debug_out == 14) { dbg = vec3(ndl * 0.5); }  // (n.l, halved: against the game's o[2].w x 0.5)
+			if (debug_out == 15) { dbg = vec3(0.25 + 0.25 * dot(NORMAL, LIGHT)); }  // (signed n.l mapped to 0..0.5)
+			if (debug_out == 16) { dbg = vec3(env_ab * 0.5, 0.0); }  // (the baked sky pair a, b, halved)
 			if (debug_out >= 10 && debug_out <= 12) { dbg = vec3(debug_out == 10 ? 0.1 : (debug_out == 11 ? 0.25 : 0.5)); }  // (the picture's response to known values)
 		}
 		if (debug_out > 0) {

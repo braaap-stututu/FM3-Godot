@@ -993,6 +993,19 @@ func _car_light_ratio(gltf_path: String) -> Array:
 	return _car_light_cache[gltf_path]
 
 
+# The track's SHLighting top / bottom / dir colours (<track>_track.json 'SH'), or {} when it has none.
+func _track_sh(gltf_path: String) -> Dictionary:
+	var f := gltf_path.get_basename() + "_track.json"
+	var t = JSON.parse_string(FileAccess.get_file_as_string(f)) if FileAccess.file_exists(f) else null
+	if not (t is Dictionary and t.has("SH") and t["SH"] is Dictionary):
+		return {}
+	var r := {}
+	for k in ["top", "bottom", "dir"]:
+		var a: Array = t["SH"].get(k, [0.0, 0.0, 0.0])
+		r[k] = Vector3(a[0], a[1], a[2])
+	return r
+
+
 func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: String, names: Array) -> ShaderMaterial:
 	var sm := ShaderMaterial.new()
 	sm.shader = shader
@@ -1038,6 +1051,18 @@ func _car_material(shader: Shader, m: BaseMaterial3D, gltf_path: String, env: St
 			if sun_d is Vector3 and amb_d is Vector3:
 				sm.set_shader_parameter("sun", (sun_d as Vector3) * (cl[0] as Vector3))
 				sm.set_shader_parameter("ambient", (amb_d as Vector3) * (cl[1] as Vector3))
+		# the game's car ambient (fm3_carpaint.gdshader game_amb, 2026-11-26): the track's SHTop / SHBottom through the
+		# vertices' baked sky transfer. FM3_GAME_AMB=0: the fitted ambient; FM3_GAME_AMB_K: a test scale.
+		var shs := _track_sh(gltf_path)
+		if not shs.is_empty() and OS.get_environment("FM3_GAME_AMB") != "0":
+			sm.set_shader_parameter("game_amb", true)
+			sm.set_shader_parameter("sh_top", shs["top"])
+			sm.set_shader_parameter("sh_bottom", shs["bottom"])
+			if OS.get_environment("FM3_GAME_SUN") != "0":
+				sm.set_shader_parameter("game_sun", true)
+				sm.set_shader_parameter("sh_dir", shs["dir"])
+			if OS.get_environment("FM3_GAME_AMB_K") != "":
+				sm.set_shader_parameter("game_amb_k", float(OS.get_environment("FM3_GAME_AMB_K")))
 		# the game's paint reflection (fm3_carpaint.gdshader game_refl; LIVE.md "Car paint reflection"):
 		# FM3_OLD_PAINT_REFL=1 = the older fitted term (A/B); FM3_PAINT_ENV=<static cube gain>,<live cube scale>
 		if OS.get_environment("FM3_PAINT_DEBUG") != "":

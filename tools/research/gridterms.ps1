@@ -30,6 +30,8 @@ $expr = @{ '1' = 'float4(r7.x * r4.xyz, 1)'; '2' = 'float4(r7.xxx, 1)'; '3' = 'f
     # constants that calibrate the picture's response
     '8' = 'float4(TFetch(7, float3(1.5, 1.5, 2.0), false, false, 0.0, float2(0.0, 0.0)).xyz, 1)';
     '9' = 'float4(TFetch(7, float3(1.5, 1.5, 0.0), false, false, 0.0, float2(0.0, 0.0)).xyz, 1)';
+    '13' = 'float4(input.o[5].xyz, 1)';  # the vertex shader's ambient (transfer SH . shHemisphericalLightR/G/B)
+    '14' = 'float4(input.o[2].www * 0.5, 1)';  # its sun term (transfer SH . shDirectionalLightI), halved
     '10' = 'float4(0.1, 0.1, 0.1, 1)'; '11' = 'float4(0.25, 0.25, 0.25, 1)'; '12' = 'float4(0.5, 0.5, 0.5, 1)' }
 foreach ($m in ($Modes -split ',')) {
     if ($m -eq '0') { Fm3 'ps e41e183a423e6f1b' | Out-Null } else { Fm3 "ps e41e183a423e6f1b $($expr[$m])" | Out-Null }
