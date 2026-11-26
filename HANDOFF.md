@@ -1,14 +1,21 @@
 # HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-26)
 
-**Start the next session here (stopped 2026-11-26 ~00:40, the user: "we'll continue next session").** Everything is
-committed and pushed: frame-ir `live-mirror` = master (ff77c0d), FM3-ReGPU `origin/main` (fbd2a02; the user allowed
-pushing FM3-ReGPU on 2026-11-25). The open list, in the order the user raised it, is LIVE.md "Next for stage A":
-1. **Track stripes** (the user's last point): they lack the game's worn / driven-over look; cause found (the road-line
-   shader's wear mask is not exported), plan written there; offered as the first job next session.
-2. Reflection sharpness: our reflected clouds have less contrast than the game's (not the cube's clipping, only
-   partly its size).
-3. The RSX's lenses less pink than the game's; slip ratio / angle for the telemetry (Data Out sends 0).
-The evening of 2026-11-25 below has what was done (glass / lamps / Data Out / FM3E v8 / arcanite24's ports).
+**Start the next session here (stopped 2026-11-26 ~11:00, after a 2-hour morning session).** Everything is committed
+and pushed (frame-ir `live-mirror` = master, FM3-ReGPU `origin/main`). LIVE.md "Next for stage A" has every result.
+This morning (all measured live against the game, mostly on the CrownJewel grid):
+- **Painted asphalt from the game's code** (`shldr_4clr_blnd_mask`, family 'paint4'): the grain runs through the
+  paint; CrownJewel's stripes 28.4 -> 10.5. The CrownJewel scene must be built with **`-Ribbon 04`** (the grid
+  race's layout; the default Ribbon_00 lacks the grandstand and garages).
+- **Per-vertex light for `*_nolm` track shaders** (fences, walls, the pit wall: texture x lerp(dark, light, vertex
+  light)); the pit wall 41.6 -> 11.4.
+- **16x anisotropic filtering** and a **-1 mip bias on the road grain** (the asphalt's fine speckle, the user's
+  "rough asphalt look"; `FM3_GRAIN_BIAS=0` = before: a judgement call, shown to the user).
+- CrownJewel grid whole frame: 18.4 / 17.8 / 16.9 (last night) -> **15.2 / 15.3 / 15.3** (15.7 with the grain bias).
+Open, in order: RoadAtlanta's car shadows (long and dark where the game's are short / faint; `FM3_NO_SHADOWS=1`
+gives 16.8 -> 15.9 there); reflection contrast (our reflected clouds have less contrast than the game's); the RSX
+lenses less pink; slip ratio / angle for the telemetry. The other tracks were not rebuilt except Sebring and
+RoadAtlanta (no paint4 / vertex-lit meshes there).
+The evening of 2026-11-25 below has the glass / lamps / Data Out / FM3E v8 / arcanite24 work.
 
 Read this first on a new machine or in a new session. Then **`LIVE.md`** (the current work: running the game live
 into Godot), `M1.md` (the detailed log of the offline pipeline, newest work at the end of stage 2), `FM3-FORMATS.md`
