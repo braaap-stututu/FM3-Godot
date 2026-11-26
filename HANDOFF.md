@@ -25,6 +25,9 @@ brake glow per car not yet measured against a braking car in the game).
 Then (afternoon) black plastic without Godot's grey sheen (grid plastic 13.2 -> 9.4) and the lamp shaders read from the
 game (CubeMultiplier is unused there; textured reflector refit 0.6); the RSX's tails are still less red than the
 game's (LIVE.md "Black plastic and the tail lamps").
+Then (late afternoon) tail lamps and lenses with the game's decoded formulas (RSX tails 22.2 / 23.4 -> 19.4 / 18.3),
+live comparisons with the game at 4x MSAA as the viewer (`FM3_UPSCALER=off FM3_MSAA=4`), and the white edge specks
+traced to HDR highlights (capped). LIVE.md "Tail lamps and lenses with the game's own formulas", "White specks".
 Open, in order: RoadAtlanta's car shadows (still too long / dark where the game's are short / faint;
 `FM3_NO_SHADOWS=1` gives 16.8 -> 15.9 there); reflection contrast (our reflected clouds have less contrast than the game's); the RSX
 lenses less pink; slip ratio / angle for the telemetry. The other tracks were not rebuilt except Sebring and

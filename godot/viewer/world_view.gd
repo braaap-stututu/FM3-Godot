@@ -579,7 +579,7 @@ func _init() -> void:
 	# Edges: FM3 renders with MSAA (its 720p 2x, the recomp up to 4x); live, the main view does too (--msaa N, default 4,
 	# --msaa 1 = off)
 	if _live_port > 0 and _triple_layout == "":
-		root.msaa_3d = {1: Viewport.MSAA_DISABLED, 2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X, 8: Viewport.MSAA_8X}.get(_msaa if _msaa > 0 else 4, Viewport.MSAA_4X)
+		root.msaa_3d = {1: Viewport.MSAA_DISABLED, 2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X, 8: Viewport.MSAA_8X}.get(int(OS.get_environment("FM3_VIEW_MSAA")) if OS.get_environment("FM3_VIEW_MSAA") != "" else (_msaa if _msaa > 0 else 4), Viewport.MSAA_4X)
 	print("world_view: sun forward ", -sun.global_transform.basis.z if sun.is_inside_tree() else -sun.transform.basis.z, " shadows ", sun.shadow_enabled)
 	var sun_fwd := -sun.global_transform.basis.z if sun.is_inside_tree() else -sun.transform.basis.z
 	for cm in _car_mats:
@@ -691,6 +691,8 @@ static func _lens_shader() -> Shader:
 # on the Sebring RSX's colour (tails G / R 0.55 in the game); with the final chain 0.65 scores better: whole frames
 # Sebring 22.7 -> 21.9, CrownJewel 18.7 -> 18.6, RSX rear 19.6 -> 18.5, CR-X rear 17.6 -> 18.1 (0.5: RSX 18.1, CR-X 18.3).
 const LAMP_SHADER = preload("res://viewer/fm3_lamp.gdshader")
+const LAMP_GAME_SHADER = preload("res://viewer/fm3_lamp_game.gdshader")
+const LAMP_SHADE := 0.3  # fm3_lamp_game.gdshader lm_shade (the track lightmap in shade; FM3_LAMP_SHADE)
 # the bulbs' reflection scale over <tail_light>'s CubeScale 0.2 (FM3_BULB=<k>): fitted on the Sebring RSX (2026-11-26,
 # with the opaque lamp material and lens filter 0.45: tails 33.6 / 30.6 -> 25.2 / 23.2, the domes pink chrome as the game's)
 const BULB_REFL := 15.0
@@ -741,6 +743,7 @@ func _lamp_settings(nm: String, gltf_path := "") -> Dictionary:
 			var p_ := gltf_path.get_basename() + "_lamps.json"
 			var d_ = JSON.parse_string(FileAccess.get_file_as_string(p_)) if FileAccess.file_exists(p_) else {}
 			_car_lamps[stem_] = d_ if d_ is Dictionary else {}
+			_car_paths[stem_] = gltf_path
 	for stem in _car_lamps:
 		if not nm.begins_with("carbin_" + stem + "_"):
 			continue
@@ -755,7 +758,8 @@ func _lamp_material(m: BaseMaterial3D, nm: String, gltf_path: String) -> ShaderM
 	if OS.get_environment("FM3_LAMP_PASS") == "1" or nm.begins_with("cockpit_") or m.albedo_texture == null:
 		return null
 	var bulb := nm.contains("_tail_light")
-	if not nm.contains("_reflector") and not bulb:
+	var game := _game_lamps()
+	if not nm.contains("_reflector") and not bulb and not (game and nm.contains("_reverse_light")):
 		return null
 	var k := 1.0
 	if bulb:
@@ -790,7 +794,55 @@ func _lamp_material(m: BaseMaterial3D, nm: String, gltf_path: String) -> ShaderM
 		sm.set_shader_parameter("alpha_cut", m.alpha_scissor_threshold)
 	if bulb:
 		sm.set_shader_parameter("self_lit", float(OS.get_environment("FM3_LAMP_SELF")) if OS.get_environment("FM3_LAMP_SELF") != "" else LAMP_SELF)
+	if game:
+		# the game's formula (fm3_lamp_game.gdshader): the car's own CubeScale / Fresnel / highlight, no fitted gains
+		var gs := ShaderMaterial.new()
+		gs.shader = LAMP_GAME_SHADER
+		for p0_ in ["albedo_tex", "has_env", "env_cube", "static_cube_gain", "alpha_cut"]:
+			if sm.get_shader_parameter(p0_) != null:
+				gs.set_shader_parameter(p0_, sm.get_shader_parameter(p0_))
+		sm = gs
+		sm.set_shader_parameter("sun_dir", _sun_to)
+		if OS.get_environment("FM3_HDR_CLAMP") != "":
+			sm.set_shader_parameter("hdr_clamp", float(OS.get_environment("FM3_HDR_CLAMP")))
+		sm.set_shader_parameter("lm_shade", float(OS.get_environment("FM3_LAMP_SHADE")) if OS.get_environment("FM3_LAMP_SHADE") != "" else LAMP_SHADE)
+		sm.set_shader_parameter("lamp_gain", float(OS.get_environment("FM3_LAMP_GAIN")) if OS.get_environment("FM3_LAMP_GAIN") != "" else 1.0)
+		sm.set_shader_parameter("cube_scale", 0.2 if bulb else (1.5 if nm.contains("_reflector") and not nm.contains("textured_reflector") else 1.0))
+		for p_ in ["fresnel_min", "fresnel_max", "fresnel_scale", "fresnel_power", "spec_amount", "spec_power", "cube_scale"]:
+			if ls.has(p_):
+				sm.set_shader_parameter(p_, float(ls[p_]))
+		if ls.is_empty():
+			sm.set_shader_parameter("spec_amount", 4.0)
 	return sm
+
+
+# The game's lamp and lens formulas (decoded 2026-11-26; fm3_lamp.gdshader game_lamp, fm3_carglass.gdshader game_lens).
+# FM3_GAME_LAMP=0: the earlier fitted lamps (reflection gains, lens_light / lens_filter).
+static func _game_lamps() -> bool:
+	return OS.get_environment("FM3_GAME_LAMP") != "0"
+
+
+var _car_paths := {}  # library car stem -> its glTF (_lamp_settings)
+var _lights_tex := {}  # library car _tex dir -> its lights texture (lights_lod0.png), for the game's lens formula
+func _lights_texture(nm: String) -> Texture2D:
+	var gltf_path := ""
+	for stem in _car_paths:
+		if nm.begins_with("carbin_" + stem + "_"):
+			gltf_path = _car_paths[stem]
+	if gltf_path == "":
+		return null
+	var dir_ := gltf_path.get_basename() + "_tex/"
+	if not _lights_tex.has(dir_):
+		var t_: Texture2D = null
+		for f_ in ["lights_lod0.png", "lights.png"]:
+			if FileAccess.file_exists(dir_ + f_):
+				var im_ := Image.load_from_file(dir_ + f_)
+				if im_ != null:
+					im_.generate_mipmaps()
+					t_ = ImageTexture.create_from_image(im_)
+					break
+		_lights_tex[dir_] = t_
+	return _lights_tex[dir_]
 
 
 func _add_reflector_pass(m: BaseMaterial3D, nm: String, gltf_path: String) -> void:
@@ -1460,7 +1512,7 @@ func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle
 	if kind_ != "":
 		for si_ in m.get_surface_override_material_count():
 			var lm_ = m.get_surface_override_material(si_)
-			if lm_ is ShaderMaterial and (lm_ as ShaderMaterial).shader == LAMP_SHADER:
+			if lm_ is ShaderMaterial and ((lm_ as ShaderMaterial).shader == LAMP_SHADER or (lm_ as ShaderMaterial).shader == LAMP_GAME_SHADER):
 				(lm_ as ShaderMaterial).set_shader_parameter("glow_color", _lamp_glow(nm_, kind_))
 				if not _light_mats.has(car):
 					_light_mats[car] = []
@@ -2115,6 +2167,9 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 			var pm := _car_material(CARPAINT_SHADER, m, _gltf_path, "FM3_CARPAINT",
 				["refl_gain", "refl_f0", "spec_gain", "spec_power", "shadow_strength", "refl_metal"])
 			pm.set_shader_parameter("sun_dir", _sun_to)
+			pm.set_shader_parameter("cull_back", OS.get_environment("FM3_CULL_BACK") == "1")
+			if OS.get_environment("FM3_HDR_CLAMP") != "":
+				pm.set_shader_parameter("hdr_clamp", float(OS.get_environment("FM3_HDR_CLAMP")))
 			mi.set_surface_override_material(s, pm)
 			continue
 		if _blended(m) and m.roughness < 0.1 and m.albedo_texture == null:
@@ -2126,6 +2181,12 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 				gm.set_shader_parameter("lens_filter", _lens_filter())
 				gm.set_shader_parameter("lens_light", float(OS.get_environment("FM3_LENS_LIGHT")) if OS.get_environment("FM3_LENS_LIGHT") != "" else LENS_LIGHT)
 				gm.set_shader_parameter("amber_light", float(OS.get_environment("FM3_AMBER_LIGHT")) if OS.get_environment("FM3_AMBER_LIGHT") != "" else AMBER_LIGHT)
+				if _game_lamps():
+					gm.set_shader_parameter("game_lens", true)
+					var lt_ := _lights_texture(nm)
+					gm.set_shader_parameter("has_lens_tex", lt_ != null)
+					if lt_ != null:
+						gm.set_shader_parameter("lens_tex", lt_)
 			var gp: Dictionary = cm.get(nm, {})
 			for k in gp:
 				var v = gp[k]
@@ -2151,7 +2212,7 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 			# the exterior model's own cabin, seen through the windows: dark in the game (CABIN_K)
 			m.albedo_color = Color(m.albedo_color.r * CABIN_K, m.albedo_color.g * CABIN_K, m.albedo_color.b * CABIN_K, m.albedo_color.a)
 			m.metallic_specular = 0.0
-		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.cull_mode = BaseMaterial3D.CULL_BACK if OS.get_environment("FM3_CULL_BACK") == "1" else BaseMaterial3D.CULL_DISABLED
 		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 		if m.roughness >= 0.9:
 			m.metallic_specular = 0.04

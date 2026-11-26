@@ -78,6 +78,13 @@ uniform float lens_filter = 0.0;
 uniform float lens_light = 1.0;
 // amber lenses (green > 0.25, blue < 0.2) lit by this instead when >= 0 (FM3_AMBER_LIGHT)
 uniform float amber_light = -1.0;
+// The game's lens (game_lens; decoded 2026-11-26 from ReGPU's HLSL of the grid's detail_glass PS f7841c0a8245eabf, not
+// the windows' b117fbafcc1fa980): its colour is the car's lights texture x GlassColor, lit as the lamps (0.4 + 0.6 x
+// saturate(hl^2)), its opacity clamp(spec + F + max(texture alpha, GlassColor.a), 0, GlassMaxOpacity), then
+// lerp(colour, env x CubeScale, F), alpha-blended. lens_light and lens_filter (fitted stand-ins) are not used.
+uniform bool game_lens = false;
+uniform sampler2D lens_tex : filter_linear_mipmap_anisotropic, hint_default_white;
+uniform bool has_lens_tex = false;
 // The sun highlight's weight (SpecularAmount x this; FM3_GLASS_SPEC=<w>): 0.25 from 2026-11-24, 0 since 2026-11-26:
 // on the lamps' clear covers (<glass>, SpecularAmount 3.5 at 50; few, curved polygons) it drew saturated white dashes
 // the game does not show (the CrownJewel Eclipse's right lamp 34.3 -> 24.7 at 0; 0.1 kept them; the CR-X 12.6 -> 13.0).
@@ -122,6 +129,19 @@ void fragment() {
 	if (lens) {
 		spec = 0.0;
 	}
+	if (lens && game_lens) {
+		vec4 lt = has_lens_tex ? texture(lens_tex, UV) : vec4(1.0);
+		vec3 nw = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+		float hl = clamp(dot(nw, normalize(sun_dir)) * 0.5 + 0.5, 0.0, 1.0);
+		vec3 cl = mix(lt.rgb * glass_color.rgb * (0.4 + 0.6 * hl * hl), env, f);
+		float al_ = clamp(f + max(lt.a, glass_color.a), 0.0, max_opacity);
+		vec3 lampc = glass_color.rgb / max(max(glass_color.r, glass_color.g), max(glass_color.b, 0.001));
+		cl = mix(cl, lampc, clamp(glow, 0.0, 1.0));
+		al_ = clamp(max(al_, glow * 0.95), 0.0, 1.0);
+		vec3 bgl = to_gamma(texture(screen_tex, SCREEN_UV).rgb);
+		ALBEDO = to_linear(mix(bgl, cl, al_));
+		ALPHA = 1.0;
+	} else {
 	vec3 c = mix(glass_color.rgb * (lens ? ((amber_light >= 0.0 && glass_color.g > 0.25 && glass_color.b < 0.2) ? amber_light : lens_light) : 1.0), env, f) + spec_color * spec * spec_weight;
 	vec3 lamp = glass_color.rgb / max(max(glass_color.r, glass_color.g), max(glass_color.b, 0.001));
 	c = mix(c, lamp, clamp(glow, 0.0, 1.0));
@@ -136,5 +156,6 @@ void fragment() {
 	} else {
 		ALBEDO = to_linear(c);
 		ALPHA = al;
+	}
 	}
 }

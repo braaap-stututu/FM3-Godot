@@ -811,7 +811,8 @@ def lamp_params(zdir):
         # (CubeMultiplier, set by 10 cars, is no constant of any shader in shaders_v11.fxobj: the game ignores it)
         e['cube'] = float(d.get('CubeScale', base.get('CubeScale', 1.0))) / max(float(base.get('CubeScale', 1.0)), 1e-6)
         for k, n in (('FresnelMin', 'fresnel_min'), ('FresnelMax', 'fresnel_max'), ('FresnelScale', 'fresnel_scale'),
-                     ('FresnelPower', 'fresnel_power')):
+                     ('FresnelPower', 'fresnel_power'), ('SpecularAmount', 'spec_amount'), ('SpecularPower', 'spec_power'),
+                     ('CubeScale', 'cube_scale')):
             if k in d:
                 e[n] = float(d[k])
         ck = 'ReverseLightColor' if m.startswith('reverse') else 'BrakeColor'

@@ -115,7 +115,16 @@ void vertex() {
 	env_ab = UV2;
 }
 
+uniform bool cull_back = false;
+// The paint's added light (reflection, highlight; gamma) capped at 1 before it goes linear (2026-11-26, FM3_HDR_CLAMP=<k>):
+// a gamma 3 highlight became 3^2.2 = 11 in linear light and, averaged by MSAA, a white speck on panel edges and the cabin's
+// headrests where the game's stay grey. CrownJewel grid: whole frame 15.42 -> 15.07, the cars' area 13.66 -> 13.61.
+uniform float hdr_clamp = 1.0;  // (tests: FM3_CULL_BACK=1, back faces discarded as the game culls them)
+
 void fragment() {
+	if (cull_back && !FRONT_FACING) {
+		discard;
+	}
 	vec4 t = texture(albedo_tex, UV);
 	paint_gamma = livery ? mix(albedo_color.rgb, t.rgb, t.a) : t.rgb * albedo_color.rgb;
 	// (the texture is read raw: gamma-space values, as the game's shader works with them)
@@ -165,7 +174,7 @@ void light() {
 			DIFFUSE_LIGHT += to_linear(pg * diff + add);
 		} else {
 			DIFFUSE_LIGHT += to_linear(diff);
-			SPECULAR_LIGHT += to_linear(add);
+			SPECULAR_LIGHT += to_linear(min(add, vec3(hdr_clamp)));
 		}
 	}
 }

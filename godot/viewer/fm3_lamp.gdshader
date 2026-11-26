@@ -30,6 +30,7 @@ uniform float alpha_cut = -1.0;
 // the game's tail-lamp shader (shaders_v11 container 92) lights the lamp texture with a floor (lightmap + 0.4), not
 // by the sun alone: the texture this much as its own emission (world_view.gd LAMP_SELF, FM3_LAMP_SELF)
 uniform float self_lit = 0.0;
+// (the game's own formula: fm3_lamp_game.gdshader)
 
 vec3 to_linear(vec3 c) {
 	c = max(c, vec3(0.0));

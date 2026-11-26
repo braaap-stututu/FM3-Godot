@@ -11,6 +11,11 @@
 # what freezing hides, e.g. the wheels' motion blur, which the viewer takes from the cars' speed).
 param([switch]$AiPlayer, [string]$Steps = '', [int]$Cameras = 0, [switch]$NoFreeze, [string]$Gltf = '', [string]$ViewerArgs = '')
 $ErrorActionPreference = 'Stop'
+# The game at the viewer's anti-aliasing (4x MSAA, 2026-11-26): the user's FSR 3 forces FM3's MSAA to 1x; set
+# FM3_UPSCALER / FM3_MSAA / FM3_AA beforehand to compare another setting.
+if (-not $env:FM3_UPSCALER) { $env:FM3_UPSCALER = 'off' }
+if (-not $env:FM3_MSAA) { $env:FM3_MSAA = '4' }
+if (-not $env:FM3_AA) { $env:FM3_AA = 'off' }
 $g = (Resolve-Path "$PSScriptRoot\..\..\..").Path
 $r = (Resolve-Path "$g\..\FM3-ReGPU recomp").Path
 $out = "$g\frame-ir\out\live\compare"

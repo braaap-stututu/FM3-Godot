@@ -693,6 +693,34 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   while the grid cars' lamps are slightly brighter than the game's (73 / 42 / 32 vs 66 / 34 / 32): the difference is
   per car / per light, not one global term. Next: decode container 92's lighting term (r0.x: track lightmap + 0.4?)
   exactly and render the bulbs with it, and the lens (container 60) the same way.
+- **Tail lamps and lenses with the game's own formulas** (2026-11-26, decoded from ReGPU's HLSL dumps:
+  `REGPU_DUMP_HLSL=1` writes `FM3-ReGPU recomp\out\run\out\hlsl\ps_<hash>.hlsl`; ReGPU packs the constants, `pc[i]` =
+  the i-th used register in order, checked against the literals c254 (0.6, 1.5) / c255 (0, 1, 0.4, 0.5)). Which
+  shader each car material draws with, from the grid capture (`work\capmap\fetches.json` index lists matched to the
+  carbin subsections): tail_light 7f4b46775654ee5b, textured_reflector 0c88abdd1c499126, reverse_light
+  a56fcadd0575d570, detail_glass_* **f7841c0a8245eabf** (not the windows' b117fbafcc1fa980), black_glass
+  07b55736eed1d328, head_light 588abe1ef63580d2. Lamp parts: lerp(tex x (0.4 + 0.6 x saturate(hl^2)) x lerp(1, lm,
+  alpha) + spec, env x CubeScale x (1 - damp (1 - lm)), F) + tex x BrakeColor x brake, hl = N.L / 2 + 1/2, lm = the
+  track lightmap under the car (t10), opaque. Lenses: colour = **the lights texture x GlassColor** lit the same way,
+  opacity clamp(spec + F + max(texture alpha, GlassColor.a), 0, GlassMaxOpacity), lerp(colour, env, F),
+  alpha-blended. Built: `fm3_lamp_game.gdshader` (lamp parts incl. reverse lamps; Godot's sun shadow stands in for
+  lm: `lm_shade` 0.3 in shade, `FM3_LAMP_SHADE`), `fm3_carglass.gdshader` game_lens (the car's `lights_lod0.png` on
+  the lens UVs), `lamp_params` now exports each lamp's CubeScale / Fresnel / highlight; `FM3_GAME_LAMP=0` = the
+  fitted lamps before. Sebring RSX (one boot, the game at 4x MSAA): tails 22.2 / 23.4 -> **19.4 / 18.3**, amber corner
+  22.8 -> 16.3, rear 15.9 -> 15.0, colour 105 / 65 / 62 (game 109 / 60 / 59; fitted 86 / 56 / 51). CrownJewel grid
+  lamps: without the shadow term 14.6 -> 22.9 (the grid is in the grandstand's shade), with it 15.3 -> 15.9 (shade
+  0.3; 0.7 16.4). The fitted gains (BULB_REFL, TEXTURED_REFL, LENS_LIGHT, LENS_FILTER) only serve FM3_GAME_LAMP=0.
+- **The game at the viewer's MSAA for comparisons:** the user's settings run FSR 3 (temporal AA; FM3 forces MSAA 1x with
+  it); the viewer draws 4x MSAA. Live comparisons now boot FM3 with `FM3_UPSCALER=off FM3_MSAA=4 FM3_AA=off`
+  (the log: "ReGPU at 1280x720, msaa 4"). The user's own settings.ini is unchanged.
+- **White specks along the cars' panel edges** (the user, 2026-11-26): tested on the capture-free CrownJewel grid
+  (game at 4x MSAA). Not back faces (`FM3_CULL_BACK=1`: 1182 -> 1145 specks), not MSAA (`FM3_VIEW_MSAA=1`: more,
+  1718), not the windows / lenses / chrome (hidden: 100 / 7 / 50 of ~1180 gone), not broken normals (none in the
+  library). They are the paint's own highlight and reflection (off: 58% / 34% gone) on curved edges: added in gamma
+  and converted to linear, a gamma 3 highlight became 11 and MSAA averaged it into a white pixel. Now capped at 1
+  (gamma) before going linear (`hdr_clamp`, paint and game lamps; `FM3_HDR_CLAMP`): whole frame 15.42 -> 15.07, the
+  headrest glints through rear windows gone. (The game has edge highlights too: 1650 by the same count, ours ~1150;
+  ours remain more pointed on a few edges.)
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended
