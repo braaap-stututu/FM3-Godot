@@ -11,8 +11,13 @@ This morning (all measured live against the game, mostly on the CrownJewel grid)
 - **16x anisotropic filtering** and a **-1 mip bias on the road grain** (the asphalt's fine speckle, the user's
   "rough asphalt look"; `FM3_GRAIN_BIAS=0` = before: a judgement call, shown to the user).
 - CrownJewel grid whole frame: 18.4 / 17.8 / 16.9 (last night) -> **15.2 / 15.3 / 15.3** (15.7 with the grain bias).
-Open, in order: RoadAtlanta's car shadows (long and dark where the game's are short / faint; `FM3_NO_SHADOWS=1`
-gives 16.8 -> 15.9 there); reflection contrast (our reflected clouds have less contrast than the game's); the RSX
+Then (another hour, to ~11:35): car / people shadows in each track's `ShadowColor` (RoadAtlanta 16.9 -> 16.6,
+CrownJewel neutral); library cars' per-colour base textures (`tools/fm3_car_basetex.py`, 44 cars: e.g. the R5
+Turbo's blue decals); `rdline_diff_opac` road lines dimmed and blended as the game's code (Motegi 15.0 -> 13.5).
+Rebuilt today: CrownJewel (-Ribbon 04), RoadAtlanta, Sebring, Motegi. The other tracks need a rebuild for the new
+road lines, but first check their `*_nolm` shaders (the per-vertex light rule was verified on CrownJewel only).
+Open, in order: RoadAtlanta's car shadows (still too long / dark where the game's are short / faint;
+`FM3_NO_SHADOWS=1` gives 16.8 -> 15.9 there); reflection contrast (our reflected clouds have less contrast than the game's); the RSX
 lenses less pink; slip ratio / angle for the telemetry. The other tracks were not rebuilt except Sebring and
 RoadAtlanta (no paint4 / vertex-lit meshes there).
 The evening of 2026-11-25 below has the glass / lamps / Data Out / FM3E v8 / arcanite24 work.
