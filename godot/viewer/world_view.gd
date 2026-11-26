@@ -688,7 +688,13 @@ static func _lens_shader() -> Shader:
 # How far a lens tints what is behind it (fm3_carglass.gdshader lens_filter); FM3_LENS_FILTER=<k>. First fitted at 0.8
 # on the Sebring RSX's colour (tails G / R 0.55 in the game); with the final chain 0.65 scores better: whole frames
 # Sebring 22.7 -> 21.9, CrownJewel 18.7 -> 18.6, RSX rear 19.6 -> 18.5, CR-X rear 17.6 -> 18.1 (0.5: RSX 18.1, CR-X 18.3).
-const LENS_FILTER := 0.65
+const LAMP_SHADER = preload("res://viewer/fm3_lamp.gdshader")
+# the bulbs' reflection scale over <tail_light>'s CubeScale 0.2 (FM3_BULB=<k>): fitted on the Sebring RSX (2026-11-26,
+# with the opaque lamp material and lens filter 0.45: tails 33.6 / 30.6 -> 25.2 / 23.2, the domes pink chrome as the game's)
+const BULB_REFL := 15.0
+# 0.45 since the lamps' reflection is drawn opaque (fm3_lamp.gdshader) and so passes through this filter too (2026-11-26):
+# Sebring RSX tails 33.6 / 30.6 -> 25.2 / 23.2 (with BULB_REFL 15), CrownJewel CR-X rear 14.8 -> 13.0, Eclipse 18.7 -> 19.5.
+const LENS_FILTER := 0.45
 # How far a reflector's reflection takes its texture's colour (fm3_reflector.gdshader tint_amount): 1 made the RSX's
 # tails 67 / 32 / 26 (game 114 / 65 / 63), 0 greyed the CR-X's red reflector panel (G / B +16).
 const REFLECTOR_TINT := 0.5
@@ -700,6 +706,41 @@ static func _lens_filter() -> float:
 
 # A lamp reflector's mirror reflection (fm3_reflector.gdshader) as the next pass of its lit textured material; the
 # game's ShaderSettings <reflector> / <textured_reflector> values. FM3_REFLECTOR=<scale> (0 = off).
+# A library lamp part (reflector, textured reflector, tail-lamp bulb) as one opaque material: the lit texture plus the
+# cube reflection as emission (fm3_lamp.gdshader), so the red lenses in front tint it as the game's do; null for other
+# parts. FM3_LAMP_PASS=1: the older plain material + additive reflection pass (_add_reflector_pass).
+func _lamp_material(m: BaseMaterial3D, nm: String, gltf_path: String) -> ShaderMaterial:
+	if OS.get_environment("FM3_LAMP_PASS") == "1" or nm.begins_with("cockpit_") or m.albedo_texture == null:
+		return null
+	var bulb := nm.contains("_tail_light")
+	if not nm.contains("_reflector") and not bulb:
+		return null
+	var k := 1.0
+	if bulb:
+		k = float(OS.get_environment("FM3_BULB")) if OS.get_environment("FM3_BULB") != "" else BULB_REFL
+	elif OS.get_environment("FM3_REFLECTOR") != "":
+		k = float(OS.get_environment("FM3_REFLECTOR"))
+	var sm := ShaderMaterial.new()
+	sm.shader = LAMP_SHADER
+	sm.set_shader_parameter("albedo_tex", m.albedo_texture)
+	sm.set_shader_parameter("albedo_color", _vec4(m.albedo_color))
+	sm.set_shader_parameter("use_vcol", m.vertex_color_use_as_albedo)
+	var cube := _env_cube(gltf_path, gltf_path.get_file().get_basename() + "_tex")
+	sm.set_shader_parameter("has_env", cube != null)
+	if cube != null:
+		sm.set_shader_parameter("env_cube", cube)
+		sm.set_shader_parameter("static_cube_gain", _env_cube_gain(gltf_path))
+	sm.set_shader_parameter("cube_scale", 0.2 if bulb else (1.0 if nm.contains("textured_reflector") else 1.5))
+	sm.set_shader_parameter("refl", k)
+	# (the bulbs' own texture is a dark dimpled red: tinted by it, their reflection all but vanished; the game's domes
+	# read as pink chrome through the lens)
+	var tint := float(OS.get_environment("FM3_REFLECTOR_TINT")) if OS.get_environment("FM3_REFLECTOR_TINT") != "" else REFLECTOR_TINT
+	sm.set_shader_parameter("tint_amount", 0.0 if bulb else tint)
+	if m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
+		sm.set_shader_parameter("alpha_cut", m.alpha_scissor_threshold)
+	return sm
+
+
 func _add_reflector_pass(m: BaseMaterial3D, nm: String, gltf_path: String) -> void:
 	# (library nodes are named <car>_<material>_<n>: carbin_acu_rsxtypes_02_reflector_9, ..._tail_light_11; the
 	# cockpit's own "reflector" parts are not lamps)
@@ -1233,6 +1274,9 @@ func _update_lights(player) -> void:
 				if (e[0] as ShaderMaterial).next_pass is ShaderMaterial:
 					((e[0] as ShaderMaterial).next_pass as ShaderMaterial).set_shader_parameter("glow", shown)
 				continue
+			if String(e[1]).ends_with("_lamp"):
+				(e[0] as ShaderMaterial).set_shader_parameter("glow", shown * BRAKE_ENERGY if e[1] == "brake_lamp" else (1.5 if back else 0.0))
+				continue
 			var lm := e[0] as BaseMaterial3D
 			if e[1] == "brake":
 				lm.emission_energy_multiplier = shown * BRAKE_ENERGY
@@ -1350,6 +1394,12 @@ func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle
 	if kind_ != "":
 		for si_ in m.get_surface_override_material_count():
 			var lm_ = m.get_surface_override_material(si_)
+			if lm_ is ShaderMaterial and (lm_ as ShaderMaterial).shader == LAMP_SHADER:
+				(lm_ as ShaderMaterial).set_shader_parameter("glow_color", Vector3(1.0, 0.0, 0.0) if kind_ == "brake" else Vector3(1.0, 1.0, 0.95))
+				if not _light_mats.has(car):
+					_light_mats[car] = []
+				_light_mats[car].append([lm_, kind_ + "_lamp"])
+				continue
 			if lm_ is BaseMaterial3D and (lm_ as BaseMaterial3D).albedo_texture != null:
 				var bm_ := lm_ as BaseMaterial3D
 				bm_.emission_enabled = true
@@ -2043,6 +2093,10 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 			m.metallic_specular = RIM_SPECULAR
 		if mi.mesh.surface_get_format(s) & Mesh.ARRAY_FORMAT_COLOR:
 			m.vertex_color_use_as_albedo = true
+		var lamp_ := _lamp_material(m, nm, _gltf_path)
+		if lamp_ != null:
+			mi.set_surface_override_material(s, lamp_)
+			continue
 		_add_reflector_pass(m, nm, _gltf_path)
 		mi.set_surface_override_material(s, m)
 

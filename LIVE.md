@@ -647,6 +647,16 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   last night's final: right stripes 28.4 -> 10.5 (ours 94 / 92 / 84, game 93 / 93 / 89), left stripes 24.1 -> 20.0,
   road 9.8 -> 9.0, the CR-X 12.9 -> 11.4, the grandstand 16.1 -> 16.7; **whole frame 18.4 / 17.8 / 16.9 -> 16.8 /
   16.7 / 16.3** (the rebuild also carries every exporter change since 2026-11-24).
+- **Tail lights, the user's first point (2026-11-26, 12:05):** close up, the game's RSX lamps read evenly pink-red with
+  the bulb domes as pink chrome; ours had dark maroon domes with white chrome rims. Two causes: (1) the lamp
+  reflections were an additive pass drawn in Godot's transparent stage, after the lenses had read the screen behind
+  them, so they landed on top of the red lens untinted (also why last night's brighter reflectors looked grey, not
+  pink); (2) the bulbs' reflection was tinted by their own dark dimpled texture. Now the reflectors and bulbs are one
+  opaque material each (`fm3_lamp.gdshader`: the lit texture + the cube reflection as emission, brake / reverse glow
+  as emission too; `FM3_LAMP_PASS=1` = before), bulbs untinted at 15 x <tail_light>'s CubeScale 0.2, and the lens
+  filter refitted to 0.45. Sebring RSX tails (one boot): 33.6 / 30.6 -> **25.2 / 23.2** (74 / 45 / 40 -> 83 / 53 / 48,
+  game 114 / 64 / 62), rear 18.5 -> 16.7; CrownJewel CR-X rear 14.8 -> 13.0, its red panel 10.4 -> 9.4, Eclipse
+  18.7 -> 19.5. Still darker than the game's overall; the amber corners read yellow where the game's are orange.
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended
