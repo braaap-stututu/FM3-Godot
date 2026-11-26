@@ -794,10 +794,10 @@ LAMP_MATERIALS = ('reflector', 'textured_reflector', 'tail_light', 'tail_light2'
 
 def lamp_params(zdir):
     """A car's lamp parameters against the shared defaults (Media\\Cars\\ShaderSettings\\Normal.xml), for the viewer's
-    lamp materials (2026-11-26): {material: {cube: CubeScale (x CubeMultiplier) / the default's, fresnel_min / _max /
+    lamp materials (2026-11-26): {material: {cube: CubeScale / the default's, fresnel_min / _max /
     _scale / _power: the car's own, glow: BrakeColor or ReverseLightColor rgb / the default's r}}. 393 of the cars carry
     their own shadersettings.xml; 124 change the tail lamps' BrakeColor (75 values, 2.6 .. 15 against the default 3.6 /
-    lod0 7), ~120 the reverse lamps', 14 the textured reflectors' (the RSX: CubeMultiplier 2.2, Fresnel power 7). The
+    lod0 7), ~120 the reverse lamps', 14 the textured reflectors' (the RSX: Fresnel min 2.11 > max 0.86, power 7). The
     glow takes the car's _lod0 entry when it has its own (the library draws LOD 0), else the plain one."""
     merged = car_settings(zdir)
     own = shader_settings(os.path.join(zdir, 'shadersettings.xml') if zdir else None)
@@ -808,8 +808,8 @@ def lamp_params(zdir):
         if not d:
             continue
         e = {}
-        cs = float(d.get('CubeScale', base.get('CubeScale', 1.0))) * float(d.get('CubeMultiplier', 1.0))
-        e['cube'] = cs / max(float(base.get('CubeScale', 1.0)) * float(base.get('CubeMultiplier', 1.0)), 1e-6)
+        # (CubeMultiplier, set by 10 cars, is no constant of any shader in shaders_v11.fxobj: the game ignores it)
+        e['cube'] = float(d.get('CubeScale', base.get('CubeScale', 1.0))) / max(float(base.get('CubeScale', 1.0)), 1e-6)
         for k, n in (('FresnelMin', 'fresnel_min'), ('FresnelMax', 'fresnel_max'), ('FresnelScale', 'fresnel_scale'),
                      ('FresnelPower', 'fresnel_power')):
             if k in d:

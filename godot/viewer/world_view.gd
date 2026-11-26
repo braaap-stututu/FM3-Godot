@@ -699,8 +699,17 @@ const BULB_REFL := 15.0
 const LENS_FILTER := 0.45
 # A textured reflector's reflection gain with the car's own settings (_lamp_settings; 2026-11-26). Fitted on the Sebring
 # RSX, whose textured_reflector (as 8 other cars') sets CubeMultiplier 2.2, Fresnel min 2.11 > max 0.86 (so a flat 0.86):
-# x1 its tails went 137 / 102 / 101 (game 114 / 64 / 62); x0.3 tails 24.1 / 24.1, the old defaults 25.4 / 23.3.
-const TEXTURED_REFL := 0.3
+# x1 its tails went 137 / 102 / 101 (game 114 / 64 / 62); x0.3 tails 24.1 / 24.1, the old defaults 25.4 / 23.3. Refitted
+# at 0.6 once CubeMultiplier was dropped (no shader of the game reads it): tails 24.2 / 24.0 -> 23.2 / 24.9 / 23.9 (three
+# boots). The tails' remaining gap is saturation (ours ~88 / 58 / 53, game 114 / 64 / 62): a stronger lens filter takes
+# green out without adding red (0.75: 82 / 32 / 27), lens_light 0.6 fits the RSX (22.7 / 23.5) but overbrightens the
+# CrownJewel grid's lamps (14.5 -> 24.7); a self-lit bulb floor (FM3_LAMP_SELF) barely shows through the lens.
+const TEXTURED_REFL := 0.6
+const LAMP_SELF := 0.0  # fm3_lamp.gdshader self_lit (tail-lamp bulbs)
+# Black plastic, rubber, frames (flat near-black library materials): no specular sheen (2026-11-26). Godot's default 0.5
+# lit them grey from the sky: on the capture-free CrownJewel grid those pixels 21 / 21 / 21 -> 14 / 13 / 13 (game
+# 15 / 15 / 15), |diff| 13.2 -> 9.4; darker albedo as well (FM3_PLASTIC_K 0.4) overshot (10.0).
+const PLASTIC_SPEC := 0.0
 # How far a reflector's reflection takes its texture's colour (fm3_reflector.gdshader tint_amount): 1 made the RSX's
 # tails 67 / 32 / 26 (game 114 / 65 / 63), 0 greyed the CR-X's red reflector panel (G / B +16).
 const REFLECTOR_TINT := 0.5
@@ -754,7 +763,7 @@ func _lamp_material(m: BaseMaterial3D, nm: String, gltf_path: String) -> ShaderM
 	elif OS.get_environment("FM3_REFLECTOR") != "":
 		k = float(OS.get_environment("FM3_REFLECTOR"))
 	elif nm.contains("textured_reflector") and not _lamp_settings(nm, gltf_path).is_empty():
-		k = TEXTURED_REFL
+		k = float(OS.get_environment("FM3_TEXTURED_REFL")) if OS.get_environment("FM3_TEXTURED_REFL") != "" else TEXTURED_REFL
 	var sm := ShaderMaterial.new()
 	sm.shader = LAMP_SHADER
 	sm.set_shader_parameter("albedo_tex", m.albedo_texture)
@@ -779,6 +788,8 @@ func _lamp_material(m: BaseMaterial3D, nm: String, gltf_path: String) -> ShaderM
 	sm.set_shader_parameter("tint_amount", 0.0 if bulb else tint)
 	if m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
 		sm.set_shader_parameter("alpha_cut", m.alpha_scissor_threshold)
+	if bulb:
+		sm.set_shader_parameter("self_lit", float(OS.get_environment("FM3_LAMP_SELF")) if OS.get_environment("FM3_LAMP_SELF") != "" else LAMP_SELF)
 	return sm
 
 
@@ -2151,6 +2162,13 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 			m.metallic_specular = RIM_SPECULAR
 		if mi.mesh.surface_get_format(s) & Mesh.ARRAY_FORMAT_COLOR:
 			m.vertex_color_use_as_albedo = true
+		if m.albedo_texture == null and m.metallic < 0.5 and not _blended(m) and maxf(m.albedo_color.r, maxf(m.albedo_color.g, m.albedo_color.b)) < 0.22:  # (sRGB: the glTF's linear 0.007-0.03)
+			# black plastic / rubber / frame parts (flat near-black materials; tests FM3_PLASTIC_SPEC, FM3_PLASTIC_K)
+			m.metallic_specular = float(OS.get_environment("FM3_PLASTIC_SPEC")) if OS.get_environment("FM3_PLASTIC_SPEC") != "" else PLASTIC_SPEC
+			var pk_ := float(OS.get_environment("FM3_PLASTIC_K")) if OS.get_environment("FM3_PLASTIC_K") != "" else 1.0
+			m.albedo_color = Color(m.albedo_color.r * pk_, m.albedo_color.g * pk_, m.albedo_color.b * pk_, m.albedo_color.a)
+			if OS.get_environment("FM3_PLASTIC_ROUGH") != "":
+				m.roughness = float(OS.get_environment("FM3_PLASTIC_ROUGH"))
 		var lamp_ := _lamp_material(m, nm, _gltf_path)
 		if lamp_ != null:
 			mi.set_surface_override_material(s, lamp_)

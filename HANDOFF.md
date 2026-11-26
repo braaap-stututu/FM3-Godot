@@ -22,6 +22,9 @@ CrownJewel CR-X rear 14.8 -> 13.0 (picture sent to the user). Still a little dar
 Then per-car lamp values (the user's question; LIVE.md "Per-car lamp values"): `<car>_lamps.json` for all 510 library
 cars, the viewer scales reflectors / bulbs / brake and reverse glow by each car's own shadersettings (RSX neutral;
 brake glow per car not yet measured against a braking car in the game).
+Then (afternoon) black plastic without Godot's grey sheen (grid plastic 13.2 -> 9.4) and the lamp shaders read from the
+game (CubeMultiplier is unused there; textured reflector refit 0.6); the RSX's tails are still less red than the
+game's (LIVE.md "Black plastic and the tail lamps").
 Open, in order: RoadAtlanta's car shadows (still too long / dark where the game's are short / faint;
 `FM3_NO_SHADOWS=1` gives 16.8 -> 15.9 there); reflection contrast (our reflected clouds have less contrast than the game's); the RSX
 lenses less pink; slip ratio / angle for the telemetry. The other tracks were not rebuilt except Sebring and

@@ -27,6 +27,9 @@ uniform float tint_amount = 0.5;  // the reflection in the lamp texture's colour
 uniform float glow = 0.0;  // brake / reverse lamp (emission of the texture)
 uniform vec3 glow_color = vec3(1.0, 0.0, 0.0);
 uniform float alpha_cut = -1.0;
+// the game's tail-lamp shader (shaders_v11 container 92) lights the lamp texture with a floor (lightmap + 0.4), not
+// by the sun alone: the texture this much as its own emission (world_view.gd LAMP_SELF, FM3_LAMP_SELF)
+uniform float self_lit = 0.0;
 
 vec3 to_linear(vec3 c) {
 	c = max(c, vec3(0.0));
@@ -47,7 +50,7 @@ void fragment() {
 	vec3 tg = texture(albedo_tex, UV).rgb;  // (sRGB-decoded: back to gamma for the tint)
 	tg = mix(tg * 12.92, 1.055 * pow(max(tg, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, step(0.0031308, tg));
 	vec3 c = env * f * refl * mix(vec3(1.0), tg, tint_amount);
-	EMISSION = to_linear(c) + glow_color * t.rgb * glow;
+	EMISSION = to_linear(c) + glow_color * t.rgb * glow + a * self_lit;
 	if (alpha_cut >= 0.0) {
 		ALPHA = t.a;
 		ALPHA_SCISSOR_THRESHOLD = alpha_cut;

@@ -675,6 +675,24 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   textured-reflector values at x1 made the tails 137 / 102 / 101 (game 114 / 64 / 62): gain `TEXTURED_REFL` 0.3 fitted
   (tails 24.8 / 25.1 against the defaults' 26.0 / 24.5, whole frame 22.5 both): neutral there. The brake glow
   differences (the bulk of the per-car values) show only on braking cars: not yet measured against the game.
+- **Black plastic and the tail lamps from the game's shaders** (2026-11-26 afternoon, the user: "fix the taillights
+  ..., make the black plastic actually black"). Flat near-black library materials (black, plastic2, frames, rubber,
+  undercarriage, tyres) had Godot's default specular 0.5, which lit them grey from the sky: now 0 (`PLASTIC_SPEC`;
+  `FM3_PLASTIC_SPEC` / `_K` / `_ROUGH` test switches). Capture-free CrownJewel grid, those pixels 21 / 21 / 21 ->
+  14 / 13 / 13 (game 15 / 15 / 15), |diff| 13.2 -> 9.4 and 13.0 -> 8.7 (two boots). NB the default `ladera.gltf` grid
+  scene has capture-built cars: library-car tests need `-Gltf out\world\crownjewel.gltf`.
+  Lamp shaders read from `shaders_v11.fxobj` (`fm3_trackshader.containers`): tail_light = container 92 (BrakeColor
+  c218, brakeReverseAmount c198), reverse = 93, lit glass = 96, detail glass / windows = 60. The tail lamp is
+  lerp(lit texture, env x CubeScale, F), F = clamp(FresnelScale x (1 - n.v)^FresnelPower, FresnelMin, FresnelMax) x
+  reflectionScaler, the brake colour added x brakeReverseAmount. **No shader has a CubeMultiplier**: dropped from
+  `lamp_params`; `TEXTURED_REFL` refitted to 0.6 (RSX tails 24.2 / 24.0 -> 23.2-23.9 / 24.0-24.9). Tried and not kept:
+  a self-lit bulb floor (`FM3_LAMP_SELF`, bulbs only: barely visible through the lens; on all lamp parts the grid's
+  lamps went 15.4 -> 21.5), a stronger lens filter (0.6 / 0.75 / 0.9: green goes, red does not come: 82 / 32 / 27),
+  lens_light 0.6 (RSX tails 22.7 / 23.5 but the grid's lamps 14.5 -> 24.7), amber light 0.15 (amber pixels 22.3 ->
+  21.3, whole frame +0.2). The RSX's tails stay less red / bright than the game's (88 / 58 / 53 vs 114 / 64 / 62)
+  while the grid cars' lamps are slightly brighter than the game's (73 / 42 / 32 vs 66 / 34 / 32): the difference is
+  per car / per light, not one global term. Next: decode container 92's lighting term (r0.x: track lightmap + 0.4?)
+  exactly and render the bulbs with it, and the lens (container 60) the same way.
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended
