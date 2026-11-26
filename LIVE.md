@@ -647,6 +647,11 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   last night's final: right stripes 28.4 -> 10.5 (ours 94 / 92 / 84, game 93 / 93 / 89), left stripes 24.1 -> 20.0,
   road 9.8 -> 9.0, the CR-X 12.9 -> 11.4, the grandstand 16.1 -> 16.7; **whole frame 18.4 / 17.8 / 16.9 -> 16.8 /
   16.7 / 16.3** (the rebuild also carries every exporter change since 2026-11-24).
+- **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
+  (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
+  lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended
+  (`fm3_track_export.py`). Motegi (rebuilt): the lines' region 18.7 -> 12.9, whole frame 15.0 -> **13.5** (two boots
+  that froze at different spots: not a strict A/B, but the line now looks like the game's in both).
 - **Per-colour base textures for library cars** (2026-11-26): each Combo_Colors row names its BaseTexture; 44 of the
   510 cars switch it per colour (REN_5Turbo_80: colour 1 `nodamage` = red decals, 2 / 3 `nodamageblue`, 4
   `nodamageblack`; Shelby GT500s, Saleen S281s, the SSC, Volvo C30 ...). The library exported only `nodamage`, so a

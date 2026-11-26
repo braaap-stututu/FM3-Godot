@@ -1223,6 +1223,14 @@ def main():
                                 if (mm_l and len(sl_l) > 2 and 0 <= sl_l[2] < len(mm_l[2])) else None)
                         png = mask_alpha_png(png, mpng) if mpng else red_alpha_png(png)
                         rec = {'factor': [0.6, 0.6, 0.6, 1], 'blend': 'BLEND'}
+                    if sh.startswith('rdline_diff_opac'):
+                        # Road lines without a mask (rdline_diff_opac_2, Motegi's white lines; disassembled 2026-11-26):
+                        # texture x P[0].z x lerp(c247, c248, lightmap), opacity = the texture's alpha. Cut out at full
+                        # brightness before, Motegi's edge lines were solid white where the game's are dimmed (0.6) and worn.
+                        mm_r = mesh_mat.get(me['index_offset'])
+                        pr_r = mm_r[1].get('params') if mm_r else None
+                        g_r = float(pr_r[0][2]) if pr_r and len(pr_r[0]) > 2 and 0.0 < float(pr_r[0][2]) < 4.0 else 1.0
+                        rec = {'factor': [g_r, g_r, g_r, 1], 'blend': 'BLEND'}
                     uv, base_png = me['uv0'].astype(np.float32), png
                     mm_p = mesh_mat.get(me['index_offset'])
                     terms = fm3_trackshader.simple_terms(shader_files.get(sh, '')) if shader_files.get(sh) else {}
