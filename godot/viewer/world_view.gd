@@ -1880,6 +1880,7 @@ var _expo_last := 0
 var _expo_n := 0
 var _expo_ms := 0
 var _expo_live_n := 0
+var _expo_dl := 1.0  # (the last update's change of L)
 # (tests on a frozen game: the adapted state at once, as the frozen game has it; live_compare / live_track set it)
 var _expo_instant := OS.get_environment("FM3_EXPO_INSTANT") == "1"
 var _expo_old := OS.get_environment("FM3_EXPO_OLD") == "1"  # (A/B: adapt per viewer frame, from the start-up view)
@@ -2087,6 +2088,7 @@ func _exposure_update() -> void:
 		var x := maxf((yp - cur[1]) / wb, maxf((0.1 - cur[1]) / wb, 0.0))
 		var f := pow(maxf(x, 1e-6), cur[2]) / maxf(yp, 0.1)
 		y_s = maxf(y_out - cur[3], 0.0) / maxf(f, 1e-4)
+	var l_before := _expo_L
 	if _expo_L < 0.0 or _expo_instant:
 		_expo_L = y_s
 	else:
@@ -2095,6 +2097,7 @@ func _exposure_update() -> void:
 		var steps := float(n) if _expo_old else clampf(dt * 60.0, float(n), 600.0)
 		_expo_L += (1.0 - pow(0.98, steps)) * (y_s - _expo_L)
 	_expo_ms = Time.get_ticks_msec()
+	_expo_dl = absf(_expo_L - l_before) if l_before >= 0.0 else 1.0
 	_expo_apply(_expo_k(_expo_L))
 	_expo_n += 1
 	if _live_packets > 0:
@@ -2104,8 +2107,10 @@ func _exposure_update() -> void:
 
 
 func _cars_pending() -> bool:
-	if _expo_mat != null and _live_port > 0 and _expo_live_n < 3:
-		return true  # (and the exposure: three updates on the game's view, not the start-up camera's)
+	if _expo_mat != null and _live_port > 0 and (_expo_live_n < 3 or _expo_dl > 0.002):
+		# (and the exposure: settled on the game's view, not the start-up camera's; the readback lags the curve by a
+		# frame or two, so L converges over several updates: RoadAtlanta 0.41 -> 0.395 -> .. 0.362)
+		return true
 	if not _library_queue.is_empty():
 		return true
 	if not _car_attached:

@@ -35,6 +35,11 @@ track now takes the cars' sun shadows within 2-3 m of a car only (RoadAtlanta 19
 Then (19:00): the viewer's exposure adapted per viewer frame from its start-up camera; now by time like the game's
 (W at Sebring 0.946-0.966 against the game's 0.953; CrownJewel grid 15.1 / 15.2 / 15.1 -> 14.8 / 14.7 / 14.3). Bloom
 (< 1%) and the sky's scale ruled out (LIVE.md "The exposure adapts by time").
+Then (20:00-22:15): the car light decoded from the paint's vertex / pixel shaders (LIVE.md "The car paint's light,
+decoded"): ambient = SHTop a + SHBottom b from the library's baked sky pair, sun = SHDir x (0.375 + 0.541 n.l, measured
+from the game's own o[2].w) x the SHTransition smoothstep; the paint and the other plain car parts (fm3_carsolid)
+use it instead of fitted values / Godot's lighting (CrownJewel paint 15.3 -> 12.2, parts 17.4 -> 12.9; Sebring parts
+50.8 -> 29.7). Live tests are now repeatable (identical runs 0.00 apart; before up to 11 levels of exposure timing).
 Open, in order: RoadAtlanta's car shadows (still too long / dark where the game's are short / faint;
 `FM3_NO_SHADOWS=1` gives 16.8 -> 15.9 there); reflection contrast (our reflected clouds have less contrast than the game's); the RSX
 lenses less pink; slip ratio / angle for the telemetry. The other tracks were not rebuilt except Sebring and

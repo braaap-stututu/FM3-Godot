@@ -796,6 +796,10 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   could carry the start-up view's exposure. It now updates every 0.2 s on a slow viewer, the test picture waits for
   three updates on the game's view, and `FM3_EXPO_INSTANT=1` (set by live_compare / live_track) adapts at once, the
   frozen game's settled state. Whole-frame numbers from before this evening carry up to ~1-5 levels of that noise.
+  The readback lags the curve by a frame or two, so L converges over several updates (RoadAtlanta 0.41 -> 0.395 ->
+  .. 0.362): the picture now waits until L changes by < 0.002 an update. RoadAtlanta (identical runs 0.01 apart),
+  old car light -> decoded paint + parts: whole frame 17.1 / 17.7 / 18.9 -> 17.0 / 17.5 / 18.7, the pixels it changes
+  23.96 -> 20.30, the RSX 13.82 -> 13.66 (the same scene measured 20.2-22 before the exposure waited: that was noise).
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended
