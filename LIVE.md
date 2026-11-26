@@ -764,6 +764,38 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   is taken back by the adaptation (as the game's own adaptation brightens its cockpit view): CrownJewel in-car x1.5
   and x1.0 give the same picture statistics (15.68 both; x1.2 14.53, its picture taken mid-adaptation). So pictures
   taken soon after a camera change carry the adaptation's state: compare after it settles (~3 s of game time).
+- **The car paint's light, decoded** (2026-11-26 evening; the user: "are we using the game's GI?"). The paint (ps
+  e41e183a423e6f1b, vs a102319a5aef757b; register names from shaders_v11.fxobj container 47 and the car vertex
+  shaders' tables) computes, in gamma space:
+  `out = (paint x sunSH + highlights) x shadow + paint x o[5].xyz + reflection`
+  - o[5].xyz, the **ambient**: transfer SH . shHemisphericalLightR/G/B (c38-40), the SH of TrackSettings SHTop /
+    SHBottom per channel with the same hemisphere projection as shCubeMapDampnerLight (c37): per vertex
+    `SHTop x a + SHBottom x b`, (a, b) = `fm3_carbin.env_sh`, already in the library as UV2. Unshadowed.
+  - o[2].w, the **sun**: transfer SH . shDirectionalLightI (c36); the pixel shader takes SHDir (c179) x o2w x
+    smoothstep((o2w x SHDir.r - (SHTransition - Width)) / 2 Width) (body: 0.5 / 0.3; n.l only with
+    UseDiffuseInsteadOfSH). Measured, not derived: the game's o[2].w output by a live ps edit on the grid
+    (`tools/research/gridterms.ps1` modes 13 / 14, with the 0.1 / 0.25 / 0.5 patches to undo the display) against
+    our n.l per pixel: **o2w = 0.375 + 0.541 n.l** (rms 0.09; the SH-projected cosine; self-occlusion adds little).
+  - shadow = min(track-lightmap smoothstep (trackLightMapParams), max(shadow map, MinShadowValue 0.25)), on the
+    sun and the highlights.
+  - Our decoded ambient against the game's o[5] on the grid: x1.05 median (0.96-1.11 per pixel).
+  In `fm3_carpaint.gdshader` (game_amb, game_sun; world_view.gd sets SHTop / SHBottom / SHDir from the track's
+  `_track.json`; `FM3_GAME_AMB=0` = the old fitted ambient and sun, `FM3_GAME_SUN=0` = the fitted sun only,
+  `FM3_GAME_AMB_K` a test scale; `FM3_PAINT_DEBUG` 13 ambient, 14 n.l, 15 signed n.l, 16 the (a, b) pair). CrownJewel
+  grid, paint pixels (the game's own paint mask from the probe): **14.98 -> 12.31**, the player's CR-X 15.6 -> 11.7,
+  the AI cars 13.3 -> 14.0, whole frame 14.63 -> 14.39. The ambient alone (with the old fitted sun) was 16.5: the old
+  sun x1.35 n.l^2 had been fitted together with a lower ambient.
+  Sebring (the RSX is black): the pixels it changes 35.97 -> 34.05, the RSX 12.91 -> 12.92.
+  **The other car parts** (trim, plastic, grilles, badges: opaque, not metal, with the baked pair) lit the same way
+  (`fm3_carsolid.gdshader`; every car vertex shader carries the same SH constants), instead of Godot's flat grey
+  ambient and sun: Sebring, the pixels it changes 50.8 -> 29.7 (they were grey, 77 against the game's 29), the RSX
+  12.91 -> 12.70; CrownJewel grid 17.41 -> 12.91 (dark trim 25 -> 14, game 15), whole frame 14.21 -> 14.18.
+  `FM3_CAR_SH=0`: off. No highlight on them yet (spec_amount 0; the game's per-material SpecularAmount).
+  **Measuring:** the live tests now give the same picture run to run (two identical CrownJewel runs: 0.00, Sebring 0.12;
+  before, 11 levels apart): the viewer's exposure updated every 10 frames, 5-10 s at the tests' 1-2 fps, so a picture
+  could carry the start-up view's exposure. It now updates every 0.2 s on a slow viewer, the test picture waits for
+  three updates on the game's view, and `FM3_EXPO_INSTANT=1` (set by live_compare / live_track) adapts at once, the
+  frozen game's settled state. Whole-frame numbers from before this evening carry up to ~1-5 levels of that noise.
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended

@@ -15,6 +15,7 @@ $ErrorActionPreference = 'Continue'
 # FM3_UPSCALER / FM3_MSAA / FM3_AA beforehand to compare another setting.
 if (-not $env:FM3_UPSCALER) { $env:FM3_UPSCALER = 'off' }
 if (-not $env:FM3_MSAA) { $env:FM3_MSAA = '4' }
+if (-not $env:FM3_EXPO_INSTANT) { $env:FM3_EXPO_INSTANT = '1' }  # (the viewer's exposure at its adapted state at once: the frozen game's is settled)
 if (-not $env:FM3_AA) { $env:FM3_AA = 'off' }
 $g = (Resolve-Path "$PSScriptRoot\..\..\..").Path
 $r = (Resolve-Path "$g\..\FM3-ReGPU recomp").Path

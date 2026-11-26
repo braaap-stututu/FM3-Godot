@@ -993,6 +993,35 @@ func _car_light_ratio(gltf_path: String) -> Array:
 	return _car_light_cache[gltf_path]
 
 
+# A library car's plain opaque part lit by the game's car SH light (fm3_carsolid.gdshader), or null: only parts with the
+# baked sky pair (UV2), not chrome / metal, glass, lamps or the cabin. FM3_CAR_SH=0: off (Godot's lighting).
+const CARSOLID_SHADER := preload("res://viewer/fm3_carsolid.gdshader")
+
+
+func _car_solid_material(m: BaseMaterial3D, nm: String, mesh: Mesh, s: int) -> ShaderMaterial:
+	if OS.get_environment("FM3_CAR_SH") == "0":
+		return null
+	if not (mesh.surface_get_format(s) & Mesh.ARRAY_FORMAT_TEX_UV2) or m.metallic >= 0.5 or _blended(m):
+		return null
+	if nm.contains("_interior_") or nm.contains("_seat") or (nm.begins_with("wheel_") and OS.get_environment("FM3_CAR_SH_WHEELS") != "1"):
+		return null
+	var shs := _track_sh(_gltf_path)
+	if shs.is_empty():
+		return null
+	var sm := ShaderMaterial.new()
+	sm.shader = CARSOLID_SHADER
+	sm.set_shader_parameter("albedo_color", _vec4(m.albedo_color))
+	if m.albedo_texture != null:
+		sm.set_shader_parameter("albedo_tex", m.albedo_texture)
+	sm.set_shader_parameter("use_vertex_color", m.vertex_color_use_as_albedo)
+	sm.set_shader_parameter("sh_top", shs["top"])
+	sm.set_shader_parameter("sh_bottom", shs["bottom"])
+	sm.set_shader_parameter("sh_dir", shs["dir"])
+	if m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
+		sm.set_shader_parameter("alpha_cut", m.alpha_scissor_threshold)
+	return sm
+
+
 # The track's SHLighting top / bottom / dir colours (<track>_track.json 'SH'), or {} when it has none.
 func _track_sh(gltf_path: String) -> Dictionary:
 	var f := gltf_path.get_basename() + "_track.json"
@@ -1850,6 +1879,9 @@ var _expo_L := -1.0
 var _expo_last := 0
 var _expo_n := 0
 var _expo_ms := 0
+var _expo_live_n := 0
+# (tests on a frozen game: the adapted state at once, as the frozen game has it; live_compare / live_track set it)
+var _expo_instant := OS.get_environment("FM3_EXPO_INSTANT") == "1"
 var _expo_old := OS.get_environment("FM3_EXPO_OLD") == "1"  # (A/B: adapt per viewer frame, from the start-up view)
 
 
@@ -2023,7 +2055,11 @@ static func _untoe(v: float) -> float:
 
 
 func _exposure_update() -> void:
-	if _expo_mat == null or _frames < 3 or _frames - _expo_last < 10:
+	if _expo_mat == null or _frames < 3 or _frames == _expo_last:
+		return
+	# (every 10 frames, or every 0.2 s on a slow viewer: at the 1-2 fps of the live tests 10 frames took 5-10 s, and a
+	# picture could be saved on the start-up view's exposure, 10 levels off)
+	if _frames - _expo_last < 10 and Time.get_ticks_msec() - _expo_ms < 200:
 		return
 	var n := _frames - _expo_last
 	_expo_last = _frames
@@ -2051,7 +2087,7 @@ func _exposure_update() -> void:
 		var x := maxf((yp - cur[1]) / wb, maxf((0.1 - cur[1]) / wb, 0.0))
 		var f := pow(maxf(x, 1e-6), cur[2]) / maxf(yp, 0.1)
 		y_s = maxf(y_out - cur[3], 0.0) / maxf(f, 1e-4)
-	if _expo_L < 0.0:
+	if _expo_L < 0.0 or _expo_instant:
 		_expo_L = y_s
 	else:
 		# (the game adapts 2% a game frame, at 60 a second: by time here, so a slow viewer adapts as fast as the game)
@@ -2061,11 +2097,15 @@ func _exposure_update() -> void:
 	_expo_ms = Time.get_ticks_msec()
 	_expo_apply(_expo_k(_expo_L))
 	_expo_n += 1
+	if _live_packets > 0:
+		_expo_live_n += 1
 	if _expo_n % 5 == 1:
 		print("world_view: exposure: L %.4f (frame %.4f) k %.3f W %.4f" % [_expo_L, y_s, _expo_k(_expo_L), _expo_curve(_expo_k(_expo_L))[0]])
 
 
 func _cars_pending() -> bool:
+	if _expo_mat != null and _live_port > 0 and _expo_live_n < 3:
+		return true  # (and the exposure: three updates on the game's view, not the start-up camera's)
 	if not _library_queue.is_empty():
 		return true
 	if not _car_attached:
@@ -2349,6 +2389,10 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 		if lamp_ != null:
 			mi.set_surface_override_material(s, lamp_)
 			continue
+		var solid_ := _car_solid_material(m, nm, mi.mesh, s)
+		if solid_ != null:
+			mi.set_surface_override_material(s, solid_)
+			continue
 		_add_reflector_pass(m, nm, _gltf_path)
 		mi.set_surface_override_material(s, m)
 
@@ -2628,7 +2672,8 @@ func _live_step() -> void:
 			_cam.fov = rad_to_deg(latest.decode_float(80))
 	_live_packets += 1
 	if _live_packets == 1 and not _expo_old:
-		_expo_L = -1.0  # (the exposure starts over on the game's view: not adapted to the start-up camera's)
+		_expo_L = -1.0
+		_expo_live_n = -1  # (the frame being drawn may still be the start-up view's)  # (the exposure starts over on the game's view: not adapted to the start-up camera's)
 	if Time.get_ticks_msec() - _live_last_ms > 5000:
 		_live_last_ms = Time.get_ticks_msec()
 		print("world_view: live camera ", _cam.global_transform if _screens.is_empty() else _screens[0]["camera"].global_transform,
