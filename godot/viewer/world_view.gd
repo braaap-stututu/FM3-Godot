@@ -1851,10 +1851,34 @@ func _attach_library_car(car) -> void:
 		var scale := 0.6 if bool(info["metallic"]) else 0.8  # (ShaderSettings PaintScale: Metallic.xml 0.6, Normal.xml 0.8)
 		paint_col = Color(float(c[0]) * scale, float(c[1]) * scale, float(c[2]) * scale)
 		metal = 1.0 if int(c[3]) == 1 else 0.0
+	# this colour's own base texture (Combo_Colors BaseTexture, e.g. nodamageblue: the decals in the colour's accent;
+	# tools/fm3_car_basetex.py <car>_basetex.json): swapped into the paint and the nodamage materials
+	var bt = JSON.parse_string(FileAccess.get_file_as_string(base + "_basetex.json")) if FileAccess.file_exists(base + "_basetex.json") else {}
+	var stem := String(bt.get(key, "")) if bt is Dictionary else ""
+	var tdir := lname + "_tex/"
+	if stem != "":
+		print("world_view: live car %08X (%s colour %s) uses base texture %s" % [car, info["name"], key, stem])
 	var n := 0
 	for mi in scene_.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D
 		var nm := String(m.name)
+		if stem != "" and m.mesh != null:
+			for s_ in m.mesh.get_surface_count():
+				var bm := m.mesh.surface_get_material(s_) as BaseMaterial3D
+				if bm == null:
+					continue
+				var mn := String(bm.resource_name)
+				var tex_: Texture2D = null
+				if mn == "paint":
+					tex_ = _load_tex(path, tdir + "paint_over_white_" + stem + ".png")
+					if tex_ != null:
+						bm.roughness_texture = tex_
+				elif mn.ends_with("_nodamage_lod0"):
+					tex_ = _load_tex(path, tdir + stem + "_lod0.png")
+				elif mn.ends_with("_nodamage"):
+					tex_ = _load_tex(path, tdir + stem + ".png")
+				if tex_ != null:
+					bm.albedo_texture = tex_
 		_setup_library_mesh(m, cm if cm is Dictionary else {}, paint_col, metal)
 		var wk := -1
 		var mk := RegEx.create_from_string("^(wheel|brake)_[a-z0-9_]+?_([0-3])_").search(nm)

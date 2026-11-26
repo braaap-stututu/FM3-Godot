@@ -647,6 +647,15 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   last night's final: right stripes 28.4 -> 10.5 (ours 94 / 92 / 84, game 93 / 93 / 89), left stripes 24.1 -> 20.0,
   road 9.8 -> 9.0, the CR-X 12.9 -> 11.4, the grandstand 16.1 -> 16.7; **whole frame 18.4 / 17.8 / 16.9 -> 16.8 /
   16.7 / 16.3** (the rebuild also carries every exporter change since 2026-11-24).
+- **Per-colour base textures for library cars** (2026-11-26): each Combo_Colors row names its BaseTexture; 44 of the
+  510 cars switch it per colour (REN_5Turbo_80: colour 1 `nodamage` = red decals, 2 / 3 `nodamageblue`, 4
+  `nodamageblack`; Shelby GT500s, Saleen S281s, the SSC, Volvo C30 ...). The library exported only `nodamage`, so a
+  silver-blue R5 Turbo (colour 3) showed red "TURBO" lettering where the game's is blue (RoadAtlanta). New
+  `tools/fm3_car_basetex.py workssets\cars <gamedb.slt> out\cars` adds the alternative textures and
+  `<car>_basetex.json` {colour: stem} beside a built library car (run once after fm3_car_library.py; done for all
+  44), and world_view.gd swaps them into the paint and nodamage materials when it attaches the car (log line "uses
+  base texture"). Checked in a live RoadAtlanta run (the R5 in colour 2 took `nodamageblue`); the decals were too
+  small in that boot's frame to compare by eye.
 - **Per-track shadow colour** (2026-11-26, 11:15): a car's / person's sun shadow on the track now darkens it to the
   track's `ShadowColor` (TrackSettings.xml, gamma; in linear per channel) instead of one fitted strength 0.85, which
   was CrownJewel's own value (0.32 / 0.37 / 0.45 -> ~0.11 linear = 1 - 0.85 + a blue tint). The values vary: Sebring
