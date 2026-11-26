@@ -1046,7 +1046,11 @@ func _hud_feed(player: int, moves: Dictionary) -> void:
 # The AI cars' paint reflecting the per-frame cube too (2026-11-26 late: the game's AI paint reads a near-field dynamic
 # cube through its "static" slot t7, not the track's static car cube; LIVE.md). FM3_AI_LIVE=0: the static cube again.
 func _ai_live(sm: ShaderMaterial) -> bool:
-	return OS.get_environment("FM3_AI_LIVE") != "0" and sm.shader == CARPAINT_SHADER
+	if OS.get_environment("FM3_AI_LIVE") == "0":
+		return false
+	# (the AI windows too: their sky blue, 27.5 -> 19.3 on the windows, 38/42/41 -> 51/61/67 against the game's 45/55/63;
+	# FM3_AI_LIVE_GLASS=0: the static cube)
+	return sm.shader == CARPAINT_SHADER or (sm.shader == CARGLASS_SHADER and OS.get_environment("FM3_AI_LIVE_GLASS") != "0")
 
 
 # The track's SHLighting top / bottom / dir colours (<track>_track.json 'SH'), or {} when it has none.
