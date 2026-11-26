@@ -44,7 +44,7 @@ def _uv(raw):
     return uv
 
 
-def read_skinbin(path):
+def read_skinbin(path, lod=0):
     d = open(path, 'rb').read()
     first = struct.unpack_from('>I', d, 20)[0]
     lods = [(0, first)] + [struct.unpack_from('>HH', d, 28 + 8 * i) for i in range(6)]
@@ -53,7 +53,7 @@ def read_skinbin(path):
     o = 0x54 + n * 36
     ni = struct.unpack_from('>I', d, o + 4)[0]
     idx = np.frombuffer(d[o + 8:o + 8 + 2 * ni], '>u2').astype(np.uint32)
-    s, c = lods[0]
+    s, c = lods[lod]
     tri = idx[s:s + c]
     return {'pos': v['p'].astype(np.float32), 'nrm': v['n'].astype(np.float32),
             'uv': _uv(v['uv']), 'idx': tri, 'lods': lods}
@@ -121,6 +121,9 @@ def main():
                 gp = '%s_%s_%d.gltf' % (name, pose, k + 1)
                 write_gltf(os.path.join(out, gp), [(m, 0, (0, 0, 0))], [png])
                 files.append(gp)
+                # (and coarser levels for the crowd: thousands of people; level 2 = 448 triangles, level 3 = 156)
+                for lv in (2, 3):
+                    write_gltf(os.path.join(out, gp[:-5] + '_lod%d.gltf' % lv), [(read_skinbin(sp, lv), 0, (0, 0, 0))], [png])
             entry[pose.lower()] = files
             if pose == 'Sit':
                 row.append((m, pngs, fi))

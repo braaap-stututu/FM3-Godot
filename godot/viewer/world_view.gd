@@ -1024,6 +1024,68 @@ func _car_solid_material(m: BaseMaterial3D, nm: String, mesh: Mesh, s: int) -> S
 	return sm
 
 
+# The 3D crowd (2026-11-26; on where the scene has <scene>_crowd.json, FM3_CROWD3D=0 off; CrownJewel grid: the stands 17.3 -> 15.4): the scene's spectators (<scene>_crowd.json, tools/fm3_crowd3d.py) drawn with
+# the game's own seated people (out/spectators, tools/fm3_spectators.py: static, in their seated pose; the animations
+# are not decoded yet) in place of the 'crowd_people' cards: one MultiMesh per figure and texture. The person's facing
+# angle as the cards' (their right = (cos a, 0, -sin a)); FM3_CROWD3D_YAW adds a turn (degrees) for tests.
+func _crowd3d() -> void:
+	if OS.get_environment("FM3_CROWD3D") == "0" or _gltf_path == "":
+		return
+	var jf := _gltf_path.get_basename() + "_crowd.json"
+	var idx_path := _gltf_path.get_base_dir().get_base_dir() + "/spectators/spectators.json"
+	if not FileAccess.file_exists(jf) or not FileAccess.file_exists(idx_path):
+		print("world_view: no 3D crowd (%s / %s)" % [jf, idx_path])
+		return
+	var people: Array = JSON.parse_string(FileAccess.get_file_as_string(jf))["people"]
+	var figs: Array = JSON.parse_string(FileAccess.get_file_as_string(idx_path))
+	var sit := []
+	for f in figs:
+		if f.has("sit"):
+			sit.append(f["sit"])
+	var hidden := 0
+	for n in root.find_children("crowd_people*", "MeshInstance3D", true, false):
+		(n as MeshInstance3D).visible = false
+		hidden += 1
+	var groups := {}
+	for p in people:
+		var key := "%d_%d" % [int(p[0]) % sit.size(), int(p[1]) % 2]
+		if not groups.has(key):
+			groups[key] = []
+		groups[key].append(p)
+	var yaw0 := deg_to_rad(float(OS.get_environment("FM3_CROWD3D_YAW"))) if OS.get_environment("FM3_CROWD3D_YAW") != "" else 0.0
+	for key in groups:
+		var parts: PackedStringArray = (key as String).split("_")
+		var files: Array = sit[int(parts[0])]
+		var gp := idx_path.get_base_dir() + "/" + String(files[mini(int(parts[1]), files.size() - 1)])
+		# (level of detail: 2 by default (448 triangles a person; Motegi has 24,299 people), FM3_CROWD3D_LOD=0 / 3)
+		var lv := OS.get_environment("FM3_CROWD3D_LOD") if OS.get_environment("FM3_CROWD3D_LOD") != "" else ("2" if people.size() <= 8000 else "3")
+		if lv != "0" and FileAccess.file_exists(gp.get_basename() + "_lod" + lv + ".gltf"):
+			gp = gp.get_basename() + "_lod" + lv + ".gltf"
+		var doc := GLTFDocument.new()
+		var st := GLTFState.new()
+		if doc.append_from_file(gp, st) != OK:
+			continue
+		var sc := doc.generate_scene(st)
+		var mis := sc.find_children("*", "MeshInstance3D", true, false)
+		if mis.is_empty():
+			continue
+		var mesh := (mis[0] as MeshInstance3D).mesh
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = mesh
+		var g: Array = groups[key]
+		mm.instance_count = g.size()
+		for i in g.size():
+			var q: Array = g[i]
+			var b := Basis(Vector3.UP, float(q[5]) + yaw0)
+			mm.set_instance_transform(i, Transform3D(b, Vector3(q[2], q[3], q[4])))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		root.add_child(mmi)
+		sc.free()
+	print("world_view: 3D crowd: %d people in %d groups (%d card meshes hidden)" % [people.size(), groups.size(), hidden])
+
+
 # The race HUD (fm3_hud.gd): made on the first live frame, fed the stream's telemetry and the cars' positions.
 func _hud_feed(player: int, moves: Dictionary) -> void:
 	if OS.get_environment("FM3_HUD") == "0":
@@ -3220,6 +3282,8 @@ func _update_car_shadow_tex() -> void:
 
 func _process(_delta: float) -> bool:
 	_frames += 1
+	if _frames == 3:
+		_crowd3d()
 	_exposure_update()
 	_fog_update()
 	# the sky dome stays centred on the camera, as FM3 draws it (fm3_track_export.py: skydome_ nodes)

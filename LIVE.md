@@ -868,6 +868,24 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   UIWhite, UIupgrades`): `build_track.ps1 -Track UIWhite` / `UIupgrades` build now (`fm3_pvs.py`: texture tables of
   one or two entries; `fm3_track_export.py`: empty mesh groups skipped). Rendered they are flat dark grey so far (a
   floor, a backdrop and the sky dome; the menus' light scale differs: their static cube is read x8). PLAN-NEXT.md 6.
+- **The 3D crowd, static** (2026-11-26 night; the user: "the animated 3D crowd"): the game's own seated people
+  instead of the dark crowd cards. `tools/fm3_spectators.py <FM3-files\game\Media\Spectators> out\spectators` writes
+  every model (`models\<Name>_{Sit,Stand}.skinbin`: 14 crowd figures, and the photographer, pit worker and marshal
+  standing) with each of its two textures as glTF, at detail levels 0, 2 and 3 (the skinbin's 7 levels); the UVs are
+  unsigned 16-bit (u / 65536: checked on all 14 seated figures, faces / shirts / shoes in place; signed + 0.5 or a
+  flipped v put faces on chests). `tools/fm3_crowd3d.py <..._track_NN.crowd> out\world\<scene>.gltf` writes the
+  layout's people (figure, second index, position, facing) to `<scene>_crowd.json` (done for CrownJewel Ribbon_04,
+  Sebring / RoadAtlanta / Motegi Ribbon_00). The viewer (`_crowd3d`, on where the file exists, `FM3_CROWD3D=0` off)
+  hides the `crowd_people` cards and draws one MultiMesh per figure and texture (the figure modulo the 14 seated ones,
+  the second index modulo 2 picks the texture), facing as the cards (`FM3_CROWD3D_YAW` for tests; 180 is worse),
+  level 2 by default (448 triangles; level 3 above 8,000 people: Motegi has 24,299; `FM3_CROWD3D_LOD`). CrownJewel grid
+  (one boot): off / level 2 / level 0: the pixels it changes 41.08 / 35.33 / 34.77, whole frame 14.36 / **14.01** /
+  14.23 (the first boot: the stands 17.29 -> 15.41). Sebring (few people in view, 3,239 pixels): 41.0 -> 42.0, whole
+  16.60 -> 16.62. Not yet: the animations (PLAN-NEXT 2), the game's
+  crowd shading (TrackSettings Crowds dark / light: Godot's lighting here), the far crowd's sprites (the 'crowds'
+  cards stay), pit crew / marshals (placement unknown).
+  Measuring note: two boots' viewer pictures differed by 1.44 on average with the same settings (247 pixels by more
+  than 10): a small whole-frame shift between boots; compare variants within one boot.
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended
