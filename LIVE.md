@@ -854,6 +854,20 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   14.17; its flank shows the near lines as in the game (`out/live/eclipse_ai_livecube.png`). Its dampener stays the
   live one (0.3; the game's AI path uses the static 0.5, not tried). The panorama also looks vertically inverted
   against our GL-convention reading, which needs checking before the same change goes to AI glass and lamps.
+- **Race HUD** (2026-11-26 night; the user: "add the HUD elements, maybe customizable"): `godot/viewer/fm3_hud.gd`,
+  drawn on a CanvasLayer above the exposure pass, fed by world_view.gd `_hud_feed` each live frame: a tachometer
+  (rpm against the stream's redline, red zone, gear, speed), throttle / brake bars, a track map that builds itself from
+  the player's path (no track file) with a dot per car, a digital speed readout and a debug line (both off by
+  default). Each element: enabled, anchor (tl / tr / bl / br), offset, scale, colours; units kmh / mph. Defaults in
+  `godot/viewer/hud_default.json`, overridden by `user://fm3_hud.json` or `FM3_HUD_CONFIG=<path>`; H toggles it;
+  `FM3_HUD=0` off (live_compare / live_track and the scratch test scripts set it: the game's own HUD stays in its
+  picture). `godot/viewer/hud_test.gd` draws it with made-up data. Trap found: a Control under a CanvasLayer has no
+  size from its anchors (0 x 0): elements are placed from the viewport's size. Not yet: race position and laps (not in
+  the stream), the game's own HUD look.
+- **The menus' 3D scenes** are tracks in the game files (`Media/Tracks/UILivery, UIThumBig, UIThumbnail, UITrack,
+  UIWhite, UIupgrades`): `build_track.ps1 -Track UIWhite` / `UIupgrades` build now (`fm3_pvs.py`: texture tables of
+  one or two entries; `fm3_track_export.py`: empty mesh groups skipped). Rendered they are flat dark grey so far (a
+  floor, a backdrop and the sky dome; the menus' light scale differs: their static cube is read x8). PLAN-NEXT.md 6.
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended

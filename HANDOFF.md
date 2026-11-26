@@ -43,6 +43,11 @@ use it instead of fitted values / Godot's lighting (CrownJewel paint 15.3 -> 12.
 Our scene before the exposure now matches the game's own scene texture within ~2% on RoadAtlanta, Sebring and Motegi
 (read by a live edit of the game's final pass); the exposure matches on Sebring / Motegi / CrownJewel, while
 RoadAtlanta's game L sits ~0.13 above its scene mean (open, LIVE.md). Adaptation speed per track (ToneMapeDelay).
+Then (22:50-01:30, the user's list: cubemap, crowd / pit crew / driver animations, HUD, front end, menus; **the
+plan for what is left is `PLAN-NEXT.md`**): the AI cars' paint reflects the per-frame cube as the game's does (its
+"static" t7 is a dynamic cube: Eclipse paint 13.1 -> 11.3, AI paint 14.3 -> 13.1 with the game's 0.5 dampener); a
+customizable race HUD (`fm3_hud.gd`); the menus' scenes build; the crowd's skinbin and anim formats and the driver's
+Granny files examined (decoder addresses in PLAN-NEXT); slip telemetry hunted with `tools/research/physdump.ps1`.
 Open, in order: RoadAtlanta's car shadows (still too long / dark where the game's are short / faint;
 `FM3_NO_SHADOWS=1` gives 16.8 -> 15.9 there); reflection contrast (our reflected clouds have less contrast than the game's); the RSX
 lenses less pink; slip ratio / angle for the telemetry. The other tracks were not rebuilt except Sebring and
