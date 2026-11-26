@@ -651,7 +651,7 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   510 cars switch it per colour (REN_5Turbo_80: colour 1 `nodamage` = red decals, 2 / 3 `nodamageblue`, 4
   `nodamageblack`; Shelby GT500s, Saleen S281s, the SSC, Volvo C30 ...). The library exported only `nodamage`, so a
   silver-blue R5 Turbo (colour 3) showed red "TURBO" lettering where the game's is blue (RoadAtlanta). New
-  `tools/fm3_car_basetex.py workssets\cars <gamedb.slt> out\cars` adds the alternative textures and
+  `tools/fm3_car_basetex.py work\assets\cars <gamedb.slt> out\cars` adds the alternative textures and
   `<car>_basetex.json` {colour: stem} beside a built library car (run once after fm3_car_library.py; done for all
   44), and world_view.gd swaps them into the paint and nodamage materials when it attaches the car (log line "uses
   base texture"). Checked in a live RoadAtlanta run (the R5 in colour 2 took `nodamageblue`); the decals were too
