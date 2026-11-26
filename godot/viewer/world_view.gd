@@ -692,6 +692,7 @@ static func _lens_shader() -> Shader:
 # Sebring 22.7 -> 21.9, CrownJewel 18.7 -> 18.6, RSX rear 19.6 -> 18.5, CR-X rear 17.6 -> 18.1 (0.5: RSX 18.1, CR-X 18.3).
 const LAMP_SHADER = preload("res://viewer/fm3_lamp.gdshader")
 const LAMP_GAME_SHADER = preload("res://viewer/fm3_lamp_game.gdshader")
+const LENS_LIFT := 0.0  # (no effect on the PT Cruiser: its grey rings were the lamp cover, _lamp_cover) fm3_carglass.gdshader lens_lift (m)
 const LAMP_SHADE := 0.3  # fm3_lamp_game.gdshader lm_shade (the track lightmap in shade; FM3_LAMP_SHADE)
 # the bulbs' reflection scale over <tail_light>'s CubeScale 0.2 (FM3_BULB=<k>): fitted on the Sebring RSX (2026-11-26,
 # with the opaque lamp material and lens filter 0.45: tails 33.6 / 30.6 -> 25.2 / 23.2, the domes pink chrome as the game's)
@@ -818,6 +819,15 @@ func _lamp_material(m: BaseMaterial3D, nm: String, gltf_path: String) -> ShaderM
 
 # The game's lamp and lens formulas (decoded 2026-11-26; fm3_lamp.gdshader game_lamp, fm3_carglass.gdshader game_lens).
 # FM3_GAME_LAMP=0: the earlier fitted lamps (reflection gains, lens_light / lens_filter).
+# A library car's lamp cover: material <glass> on the body model (not the windows <window>, detail / black glass or the
+# cockpit's own glass).
+static func _lamp_cover(nm: String) -> bool:
+	if not nm.begins_with("carbin_") or nm.contains("detail_glass") or nm.contains("black_glass") or nm.contains("red_glass"):
+		return false
+	var i := nm.rfind("_glass_")
+	return i >= 0 and nm.substr(i + 7).is_valid_int()
+
+
 static func _game_lamps() -> bool:
 	return OS.get_environment("FM3_GAME_LAMP") != "0"
 
@@ -2181,12 +2191,20 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 				gm.set_shader_parameter("lens_filter", _lens_filter())
 				gm.set_shader_parameter("lens_light", float(OS.get_environment("FM3_LENS_LIGHT")) if OS.get_environment("FM3_LENS_LIGHT") != "" else LENS_LIGHT)
 				gm.set_shader_parameter("amber_light", float(OS.get_environment("FM3_AMBER_LIGHT")) if OS.get_environment("FM3_AMBER_LIGHT") != "" else AMBER_LIGHT)
+				gm.set_shader_parameter("lens_lift", float(OS.get_environment("FM3_LENS_LIFT")) if OS.get_environment("FM3_LENS_LIFT") != "" else LENS_LIFT)
 				if _game_lamps():
 					gm.set_shader_parameter("game_lens", true)
+					gm.set_shader_parameter("lens_debug", OS.get_environment("FM3_LENS_DEBUG") == "1")
 					var lt_ := _lights_texture(nm)
 					gm.set_shader_parameter("has_lens_tex", lt_ != null)
 					if lt_ != null:
 						gm.set_shader_parameter("lens_tex", lt_)
+			if not lens and _lamp_cover(nm) and OS.get_environment("FM3_COVER_BLEND") != "0":
+				# A lamp's clear outer cover (<glass>) over its lens: both read the screen as it was before the transparent
+				# pass (gamma_blend), so whichever drew second replaced the other; the PT Cruiser's covers drew after its
+				# red lenses and left grey rings (only the lens edge the cover misses). Covers blend normally and last.
+				gm.set_shader_parameter("gamma_blend", false)
+				gm.render_priority = 1
 			var gp: Dictionary = cm.get(nm, {})
 			for k in gp:
 				var v = gp[k]

@@ -28,6 +28,8 @@ game's (LIVE.md "Black plastic and the tail lamps").
 Then (late afternoon) tail lamps and lenses with the game's decoded formulas (RSX tails 22.2 / 23.4 -> 19.4 / 18.3),
 live comparisons with the game at 4x MSAA as the viewer (`FM3_UPSCALER=off FM3_MSAA=4`), and the white edge specks
 traced to HDR highlights (capped). LIVE.md "Tail lamps and lenses with the game's own formulas", "White specks".
+Then: the PT Cruiser's grey tails were its clear lamp cover wiping out the red lens (transparent parts blending from
+the same screen copy): covers now blend normally, last. FM3's settings.ini is at 4x MSAA, no upscaler.
 Open, in order: RoadAtlanta's car shadows (still too long / dark where the game's are short / faint;
 `FM3_NO_SHADOWS=1` gives 16.8 -> 15.9 there); reflection contrast (our reflected clouds have less contrast than the game's); the RSX
 lenses less pink; slip ratio / angle for the telemetry. The other tracks were not rebuilt except Sebring and

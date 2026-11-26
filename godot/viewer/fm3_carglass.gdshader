@@ -103,6 +103,18 @@ uniform float metallic = 0.0;
 
 #include "res://viewer/fm3_livecube.gdshaderinc"
 
+// A lens lifted this far out along its normal (2026-11-26; FM3_LENS_LIFT): some cars' lenses lie on their lamp's textured
+// reflector within a few mm, partly behind it (the PT Cruiser's side lamps: -4.8 .. +19 mm, mean +1.1 mm), and lost the
+// depth test to the opaque grey reflector: grey rings where the game shows red lamps.
+uniform float lens_lift = 0.0;
+uniform bool lens_debug = false;  // (tests: FM3_LENS_DEBUG=1, lenses solid magenta)
+
+void vertex() {
+	if (lens) {
+		VERTEX += NORMAL * lens_lift;
+	}
+}
+
 vec3 to_gamma(vec3 c) {
 	c = max(c, vec3(0.0));
 	return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
@@ -141,6 +153,9 @@ void fragment() {
 		vec3 bgl = to_gamma(texture(screen_tex, SCREEN_UV).rgb);
 		ALBEDO = to_linear(mix(bgl, cl, al_));
 		ALPHA = 1.0;
+		if (lens_debug) {
+			ALBEDO = vec3(1.0, 0.0, 1.0);
+		}
 	} else {
 	vec3 c = mix(glass_color.rgb * (lens ? ((amber_light >= 0.0 && glass_color.g > 0.25 && glass_color.b < 0.2) ? amber_light : lens_light) : 1.0), env, f) + spec_color * spec * spec_weight;
 	vec3 lamp = glass_color.rgb / max(max(glass_color.r, glass_color.g), max(glass_color.b, 0.001));

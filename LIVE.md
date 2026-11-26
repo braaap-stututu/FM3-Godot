@@ -721,6 +721,18 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   (gamma) before going linear (`hdr_clamp`, paint and game lamps; `FM3_HDR_CLAMP`): whole frame 15.42 -> 15.07, the
   headrest glints through rear windows gone. (The game has edge highlights too: 1650 by the same count, ours ~1150;
   ours remain more pointed on a few edges.)
+- **The PT Cruiser's grey tail lamps** (the user, 2026-11-26): its lamps are a red lens (detail_glass_red) over a
+  chrome textured reflector (its own override: Fresnel min 2.41 > max 1, a pure mirror) under a clear outer cover
+  (material `glass`, 561 triangles in front of the lens). Lenses drawn magenta (`FM3_LENS_DEBUG=1`) showed only their
+  rims: our glass shaders blend by reading the screen as it was before Godot's transparent pass (gamma_blend), so of
+  two overlapping transparent parts the later one replaces the earlier; the cover drew after the lens. Lamp covers
+  (`_lamp_cover`: `<glass>` on the body model) now blend normally and draw last (`render_priority` 1;
+  `FM3_COVER_BLEND=0` = before): the PT's lamps red / pink as in the game, those pixels 28.7 -> 23.6. The capture's
+  blend state (`RB_BLENDCONTROL` 0x07060706 = source alpha / one minus source alpha for lenses, lamps and windows;
+  depth test greater-or-equal, lenses mostly without depth writes) confirmed plain alpha blending. A lens lift
+  (`FM3_LENS_LIFT`, metres along the normal) had no effect: 0.
+- The user's own `out\user\settings.ini` now runs FM3 at 4x MSAA with no upscaler (the user: "fsr3 barely works in
+  regpu anyway"), the same as the viewer.
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended
