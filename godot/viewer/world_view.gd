@@ -1655,6 +1655,8 @@ func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle
 			# player switch in _update_live_cars had already run, so its paint reflected the static cube; 2026-11-25)
 			if not _live_cube_cams.is_empty():
 				(sm2_ as ShaderMaterial).set_shader_parameter("has_live", car == _live_player or _ai_live(sm2_))
+				if _ai_live(sm2_):  # (the AI branch damps by StaticEnvLightmapDampner 0.5: AI paint 13.28 -> 13.10; FM3_AI_DAMP)
+					(sm2_ as ShaderMaterial).set_shader_parameter("lm_dampen_live", 0.3 if car == _live_player else (float(OS.get_environment("FM3_AI_DAMP")) if OS.get_environment("FM3_AI_DAMP") != "" else 0.5))
 	var nm_ := String(m.name)
 	var kind_ := "brake" if nm_.contains("tail_light") or nm_.contains("brake_light") else ("reverse" if nm_.contains("reverse_light") else "")
 	if nm_.contains("detail_glass_red") or nm_.contains("red_glass"):
@@ -3037,6 +3039,8 @@ func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, 
 		for c_ in _car_shader_mats:
 			for sm_ in _car_shader_mats[c_]:
 				(sm_ as ShaderMaterial).set_shader_parameter("has_live", c_ == player or _ai_live(sm_))
+				if _ai_live(sm_):  # (the AI branch damps by StaticEnvLightmapDampner 0.5: AI paint 13.28 -> 13.10; FM3_AI_DAMP)
+					(sm_ as ShaderMaterial).set_shader_parameter("lm_dampen_live", 0.3 if c_ == player else (float(OS.get_environment("FM3_AI_DAMP")) if OS.get_environment("FM3_AI_DAMP") != "" else 0.5))
 	for part in _car_parts:
 		var mine: bool = int(part[1]) == player and in_car
 		var gi := part[0] as GeometryInstance3D
