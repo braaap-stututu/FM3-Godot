@@ -1243,6 +1243,8 @@ func _update_lights(player) -> void:
 # The glTF's textures, compressed (see the loader): each material's base colour, metallic-roughness, occlusion (FM3's
 # lightmaps, UV2), normal and emissive textures as Godot's glTF import binds them, from BC1 / BC3 ImageTextures.
 func _bind_textures(state: GLTFState, gltf_path: String, compress := true) -> void:
+	if OS.get_environment("FM3_NO_COMPRESS") != "":
+		compress = false  # (tests: the game's textures without our second block compression; more video memory)
 	var j = JSON.parse_string(FileAccess.get_file_as_string(gltf_path))
 	if not (j is Dictionary):
 		return

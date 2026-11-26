@@ -654,7 +654,13 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   `fm3_vlit` on the material (48 materials on CrownJewel: walls, fences, poles), `fm3_baked.gdshader` use_vlight draws
   it (`FM3_NO_VLIGHT=1`: the old way). Live CrownJewel grid, one boot: wall face 41.6 -> 11.4 (204 / 159 / 123, game
   210 / 164 / 129), wall top 21.4 -> 17.7, the right-side wall 18.2 -> 9.8, **whole frame 17.0 / 16.6 / 15.9 ->
-  15.2 / 15.3 / 15.3**. The other tracks get it when rebuilt (their `.gltf` predate it).
+  15.2 / 15.3 / 15.3**. Checked in the code for the kinds CrownJewel uses most (`FM3_DEBUG_MAT=_` lists them):
+  `barr_shad_diff_spec_nolm_1` (188 uses), `diff_spec_vert_nolm_1` (84), `diff_nolm_vclr_1` (35) and
+  `chain_diff_spec_opac_2_2sd_nolm` (28) all draw texture x lerp(c247, c248, the vertex value); the see-through ones
+  (chain fences) keep Godot's lighting (the viewer branch takes opaque materials only). Sebring / RoadAtlanta have
+  no such meshes: their `diff_1_nolm` is lit at run time (texture x lerp(shad_color, 1, shadow) x (N.L x sunColor
+  + ambColor), constants set per frame) and covers 0.3% of Sebring's grid view. Also tried: no second block
+  compression of the textures (`FM3_NO_COMPRESS=1`, test switch): no change (15.3 both).
 - **16x anisotropic filtering** (project.godot; was Godot's 4x; the user: the asphalt lacks its rough look in
   general): the road is seen almost edge-on from the cameras, where 4x falls back to blurred mips. One Sebring boot:
   road regions 20.5 / 20.4 / 20.5 -> 19.9 / 19.6 / 20.1, wall 15.9 -> 15.3, whole frame 22.4 -> 21.8; CrownJewel grid
