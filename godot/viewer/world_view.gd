@@ -96,6 +96,11 @@ var _car_lead := 0.0
 var _mirror_turn := 0
 var _mirrors := []  # [{mesh, car, centre, normal, radius (mesh space), mat, vp, cam}]
 const IN_CAR_EXPOSURE := 1.5
+
+
+static func _in_car_exposure() -> float:
+	var e := OS.get_environment("FM3_IN_CAR_EXPOSURE")  # (tests: the in-car scale)
+	return float(e) if e != "" else IN_CAR_EXPOSURE
 # The gauges (unshaded, seen in-car only): the game's daylight dials are grey markings (~150) on black; at gain 1 / 1.5
 # (the exposure undone) Godot's were white (~250) on grey, cluster p95 165 vs the game's 58. 0.25 fitted on the markings.
 const GAUGE_GAIN := 0.25
@@ -2911,7 +2916,7 @@ func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, 
 	var in_car := _live_vtable == 0x8200206C or _live_vtable == 0x82034FC4
 	if in_car != _was_in_car and _world_env != null:
 		_was_in_car = in_car
-		_world_env.environment.tonemap_exposure = _base_exposure * (IN_CAR_EXPOSURE if in_car else 1.0)
+		_world_env.environment.tonemap_exposure = _base_exposure * (_in_car_exposure() if in_car else 1.0)
 	_update_lights(player)
 	_update_engine_audio(player, moves)
 	if player != _live_player and not _live_cube_cams.is_empty():

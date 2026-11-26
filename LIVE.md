@@ -760,6 +760,10 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   shader `SKY_DIFF_1` is the texture alone; `FM3_SKY_K` 1.1 / 1.2 on top of skyScale: 17.1 -> 17.2 / 21.5, the top third
   13.3 -> 12.3 / 21.7: ours is right). Ours still has darks lighter (0-31: 20 vs 15) and highlights darker (192-255:
   ~20 under) than the game's in tone bins (scratch `tonebins.py`): the content's contrast, not the exposure.
+  In-car: with the exposure adapting, the fitted in-car x1.5 (`IN_CAR_EXPOSURE`, now `FM3_IN_CAR_EXPOSURE` for tests)
+  is taken back by the adaptation (as the game's own adaptation brightens its cockpit view): CrownJewel in-car x1.5
+  and x1.0 give the same picture statistics (15.68 both; x1.2 14.53, its picture taken mid-adaptation). So pictures
+  taken soon after a camera change carry the adaptation's state: compare after it settles (~3 s of game time).
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended
