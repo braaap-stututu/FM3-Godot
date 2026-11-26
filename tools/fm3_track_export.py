@@ -1322,6 +1322,12 @@ def main():
                     ex = dict(fam_ex)
                     if fam['src0'] == 'xz':  # world-space grain: the placed position
                         uv = P[:, [0, 2]].astype(np.float32)
+                elif 'nolm' in ft_sh.lower() and me['stride'] == 24 and uv is not None and not is_sky and luv is None:
+                    # *_nolm shaders (e.g. barr_shad_diff_spec_nolm_1, CrownJewel's pit wall; disassembled 2026-11-26):
+                    # no lightmap; the light is baked per vertex, an ARGB8 colour at byte 20 (A = 255), and the pixel
+                    # shader draws texture x lerp(DarkColor c247, LightColor c248, that colour). Drawn by Godot's own
+                    # lighting before, the pit wall was greyer and darker than the game's.
+                    ex = {'vlight': fm3_track.vertex_colour(me, 20)[:, :3].astype(np.float32)}
                 groups.setdefault(key, []).append((P, tris, uv, luv, rec if (uv is not None or (rec or {}).get('water')) else None, ex))
 
     bin_parts, views, accessors, meshes, nodes, materials, images, textures = [], [], [], [], [], [], [], []
@@ -1463,6 +1469,13 @@ def main():
             accessors.append({'bufferView': add_view(L.tobytes(), 34962), 'componentType': 5126, 'count': len(L), 'type': 'VEC2'})
             prim['attributes']['TEXCOORD_1'] = len(accessors) - 1
             mat['occlusionTexture'] = {'index': image(lm), 'texCoord': 1}
+        if not famj and all(q[5] is not None and 'vlight' in q[5] for q in parts):
+            # (the per-vertex light of *_nolm shaders, see above: COLOR_0, drawn by fm3_baked.gdshader use_vlight)
+            C = np.concatenate([q[5]['vlight'] for q in parts])
+            C = np.ascontiguousarray(np.concatenate([C, np.ones((len(C), 1), np.float32)], axis=1).astype(np.float32))
+            accessors.append({'bufferView': add_view(C.tobytes(), 34962), 'componentType': 5126, 'count': len(C), 'type': 'VEC4'})
+            prim['attributes']['COLOR_0'] = len(accessors) - 1
+            mat['extras'] = dict(mat.get('extras', {}), fm3_vlit=True)
         if famj:
             fam = json.loads(famj)
             for attr, k in (('TEXCOORD_2', 'uv2'), ('TEXCOORD_3', 'uv3')):

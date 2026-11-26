@@ -14,6 +14,8 @@ uniform vec3 sun = vec3(1.58, 1.57, 1.5);  // FM3 PS c248
 uniform float gain = 1.0;
 uniform float shadow_strength = 0.85;  // (linear: FM3 darkens shadowed ground to ~0.42 of its gamma-space value, 0.42^2.2 = 0.15)
 uniform float alpha_cut = -1.0;  // >= 0: cut out below this alpha
+// The light baked per vertex instead of a lightmap (*_nolm track shaders: the vertex colour; world_view.gd fm3_vlit)
+uniform bool use_vlight = false;
 
 vec3 to_linear(vec3 c) {
 	c = clamp(c, 0.0, 1.0);
@@ -22,7 +24,7 @@ vec3 to_linear(vec3 c) {
 
 void fragment() {
 	vec4 a = texture(albedo_tex, UV) * albedo_color;
-	vec3 lm = texture(light_tex, UV2).rgb;
+	vec3 lm = use_vlight ? COLOR.rgb : texture(light_tex, UV2).rgb;
 	ALBEDO = to_linear(fm3_fog(a.rgb * mix(ambient, sun, lm) * gain, VERTEX));
 	if (alpha_cut >= 0.0) {
 		ALPHA = a.a;

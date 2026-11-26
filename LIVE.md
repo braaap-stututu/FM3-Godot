@@ -647,6 +647,14 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   last night's final: right stripes 28.4 -> 10.5 (ours 94 / 92 / 84, game 93 / 93 / 89), left stripes 24.1 -> 20.0,
   road 9.8 -> 9.0, the CR-X 12.9 -> 11.4, the grandstand 16.1 -> 16.7; **whole frame 18.4 / 17.8 / 16.9 -> 16.8 /
   16.7 / 16.3** (the rebuild also carries every exporter change since 2026-11-24).
+- **Per-vertex light for the `*_nolm` track shaders** (2026-11-26 morning): the CrownJewel pit wall (`facility_R`,
+  `barr_shad_diff_spec_nolm_1`) had no lightmap in our scene and fell back to Godot's own lighting (greyer, darker).
+  Disassembled: texture x lerp(DarkColor c247, LightColor c248, vertex light), the light baked per vertex as an ARGB8
+  colour at byte 20 of the stride-24 vertex (A = 255). `fm3_track_export.py` now writes it as COLOR_0 with
+  `fm3_vlit` on the material (48 materials on CrownJewel: walls, fences, poles), `fm3_baked.gdshader` use_vlight draws
+  it (`FM3_NO_VLIGHT=1`: the old way). Live CrownJewel grid, one boot: wall face 41.6 -> 11.4 (204 / 159 / 123, game
+  210 / 164 / 129), wall top 21.4 -> 17.7, the right-side wall 18.2 -> 9.8, **whole frame 17.0 / 16.6 / 15.9 ->
+  15.2 / 15.3 / 15.3**. The other tracks get it when rebuilt (their `.gltf` predate it).
 - **16x anisotropic filtering** (project.godot; was Godot's 4x; the user: the asphalt lacks its rough look in
   general): the road is seen almost edge-on from the cameras, where 4x falls back to blurred mips. One Sebring boot:
   road regions 20.5 / 20.4 / 20.5 -> 19.9 / 19.6 / 20.1, wall 15.9 -> 15.3, whole frame 22.4 -> 21.8; CrownJewel grid

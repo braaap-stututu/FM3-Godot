@@ -341,6 +341,24 @@ func _init() -> void:
 			if m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:  # (the glTF's unlit materials stay unlit)
 				m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL if lit else BaseMaterial3D.SHADING_MODE_UNSHADED
 			m.cull_mode = BaseMaterial3D.CULL_DISABLED
+			var vlit_ := m.has_meta("extras") and m.get_meta("extras") is Dictionary and bool(m.get_meta("extras").get("fm3_vlit", false))
+			if lit and vlit_ and m.albedo_texture != null and not _blended(m) and OS.get_environment("FM3_NO_VLIGHT") == "":
+				# *_nolm track shaders (fm3_track_export.py): light baked per vertex (COLOR_0), texture x lerp(dark, light,
+				# vertex light) as for a lightmap (fm3_baked.gdshader use_vlight). FM3_NO_VLIGHT=1: Godot's lighting as before.
+				var sv := ShaderMaterial.new()
+				sv.shader = BAKED_SHADER
+				sv.set_shader_parameter("albedo_tex", m.albedo_texture)
+				sv.set_shader_parameter("albedo_color", m.albedo_color)
+				sv.set_shader_parameter("gain", baked_gain)
+				sv.set_shader_parameter("use_vlight", true)
+				_apply_track_light(sv, gltf_path)
+				if m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
+					sv.set_shader_parameter("alpha_cut", m.alpha_scissor_threshold)
+				mi.set_surface_override_material(s, sv)
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				mi.set_meta("fm3_static", true)
+				baked += 1
+				continue
 			if lit and m.ao_enabled and m.ao_texture != null and m.ao_on_uv2 and (not _blended(m) or m.albedo_texture != null):
 				# FM3's static world: its baked colour lightmap (slot 7, UV2) carries the light; the sun only adds
 				# the shadows of dynamic objects (fm3_baked.gdshader). Its own shadows are in the lightmap: it casts none.
