@@ -34,10 +34,13 @@ $expr = [ordered]@{ '1' = 'float4(input.o[1].yyy * 4.0, 1)'; '2' = 'float4(input
     # the scene (t0, x 0.25: its range above 1) and the bloom (t4) alone
     '6' = 'float4(TFetch2D(0, float3(input.o[0].x, input.o[0].y, input.o[0].x), false, 0.0, float2(0.0, 0.0)).xyz * 0.25, 1)';
     '7' = 'float4(TFetch2D(4, float3(input.o[0].x, input.o[0].y, input.o[0].x), false, 0.0, float2(0.0, 0.0)).xyz, 1)' }
+$seen = @{}
 foreach ($m in ($Modes -split ',')) {
     Fm3 "ps 5b7efac9b0c87a00 $($expr[$m])" | Out-Null
     Start-Sleep 6
-    Fm3 "shot $Out\$Name-w$m.png" | Out-Null
+    $tag = if ($seen.ContainsKey($m)) { "$m-$($seen[$m])" } else { $m }  # (a mode repeated: w1, w1-1, ..: e.g. W read twice)
+    $seen[$m] = 1 + [int]$seen[$m]
+    Fm3 "shot $Out\$Name-w$tag.png" | Out-Null
     Start-Sleep 1
     "mode $m"
 }

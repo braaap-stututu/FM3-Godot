@@ -40,6 +40,9 @@ decoded"): ambient = SHTop a + SHBottom b from the library's baked sky pair, sun
 from the game's own o[2].w) x the SHTransition smoothstep; the paint and the other plain car parts (fm3_carsolid)
 use it instead of fitted values / Godot's lighting (CrownJewel paint 15.3 -> 12.2, parts 17.4 -> 12.9; Sebring parts
 50.8 -> 29.7). Live tests are now repeatable (identical runs 0.00 apart; before up to 11 levels of exposure timing).
+Our scene before the exposure now matches the game's own scene texture within ~2% on RoadAtlanta, Sebring and Motegi
+(read by a live edit of the game's final pass); the exposure matches on Sebring / Motegi / CrownJewel, while
+RoadAtlanta's game L sits ~0.13 above its scene mean (open, LIVE.md). Adaptation speed per track (ToneMapeDelay).
 Open, in order: RoadAtlanta's car shadows (still too long / dark where the game's are short / faint;
 `FM3_NO_SHADOWS=1` gives 16.8 -> 15.9 there); reflection contrast (our reflected clouds have less contrast than the game's); the RSX
 lenses less pink; slip ratio / angle for the telemetry. The other tracks were not rebuilt except Sebring and

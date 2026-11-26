@@ -811,6 +811,24 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   levels too light (the black RSX's paint reflects bluer and brighter than the game's: rear window 54 / 55 / 51 vs
   46 / 42 / 37; the HUD's dark gauges). Next: which of RoadAtlanta's values differs (skyGain 0.15, DarkColor -0.1,
   LightCurveBlackPoint 10 / Boost -1 are its unusual ones).
+  **Then measured directly (same boot):** the game's scene texture (the final pass's t0, output x0.25 by a live ps
+  edit, display gamma off) against our picture without the exposure pass (`FM3_NO_EXPOSURE=1`), per block and per
+  brightness band: **RoadAtlanta 0.341 vs ours 0.346, Sebring 0.539 vs 0.550 (ratios 0.98-1.01 almost everywhere)**:
+  our scene is the game's. The gap is the game's L: Sebring's W 0.923 gives L = 0.539 = its scene mean; RoadAtlanta's
+  W 0.764 gives L 0.433 = 1.27x its scene mean, and another boot read W 1.024 at what should be the same moment. So
+  the frozen game's L depends on what came before the freeze (likely: FM3_FREEZE_TIME stops the luminance pass's
+  time-scaled adaptation, leaving L where the intro camera left it). The earlier "scene x1.25" inversion was this.
+  Read twice 30 s apart while frozen, RoadAtlanta's W stays 0.8127 (L 0.464, its scene mean 0.38-0.42): settled or
+  stuck, not adapting. Over three RoadAtlanta boots L ~ 0.89 x mean + 0.13; Sebring (two boots) and CrownJewel (game
+  0.398, ours 0.409) have no such offset, nor Motegi: scene 0.437 vs ours 0.442 (ratios 0.97-1.00), game W 0.906 vs
+  ours 0.900 (both at the light curve's end), frame 14.1. A screen-region crop does not explain it (top-weighted
+  fits RoadAtlanta, overshoots Sebring by 9%). **Open:** what lifts RoadAtlanta's L (its unusual values: skyGain
+  0.15 (CrownJewel has 0.1 without an offset), DarkColor -0.1, LightCurveBlackPoint 10 / Boost -1, TrackLumLimits
+  80-160); next, the luminance pass's input buffer itself (which pass writes the 32x32 it averages, from a capture).
+  Our scene matches the game's on three tracks, so the remaining picture differences there are exposure, HUD and
+  content, not the lighting.
+  The same-boot probe: scratch `lensiter.ps1 -Probe` (t0 / W / 0.5 shots after the variants); `wtrack.ps1` numbers
+  repeated modes (w1, w1-1).
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended
