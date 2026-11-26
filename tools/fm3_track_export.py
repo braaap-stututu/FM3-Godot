@@ -721,11 +721,14 @@ def track_tone(ts_text):
     ds = re.search(r'<DesaturateAmount value="([-0-9.e]+)"', ts_text)
     # ToneMapeDelay: the luminance pass's blend a frame (MapleValley's 0.02 = the 2% measured in its capture; 2026-11-26)
     dl = re.search(r'<ToneMapeDelay val="([-0-9.e]+)"', ts_text)
+    # TrackCockpitLumLimits: the adaptation's range in the in-car views (lower: the cabin is darker; 2026-11-27)
+    cl = re.search(r'<TrackCockpitLumLimits min="([-0-9.e]+)" max="([-0-9.e]+)"', ts_text)
     try:
         return {'dark': [a['DarkCurveBlackPoint'], a['DarkCurveGamma'], a['DarkCurveWhitePoint'], a['DarkCurveBoost']],
                 'light': [a['LightCurveBlackPoint'], a['LightCurveGamma'], a['LightCurveWhitePoint'], a['LightCurveBoost']],
                 'lum': [float(lm.group(1)), float(lm.group(2))], 'desat': float(ds.group(1)) if ds else 1.0,
-                'delay': float(dl.group(1)) if dl else 0.02}
+                'delay': float(dl.group(1)) if dl else 0.02,
+                'cockpit_lum': [float(cl.group(1)), float(cl.group(2))] if cl else [float(lm.group(1)), float(lm.group(2))]}
     except KeyError:
         return None
 

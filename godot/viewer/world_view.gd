@@ -2207,7 +2207,9 @@ func _expo_apply(k: float) -> void:
 
 
 func _expo_k(lum: float) -> float:
-	var lim: Array = _expo_tone["lum"]
+	# (in the in-car views the game adapts within TrackCockpitLumLimits, lower than the track's: CrownJewel 30-117
+	# against 60-117; FM3_NO_COCKPIT_LUM=1: the track's limits in-car too)
+	var lim: Array = _expo_tone["cockpit_lum"] if _was_in_car and _expo_tone.has("cockpit_lum") and OS.get_environment("FM3_NO_COCKPIT_LUM") == "" else _expo_tone["lum"]
 	return clampf((lum - float(lim[0]) / 255.0) * 255.0 / max(float(lim[1]) - float(lim[0]), 1.0), 0.0, 1.0)
 
 

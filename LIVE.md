@@ -764,6 +764,16 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   is taken back by the adaptation (as the game's own adaptation brightens its cockpit view): CrownJewel in-car x1.5
   and x1.0 give the same picture statistics (15.68 both; x1.2 14.53, its picture taken mid-adaptation). So pictures
   taken soon after a camera change carry the adaptation's state: compare after it settles (~3 s of game time).
+  **Correction (2026-11-27 00:50):** that test was not in-car. The scratch grid script's camera switch never left the
+  chase view (the viewer only saw camera vtable 82001C74, not the in-car 8200206C / 82034FC4), so the x1.5 never
+  applied and nothing was "taken back". Use `tools/live/live_compare.ps1 -Cameras 2` for in-car pictures.
+  **In-car exposure from the game's cockpit limits (2026-11-27 00:55):** the in-car view had drifted to 40.8 / 35.6 /
+  30.9 (CrownJewel, live_compare cam3; 17-18 on Nov 24): the dark cabin pulls the adapted L below TrackLumLimits' 60,
+  so the curve sat at its brightest (W 0.57) and the outside burned white. The game adapts in-car within
+  TrackSettings `TrackCockpitLumLimits` (CrownJewel 30-117, every track lower than its outside minimum):
+  `fm3_track_export.track_tone` writes Tone 'cockpit_lum' (all scenes patched), `_expo_k` uses it in-car
+  (`FM3_NO_COCKPIT_LUM=1` = before). In-car **29.3 / 27.4 / 22.8** (W 0.739), grid and chase views unchanged. Still
+  in-car: our cabin is near black where the game's dash is grey (the cockpit shader's light), the hands.
 - **The car paint's light, decoded** (2026-11-26 evening; the user: "are we using the game's GI?"). The paint (ps
   e41e183a423e6f1b, vs a102319a5aef757b; register names from shaders_v11.fxobj container 47 and the car vertex
   shaders' tables) computes, in gamma space:
