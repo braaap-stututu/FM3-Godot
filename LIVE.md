@@ -890,6 +890,9 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   switch, cards faded in past the distance). CrownJewel grid, one boot: cards 14.35, people x0.7 + sprites 14.12,
   the track's dark colour unshaded 14.19, **x0.7, all 3D 13.92** (the people's pixels 38.8 -> 29.3, mean 70 / 64 / 58
   against the game's 70 / 65 / 61). Viewer speed with the crowd (live_smooth, 30 s): 23 -> 22 fps.
+  Tried: the person's second index as the pose (0 seated, else the standing model; figure 14 = the photographer,
+  standing): worse on both (CrownJewel people 30.66 -> 32.99, Sebring 49.9 -> 50.9; `FM3_CROWD3D_POSE=1`). What the
+  second index (0-5) and figure 14 mean is open: maybe animation variants (PLAN-NEXT 2).
   Measuring note: two boots' viewer pictures differed by 1.44 on average with the same settings (247 pixels by more
   than 10): a small whole-frame shift between boots; compare variants within one boot.
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z

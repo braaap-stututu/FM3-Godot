@@ -48,6 +48,10 @@ plan for what is left is `PLAN-NEXT.md`**): the AI cars' paint reflects the per-
 "static" t7 is a dynamic cube: Eclipse paint 13.1 -> 11.3, AI paint 14.3 -> 13.1 with the game's 0.5 dampener); a
 customizable race HUD (`fm3_hud.gd`); the menus' scenes build; the crowd's skinbin and anim formats and the driver's
 Granny files examined (decoder addresses in PLAN-NEXT); slip telemetry hunted with `tools/research/physdump.ps1`.
+Later the same night: the AI windows reflect the per-frame cube too (their sky blue), the HUD in the game's own layout
+(`"style": "game"`), and **the 3D crowd** (static: the game's own seated people from `Media/Spectators`, placed from the
+.crowd files, `tools/fm3_spectators.py` + `tools/fm3_crowd3d.py`). CrownJewel grid **13.92** (whole frame, best yet;
+boots vary ~0.2). The animations, the driver, the menus' integration and the HUD's race values are in PLAN-NEXT.md.
 Open, in order: RoadAtlanta's car shadows (still too long / dark where the game's are short / faint;
 `FM3_NO_SHADOWS=1` gives 16.8 -> 15.9 there); reflection contrast (our reflected clouds have less contrast than the game's); the RSX
 lenses less pink; slip ratio / angle for the telemetry. The other tracks were not rebuilt except Sebring and

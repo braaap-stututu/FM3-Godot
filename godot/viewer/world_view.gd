@@ -1049,6 +1049,9 @@ func _crowd3d() -> void:
 	for f in figs:
 		if f.has("sit"):
 			sit.append(f["sit"])
+	# (FM3_CROWD3D_POSE=1, test: the person's second index as the pose: 0 seated, else standing; figure 14 = the 15th
+	# model in spectators.xml order, standing only)
+	var pose_mode := OS.get_environment("FM3_CROWD3D_POSE") == "1"
 	var hidden := 0
 	var shade := Color(1, 1, 1)  # (the cards' colour factor: the track's TrackSettings Crowds dark colour, fm3_track_export)
 	for n in root.find_children("crowd_people*", "MeshInstance3D", true, false):
@@ -1067,14 +1070,22 @@ func _crowd3d() -> void:
 	var groups := {}
 	for p in people:
 		var key := "%d_%d" % [int(p[0]) % sit.size(), int(p[1]) % 2]
+		if pose_mode:
+			key = "%d_%s_%d" % [int(p[0]), "sit" if int(p[1]) == 0 else "stand", groups.size() % 2]
 		if not groups.has(key):
 			groups[key] = []
 		groups[key].append(p)
 	var yaw0 := deg_to_rad(float(OS.get_environment("FM3_CROWD3D_YAW"))) if OS.get_environment("FM3_CROWD3D_YAW") != "" else 0.0
 	for key in groups:
 		var parts: PackedStringArray = (key as String).split("_")
-		var files: Array = sit[int(parts[0])]
-		var gp := idx_path.get_base_dir() + "/" + String(files[mini(int(parts[1]), files.size() - 1)])
+		var files: Array = sit[int(parts[0])] if parts.size() == 2 else []
+		var tex_i := int(parts[1]) if parts.size() == 2 else int(parts[2])
+		if parts.size() == 3:
+			var fe: Dictionary = figs[mini(int(parts[0]), figs.size() - 1)]
+			files = fe.get(parts[1], fe.get("stand", fe.get("sit", [])))
+		if files.is_empty():
+			continue
+		var gp := idx_path.get_base_dir() + "/" + String(files[mini(tex_i, files.size() - 1)])
 		# (level of detail: 2 by default (448 triangles a person; Motegi has 24,299 people), FM3_CROWD3D_LOD=0 / 3)
 		var lv := OS.get_environment("FM3_CROWD3D_LOD") if OS.get_environment("FM3_CROWD3D_LOD") != "" else ("2" if people.size() <= 8000 else "3")
 		if lv != "0" and FileAccess.file_exists(gp.get_basename() + "_lod" + lv + ".gltf"):
