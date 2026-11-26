@@ -13,6 +13,9 @@ uniform vec3 ambient = vec3(0.14, 0.14, 0.18);  // FM3 PS c247 (Ladera)
 uniform vec3 sun = vec3(1.58, 1.57, 1.5);  // FM3 PS c248
 uniform float gain = 1.0;
 uniform float shadow_strength = 0.85;  // (linear: FM3 darkens shadowed ground to ~0.42 of its gamma-space value, 0.42^2.2 = 0.15)
+// The shadowed light per channel (linear), when set: the track's ShadowColor (gamma) ^ 2.2 (world_view.gd
+// _apply_track_light); shadow_tint.r < 0 = the single shadow_strength above.
+uniform vec3 shadow_tint = vec3(-1.0);
 uniform float alpha_cut = -1.0;  // >= 0: cut out below this alpha
 // The light baked per vertex instead of a lightmap (*_nolm track shaders: the vertex colour; world_view.gd fm3_vlit)
 uniform bool use_vlight = false;
@@ -36,6 +39,6 @@ void light() {
 	// Final = ALBEDO * DIFFUSE_LIGHT (no ambient): the baked colour where the sun reaches, darker by shadow_strength
 	// where a dynamic object shadows it. (Only the sun is a light in the viewer.)
 	if (LIGHT_IS_DIRECTIONAL) {
-		DIFFUSE_LIGHT += vec3(1.0 - shadow_strength + shadow_strength * ATTENUATION);
+		DIFFUSE_LIGHT += shadow_tint.r >= 0.0 ? mix(shadow_tint, vec3(1.0), ATTENUATION) : vec3(1.0 - shadow_strength + shadow_strength * ATTENUATION);
 	}
 }

@@ -647,6 +647,14 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   last night's final: right stripes 28.4 -> 10.5 (ours 94 / 92 / 84, game 93 / 93 / 89), left stripes 24.1 -> 20.0,
   road 9.8 -> 9.0, the CR-X 12.9 -> 11.4, the grandstand 16.1 -> 16.7; **whole frame 18.4 / 17.8 / 16.9 -> 16.8 /
   16.7 / 16.3** (the rebuild also carries every exporter change since 2026-11-24).
+- **Per-track shadow colour** (2026-11-26, 11:15): a car's / person's sun shadow on the track now darkens it to the
+  track's `ShadowColor` (TrackSettings.xml, gamma; in linear per channel) instead of one fitted strength 0.85, which
+  was CrownJewel's own value (0.32 / 0.37 / 0.45 -> ~0.11 linear = 1 - 0.85 + a blue tint). The values vary: Sebring
+  0.20-0.34 (darkest), RoadAtlanta 0.49-0.53, Motegi 0.53-0.63 (lightest). In `<track>_track.json` (exporter; the 17
+  existing side files patched), `shadow_tint` in fm3_baked / fm3_baked_blend / fm3_blend, `FM3_NO_SHADOW_COLOR=1` =
+  before, `FM3_SHADOW_K=<s>` a single strength for tests. CrownJewel neutral (whole 15.6 -> 15.7, the CR-X's shadow
+  11.1 -> 10.8); RoadAtlanta better everywhere (right road 80.3 -> 70.0, mid road 22.1 -> 20.5, whole 16.9 -> 16.6).
+  The shadows' length / extent at RoadAtlanta is still the larger part of that gap (below).
 - **RoadAtlanta's car shadows are wrong** (found 2026-11-26, open): our cars throw long, dark sun shadows forward and to
   the right across the road where the game's car shadow is short, under the car; the right side of the road 49 / 48 /
   50 against the game's 130 / 127 / 127 in one boot; with the viewer's sun shadows off (`FM3_NO_SHADOWS=1`, test

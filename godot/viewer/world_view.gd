@@ -1556,8 +1556,17 @@ func _apply_track_light(sm: ShaderMaterial, gltf_path: String) -> void:
 		var f := gltf_path.get_basename() + "_track.json"
 		_track_light_cache[gltf_path] = JSON.parse_string(FileAccess.get_file_as_string(f)) if FileAccess.file_exists(f) else {}
 	var t = _track_light_cache[gltf_path]
+	# (tests: FM3_SHADOW_K=<s>: how dark the cars' and people's sun shadows on the track are, 0..1)
+	if OS.get_environment("FM3_SHADOW_K") != "":
+		sm.set_shader_parameter("shadow_strength", float(OS.get_environment("FM3_SHADOW_K")))
 	if not (t is Dictionary):
 		return
+	if t.has("ShadowColor") and OS.get_environment("FM3_SHADOW_K") == "" and OS.get_environment("FM3_NO_SHADOW_COLOR") == "":
+		# a car's / person's sun shadow on the track: the track's ShadowColor (TrackSettings.xml, gamma) in linear light,
+		# per channel (CrownJewel 0.32 / 0.37 / 0.45 -> ~0.11, what the fitted shadow_strength 0.85 gave; RoadAtlanta
+		# 0.49 / 0.50 / 0.53 lighter, Sebring darker). FM3_NO_SHADOW_COLOR=1: the single strength as before.
+		var sc: Array = t["ShadowColor"]
+		sm.set_shader_parameter("shadow_tint", Vector3(pow(sc[0], 2.2), pow(sc[1], 2.2), pow(sc[2], 2.2)))
 	if t.has("DarkColor"):
 		sm.set_shader_parameter("ambient", Vector3(t["DarkColor"][0], t["DarkColor"][1], t["DarkColor"][2]))
 	if t.has("LightColor"):

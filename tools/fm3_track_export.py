@@ -1025,7 +1025,8 @@ def main():
             # track's DarkColor / LightColor (CrownJewel 0.14,0.14,0.18 / 1.58,1.57,1.5, the viewer's defaults); a side file
             # the viewer reads beside the glTF
             light_ = {}
-            for tag in ('DarkColor', 'LightColor'):
+            # (+ ShadowColor: the colour a dynamic object's sun shadow darkens the track to, per track; 2026-11-26)
+            for tag in ('DarkColor', 'LightColor', 'ShadowColor'):
                 mo = re.search(r'<%s r="([-0-9.e]+)" g="([-0-9.e]+)" b="([-0-9.e]+)"' % tag, ts_text)
                 if mo:
                     light_[tag] = [float(mo.group(k)) for k in (1, 2, 3)]
