@@ -32,6 +32,9 @@ Then: the PT Cruiser's grey tails were its clear lamp cover wiping out the red l
 the same screen copy): covers now blend normally, last. FM3's settings.ini is at 4x MSAA, no upscaler.
 Then (evening): the car shadows decoded (per-car sun depth maps projected near the car; drop shadow quads): the
 track now takes the cars' sun shadows within 2-3 m of a car only (RoadAtlanta 19.98 -> 19.82).
+Then (19:00): the viewer's exposure adapted per viewer frame from its start-up camera; now by time like the game's
+(W at Sebring 0.946-0.966 against the game's 0.953; CrownJewel grid 15.1 / 15.2 / 15.1 -> 14.8 / 14.7 / 14.3). Bloom
+(< 1%) and the sky's scale ruled out (LIVE.md "The exposure adapts by time").
 Open, in order: RoadAtlanta's car shadows (still too long / dark where the game's are short / faint;
 `FM3_NO_SHADOWS=1` gives 16.8 -> 15.9 there); reflection contrast (our reflected clouds have less contrast than the game's); the RSX
 lenses less pink; slip ratio / angle for the telemetry. The other tracks were not rebuilt except Sebring and

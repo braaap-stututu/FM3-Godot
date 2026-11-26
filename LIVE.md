@@ -745,6 +745,21 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   (`fm3_carshadow.gdshaderinc`, global `fm3_cars` texture of the cars' x / z and `fm3_car_k`, filled each live frame;
   the static shadows are baked in the lightmaps; `FM3_CAR_SHADOW_R=<full>,<zero>`, 0 = before). RoadAtlanta: the changed
   pixels 38.9 -> 28.9, the lower half 17.76 -> 17.42, whole 19.98 -> 19.82 (3 / 4.5 m and 5 / 7 m hardly cut).
+- **The exposure adapts by time, and on the game's view** (2026-11-26 evening, Sebring's darkness). Measured first:
+  the game's W at Sebring is 0.953 (`tools/research/wtrack.ps1`: the final pass edited live to output its interpolant
+  o[1].y = 0.1 / W, display gamma off; a 0.5 constant reads 128), so its adapted L = 0.566, which equals its own scene's
+  plain mean luminance (0.58 from the game's shot with the display table and curve undone): the luminance chain's
+  decode holds. The viewer adapted 2% a *viewer* frame (it runs at 2 fps beside the game in the tests, so it hardly
+  moved before the picture) and started from its start-up camera (an aerial view 262 m up). Now 1 - 0.98^(seconds x 60)
+  like the game's 2% a game frame, restarted on the first live packet; world_view.gd logs `exposure: L .. k .. W ..`
+  every fifth update. `FM3_EXPO_OLD=1` = before. Viewer W at Sebring 0.946 / 0.966 (two boots; game 0.953).
+  CrownJewel grid **15.1 / 15.2 / 15.1 -> 14.8 / 14.7 / 14.3** (same boot). Sebring varies by boot (the frozen moment):
+  17.1 on the last one.
+  Ruled out on the way: **bloom** (the final pass's t4, read alone: < 1% of the top third at Sebring; it only adds where
+  the scene is above ~1.5, 0.2% of pixels; bloomCutoff 2.01 / bloomScale 2), and **the sky's scale** (the game's sky
+  shader `SKY_DIFF_1` is the texture alone; `FM3_SKY_K` 1.1 / 1.2 on top of skyScale: 17.1 -> 17.2 / 21.5, the top third
+  13.3 -> 12.3 / 21.7: ours is right). Ours still has darks lighter (0-31: 20 vs 15) and highlights darker (192-255:
+  ~20 under) than the game's in tone bins (scratch `tonebins.py`): the content's contrast, not the exposure.
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended

@@ -340,6 +340,8 @@ func _init() -> void:
 			if m.has_meta("extras") and m.get_meta("extras") is Dictionary and m.get_meta("extras").has("fm3_sky_gain"):
 				# the sky dome's brightness against CrownJewel's (TrackSettings skyScale / tone white point; fm3_track_export)
 				var sg := float(m.get_meta("extras")["fm3_sky_gain"])
+				if OS.get_environment("FM3_SKY_K") != "":
+					sg *= float(OS.get_environment("FM3_SKY_K"))  # (a test scale on top)
 				m.albedo_color = Color(m.albedo_color.r * sg, m.albedo_color.g * sg, m.albedo_color.b * sg, m.albedo_color.a)
 			if m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:  # (the glTF's unlit materials stay unlit)
 				m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL if lit else BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -1816,6 +1818,9 @@ var _expo_mat: ShaderMaterial = null
 var _expo_tone := {}
 var _expo_L := -1.0
 var _expo_last := 0
+var _expo_n := 0
+var _expo_ms := 0
+var _expo_old := OS.get_environment("FM3_EXPO_OLD") == "1"  # (A/B: adapt per viewer frame, from the start-up view)
 
 
 # FM3's track fog: the track's TrackSettings <Fog> settings (<track>_track.json 'Fog', written by fm3_track_export.py),
@@ -2019,8 +2024,15 @@ func _exposure_update() -> void:
 	if _expo_L < 0.0:
 		_expo_L = y_s
 	else:
-		_expo_L += (1.0 - pow(0.98, float(n))) * (y_s - _expo_L)
+		# (the game adapts 2% a game frame, at 60 a second: by time here, so a slow viewer adapts as fast as the game)
+		var dt := float(Time.get_ticks_msec() - _expo_ms) / 1000.0
+		var steps := float(n) if _expo_old else clampf(dt * 60.0, float(n), 600.0)
+		_expo_L += (1.0 - pow(0.98, steps)) * (y_s - _expo_L)
+	_expo_ms = Time.get_ticks_msec()
 	_expo_apply(_expo_k(_expo_L))
+	_expo_n += 1
+	if _expo_n % 5 == 1:
+		print("world_view: exposure: L %.4f (frame %.4f) k %.3f W %.4f" % [_expo_L, y_s, _expo_k(_expo_L), _expo_curve(_expo_k(_expo_L))[0]])
 
 
 func _cars_pending() -> bool:
@@ -2585,6 +2597,8 @@ func _live_step() -> void:
 		if _screens.is_empty():
 			_cam.fov = rad_to_deg(latest.decode_float(80))
 	_live_packets += 1
+	if _live_packets == 1 and not _expo_old:
+		_expo_L = -1.0  # (the exposure starts over on the game's view: not adapted to the start-up camera's)
 	if Time.get_ticks_msec() - _live_last_ms > 5000:
 		_live_last_ms = Time.get_ticks_msec()
 		print("world_view: live camera ", _cam.global_transform if _screens.is_empty() else _screens[0]["camera"].global_transform,
