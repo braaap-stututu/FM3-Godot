@@ -7,6 +7,8 @@
 #   - info:     the stream's state (game frames, latency) for debugging; off by default
 # The data comes from the game's stream (world_view.gd: "FM3E" telemetry, the cars' matrices). The race position and
 # lap counter are not in the stream yet (LIVE.md continuation plan).
+# Two styles: "game" (default: the game's own layout, place / laps / round tach / map, see _draw_game) and "simple"
+# (the elements below, each placed by anchor / offset / scale).
 # Config: res://viewer/hud_default.json, overridden key by key by user://fm3_hud.json (and FM3_HUD_CONFIG=<path>);
 # FM3_HUD=0 turns the HUD off, H toggles it while running.
 extends Control
@@ -101,6 +103,9 @@ func _speed_text(e: Dictionary) -> String:
 
 
 func _draw() -> void:
+	if String(cfg.get("style", "game")) == "game":
+		_draw_game()
+		return
 	var units := String(cfg.get("units", "kmh"))
 	var e := _el("tach")
 	if not e.is_empty():
@@ -164,3 +169,84 @@ func _draw() -> void:
 	e = _el("info")
 	if not e.is_empty():
 		draw_string(_font, _origin(e, Vector2(400, 20)) + Vector2(0, 16), info, HORIZONTAL_ALIGNMENT_LEFT, -1, 14)
+
+
+# The game's own HUD layout (style "game"; measured from the game's 1280 x 720 picture on the CrownJewel grid): the
+# position panel top left, laps and lap time top right, the round tach bottom right (0-10 x 1000 rpm over 222 degrees
+# clockwise from straight down, red from the redline, the gear in the middle, km/h at its lower left), the track map
+# bottom left with a green arrow for the player. Drawn in 1280 x 720 units scaled to the window. Race position, laps
+# and lap time are not in the stream yet: shown as "-".
+func _draw_game() -> void:
+	var vs := get_viewport_rect().size
+	var u := minf(vs.x / 1280.0, vs.y / 720.0)
+	var off := Vector2((vs.x - 1280.0 * u) * 0.5, (vs.y - 720.0 * u) * 0.5)
+	var P := func(x: float, y: float) -> Vector2: return off + Vector2(x, y) * u
+	var white := Color(1, 1, 1, 0.95)
+	var panel := Color(0.08, 0.1, 0.14, 0.55)
+	var e := _el("place")
+	if not e.is_empty():
+		draw_rect(Rect2(P.call(60, 33), Vector2(350, 44) * u), panel)
+		draw_string(_font, P.call(78, 70), str(cfg.get("position", "-")), HORIZONTAL_ALIGNMENT_LEFT, -1, int(34 * u), white)
+		draw_string(_font, P.call(104, 56), "/" + str(cfg.get("cars", cars.size() if cars.size() > 0 else "-")), HORIZONTAL_ALIGNMENT_LEFT, -1, int(17 * u), white)
+		draw_string(_font, P.call(288, 61), "PLACE", HORIZONTAL_ALIGNMENT_LEFT, -1, int(15 * u), white)
+	e = _el("laps")
+	if not e.is_empty():
+		draw_rect(Rect2(P.call(955, 33), Vector2(262, 44) * u), panel)
+		draw_string(_font, P.call(962, 61), "LAPS", HORIZONTAL_ALIGNMENT_LEFT, -1, int(15 * u), white)
+		draw_string(_font, P.call(1150, 70), str(cfg.get("lap", "-")), HORIZONTAL_ALIGNMENT_LEFT, -1, int(34 * u), white)
+		draw_string(_font, P.call(1176, 56), "/" + str(cfg.get("total_laps", "-")), HORIZONTAL_ALIGNMENT_LEFT, -1, int(17 * u), white)
+		draw_rect(Rect2(P.call(955, 79), Vector2(127, 22) * u), Color(0.05, 0.07, 0.1, 0.75))
+		draw_rect(Rect2(P.call(1082, 79), Vector2(126, 22) * u), Color(0.1, 0.13, 0.17, 0.6))
+		draw_string(_font, P.call(962, 96), str(cfg.get("lap_time", "--:--.---")), HORIZONTAL_ALIGNMENT_LEFT, -1, int(14 * u), white)
+		draw_string(_font, P.call(1168, 96), "race", HORIZONTAL_ALIGNMENT_LEFT, -1, int(13 * u), white)
+	e = _el("tach")
+	if not e.is_empty():
+		var c: Vector2 = P.call(1120, 597)
+		var r := 88.0 * u
+		draw_circle(c, r * 1.12, Color(0.05, 0.06, 0.08, 0.55))
+		draw_circle(c, r * 0.48, Color(0.12, 0.13, 0.15, 0.85))
+		var a0 := deg_to_rad(95.0)
+		var sweep := deg_to_rad(222.0)
+		var top := 10000.0 if redline <= 9000.0 else ceilf(redline / 2000.0 + 0.5) * 2000.0
+		for i in 51:
+			var f := float(i) / 50.0
+			var a := a0 + sweep * f
+			var d := Vector2(cos(a), sin(a))
+			var red := f * top >= redline
+			var big := i % 5 == 0
+			draw_line(c + d * r * (0.86 if big else 0.92), c + d * r, Color(0.85, 0.1, 0.1) if red else white, (3.0 if big else 1.5) * u)
+			if i % 10 == 0:
+				var lbl := str(int(f * top / 1000.0))
+				draw_string(_font, c + d * r * 0.72 - Vector2(5, -5) * u, lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, int(12 * u), white)
+		if rpm >= 0.0:
+			var a := a0 + sweep * clampf(rpm / top, 0.0, 1.0)
+			var d := Vector2(cos(a), sin(a))
+			draw_line(c + d * r * 0.5, c + d * r * 0.98, Color(0.9, 0.1, 0.1), 5.0 * u)
+		var g := "N" if gear == 0 else ("-" if gear < 0 else str(gear))
+		draw_string(_font, c + Vector2(-16, 16) * u, g, HORIZONTAL_ALIGNMENT_CENTER, 32 * u, int(44 * u), white)
+		var mph := String(cfg.get("units", "kmh")) == "mph"
+		draw_string(_font, P.call(1006, 650), "MPH" if mph else "KM/H", HORIZONTAL_ALIGNMENT_LEFT, -1, int(13 * u), Color(1, 1, 1, 0.8))
+		draw_string(_font, P.call(1012, 683), _speed_text(e), HORIZONTAL_ALIGNMENT_LEFT, -1, int(26 * u), white)
+	e = _el("map")
+	if not e.is_empty() and _trail.size() > 1:
+		var o: Vector2 = P.call(140, 560)
+		var sz := Vector2(120, 100) * u
+		var b := _bounds.grow(10.0)
+		var f := minf(sz.x / maxf(b.size.x, 1.0), sz.y / maxf(b.size.y, 1.0))
+		var mid := o + sz * 0.5
+		var to := func(p: Vector2) -> Vector2: return mid + (p - b.get_center()) * f
+		var pts := PackedVector2Array()
+		for p in _trail:
+			pts.append(to.call(p))
+		draw_polyline(pts, Color(0.55, 0.57, 0.6, 0.9), 5.0 * u)
+		draw_polyline(pts, Color(0.75, 0.77, 0.8, 0.9), 2.0 * u)
+		for car in cars:
+			if car != player:
+				draw_circle(to.call(cars[car]), 3.0 * u, Color(0.9, 0.9, 0.9))
+		if cars.has(player):
+			var pp: Vector2 = to.call(cars[player])
+			var dir := Vector2(0, -1)
+			if _trail.size() > 2:
+				dir = ((_trail[-1] as Vector2) - (_trail[-2] as Vector2)).normalized()
+			var n := Vector2(-dir.y, dir.x)
+			draw_colored_polygon(PackedVector2Array([pp + dir * 10.0 * u, pp - dir * 6.0 * u + n * 6.0 * u, pp - dir * 6.0 * u - n * 6.0 * u]), Color(0.2, 0.9, 0.2))

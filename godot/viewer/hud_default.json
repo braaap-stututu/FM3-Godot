@@ -1,5 +1,8 @@
 {
+  "style": "game",
   "units": "kmh",
+  "place": {"enabled": true},
+  "laps": {"enabled": true},
   "tach": {"enabled": true, "anchor": "br", "offset": [30, 30], "scale": 1.0},
   "speed": {"enabled": false, "anchor": "br", "offset": [230, 40], "scale": 1.0},
   "pedals": {"enabled": true, "anchor": "br", "offset": [230, 40], "scale": 1.0},
