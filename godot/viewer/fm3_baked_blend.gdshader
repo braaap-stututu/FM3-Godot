@@ -5,6 +5,7 @@
 shader_type spatial;
 render_mode cull_disabled, depth_draw_never, ambient_light_disabled, specular_disabled, diffuse_lambert;
 #include "res://viewer/fm3_fog.gdshaderinc"
+#include "res://viewer/fm3_carshadow.gdshaderinc"
 
 uniform sampler2D albedo_tex : filter_linear_mipmap_anisotropic, repeat_enable, hint_default_white;
 uniform sampler2D light_tex : filter_linear_mipmap, repeat_enable, hint_default_white;
@@ -23,6 +24,7 @@ vec3 to_linear(vec3 c) {
 }
 
 void fragment() {
+	fm3_wpos = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	vec4 a = texture(albedo_tex, UV) * albedo_color;
 	vec3 lm = texture(light_tex, UV2).rgb;
 	ALBEDO = to_linear(fm3_fog(a.rgb * mix(ambient, sun, lm) * gain, VERTEX));
@@ -33,6 +35,6 @@ void light() {
 	// Final = ALBEDO * DIFFUSE_LIGHT (no ambient): the baked colour where the sun reaches, darker by shadow_strength
 	// where a dynamic object shadows it. (Only the sun is a light in the viewer.)
 	if (LIGHT_IS_DIRECTIONAL) {
-		DIFFUSE_LIGHT += shadow_tint.r >= 0.0 ? mix(shadow_tint, vec3(1.0), ATTENUATION) : vec3(1.0 - shadow_strength + shadow_strength * ATTENUATION);
+		DIFFUSE_LIGHT += shadow_tint.r >= 0.0 ? mix(shadow_tint, vec3(1.0), fm3_car_shadow(ATTENUATION)) : vec3(1.0 - shadow_strength + shadow_strength * fm3_car_shadow(ATTENUATION));
 	}
 }

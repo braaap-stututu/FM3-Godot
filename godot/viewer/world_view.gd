@@ -41,6 +41,8 @@ var _car_attached := false
 var _car_parts := []  # [node, car, offset]
 var _live_has_drawn := false  # "FM3V" (the drawn camera) seen: the main view follows only those
 var _live_frames := []  # the game's last drawn frames: {t (game clock, s), cam, fov, cars: {car: matrix}}
+var _track_shadow_color := Color(0.35, 0.35, 0.38)  # the track's ShadowColor (gamma; the cars' drop shadows)
+const DROPSHADOW_SHADER = preload("res://viewer/fm3_dropshadow.gdshader")
 var _car_inv := {}  # car -> its matrix at attach time, inverted
 var _wheels := {}  # car -> its latest four wheel matrices (glTF space)
 var _car_prev := {}  # car -> [position (game space), game time]: for its speed
@@ -826,6 +828,54 @@ static func _lamp_cover(nm: String) -> bool:
 		return false
 	var i := nm.rfind("_glass_")
 	return i >= 0 and nm.substr(i + 7).is_valid_int()
+
+
+# The game's car shadows (fm3_dropshadow.gdshader): a soft quad under each car instead of its sun shadow.
+# Opt-in (FM3_DROP_SHADOW=1): without their sun shadows the cars lost their self-shadowing too (RoadAtlanta 21.1 -> 23.9).
+static func _drop_shadows() -> bool:
+	return OS.get_environment("FM3_DROP_SHADOW") == "1"
+
+
+# The body's drop shadow quad (GlobalCarAttribs.xml DropShadowSettings), in car space: the body's footprint (the union of
+# its carbin meshes) x 1.075 (the settings' 1.05-1.10 length / 1.06-1.09 width), on the ground under the wheels
+# (their centres at attach less the tyre radius).
+func _add_drop_shadow(scene_: Node, car, a_att: Transform3D, w_att: Array) -> void:
+	var box := AABB()
+	var first := true
+	var radius := 0.0
+	for mi in scene_.find_children("*", "MeshInstance3D", true, false):
+		var nm := String(mi.name)
+		var bb := (mi as MeshInstance3D).get_aabb()
+		if nm.begins_with("carbin_") and not nm.contains("_glass") and not nm.contains("window"):
+			box = bb if first else box.merge(bb)
+			first = false
+		elif nm.begins_with("wheel_"):
+			radius = maxf(radius, maxf(bb.size.y, bb.size.z) * 0.5)
+	if first:
+		return
+	var inv := a_att.affine_inverse()
+	var ground := 0.0
+	for k in 4:
+		ground += (inv * (w_att[k] as Transform3D).origin).y / 4.0
+	ground -= radius
+	var ks := float(OS.get_environment("FM3_DROP_SCALE")) if OS.get_environment("FM3_DROP_SCALE") != "" else 1.075
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(box.size.x * ks, box.size.z * ks)
+	var mat := ShaderMaterial.new()
+	mat.shader = DROPSHADOW_SHADER
+	mat.set_shader_parameter("shadow_color", Vector3(_track_shadow_color.r, _track_shadow_color.g, _track_shadow_color.b))
+	if OS.get_environment("FM3_DROP_OPACITY") != "":
+		mat.set_shader_parameter("opacity", float(OS.get_environment("FM3_DROP_OPACITY")))
+	pm.material = mat
+	var mi := MeshInstance3D.new()
+	mi.name = "dropshadow_body"
+	mi.mesh = pm
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	scene_.add_child(mi)
+	var c := box.get_center()
+	var off := a_att * Transform3D(Basis.IDENTITY, Vector3(c.x, ground + 0.03, c.z))
+	_register_part(mi, car, off, -1, null)
+	mi.global_transform = off
 
 
 static func _game_lamps() -> bool:
@@ -1745,6 +1795,7 @@ func _apply_track_light(sm: ShaderMaterial, gltf_path: String) -> void:
 		# per channel (CrownJewel 0.32 / 0.37 / 0.45 -> ~0.11, what the fitted shadow_strength 0.85 gave; RoadAtlanta
 		# 0.49 / 0.50 / 0.53 lighter, Sebring darker). FM3_NO_SHADOW_COLOR=1: the single strength as before.
 		var sc: Array = t["ShadowColor"]
+		_track_shadow_color = Color(sc[0], sc[1], sc[2])
 		sm.set_shader_parameter("shadow_tint", Vector3(pow(sc[0], 2.2), pow(sc[1], 2.2), pow(sc[2], 2.2)))
 	if t.has("DarkColor"):
 		sm.set_shader_parameter("ambient", Vector3(t["DarkColor"][0], t["DarkColor"][1], t["DarkColor"][2]))
@@ -2092,9 +2143,13 @@ func _attach_library_car(car) -> void:
 			# (wheels and brakes carry the glTF mirror in their vertices, fm3_car_library.py fz: the wheel matrices are
 			# mirrored where the body's is not, so matrix x F is the proper rotation)
 			off = off * Transform3D(Basis.from_scale(Vector3(1, 1, -1)), Vector3.ZERO)
+		if _drop_shadows():
+			m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_register_part(m, car, off, wk, needle)
 		m.global_transform = off  # (now: offline renders; live moves it)
 		n += 1
+	if _drop_shadows():
+		_add_drop_shadow(scene_, car, a_att, w_att)
 	_live_player = -2  # (re-evaluate has_live: this car's new paint / glass materials may be the player's)
 	_library_cars[car] = true
 	print("world_view: live car %08X is %s colour %s: %d meshes from the car library (%d ms; paint %s)" % [car, info["name"], key, n, Time.get_ticks_msec() - t0, paint_col])
@@ -2993,6 +3048,36 @@ func _car_in_frame(car: int, k: int):
 	return null
 
 
+# The cars' positions for the track shaders' shadow limit (fm3_carshadow.gdshaderinc): their sun shadows count only
+# within CAR_SHADOW_R metres (full, then faded to zero) of a car, as the game projects each car's shadow near it only.
+# FM3_CAR_SHADOW_R=<full>,<zero> (0 = Godot's shadows everywhere, as before).
+const CAR_SHADOW_R := Vector2(2.0, 3.0)  # RoadAtlanta (2026-11-26): 2 / 3 m: the changed pixels 38.9 -> 28.9, lower half 17.76 -> 17.42, whole 19.98 -> 19.82 (3 / 4.5 and 5 / 7: hardly cut)
+var _car_shadow_img: Image = null
+var _car_shadow_tex: ImageTexture = null
+func _update_car_shadow_tex() -> void:
+	var r := CAR_SHADOW_R
+	var e := OS.get_environment("FM3_CAR_SHADOW_R")
+	if e != "":
+		var f := e.split_floats(",")
+		r = Vector2(f[0], f[1] if f.size() > 1 else f[0] * 1.5)
+	if r.x <= 0.0:
+		RenderingServer.global_shader_parameter_set("fm3_car_k", Vector4(0, 0, 0, 0))
+		return
+	if _car_shadow_img == null:
+		_car_shadow_img = Image.create(32, 1, false, Image.FORMAT_RGBAF)
+		_car_shadow_tex = ImageTexture.create_from_image(_car_shadow_img)
+		RenderingServer.global_shader_parameter_set("fm3_cars", _car_shadow_tex)
+	var n := 0
+	for car in _cars:
+		if n >= 32:
+			break
+		var o := car_transform(_cars[car], _live_axes).origin
+		_car_shadow_img.set_pixel(n, 0, Color(o.x, o.z, 0.0, 1.0))
+		n += 1
+	_car_shadow_tex.update(_car_shadow_img)
+	RenderingServer.global_shader_parameter_set("fm3_car_k", Vector4(n, r.x, r.y, 1.0))
+
+
 func _process(_delta: float) -> bool:
 	_frames += 1
 	_exposure_update()
@@ -3003,6 +3088,7 @@ func _process(_delta: float) -> bool:
 			(sk as Node3D).global_position = _cam.global_position
 	if _live_port > 0 and _frames > 3:
 		_live_step()
+		_update_car_shadow_tex()
 		return false
 	if _fly and _frames > 3:
 		if _frames == 4:

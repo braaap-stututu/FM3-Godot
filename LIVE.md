@@ -733,6 +733,18 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   (`FM3_LENS_LIFT`, metres along the normal) had no effect: 0.
 - The user's own `out\user\settings.ini` now runs FM3 at 4x MSAA with no upscaler (the user: "fsr3 barely works in
   regpu anyway"), the same as the viewer.
+- **Car shadows as the game draws them** (2026-11-26, RoadAtlanta's long dark car shadows; open item 1). Decoded:
+  `Media\Shaders\Cars\DropShadow.fxobj` (a quad per body / wheel with a soft blob, c_shadowColor, GlobalCarAttribs.xml
+  DropShadowSettings; in the capture PS d44a5b5aed142674, 64 x 64 blob, alpha 160 / 255 over the middle) and, from the
+  recomp's notes (hooks/car_shadows.cpp), the real car shadows: a 256 x 256 depth map from the sun per car, read by the
+  car materials (self-shadowing) and by the track pixel shaders (fd6b3d2a..., 9e50ba14...: two lookups into the
+  512 x 512 car shadow image, then min(lit, base x ShadowColor), as our shadow_tint), projected near each car only.
+  Tried: drop shadow quads instead of the cars' sun shadows (`FM3_DROP_SHADOW=1`, `fm3_dropshadow.gdshader`): the cars
+  lost their self-shadowing (the RSX's rear 72 -> 152, game 89), whole frame 21.1 -> 23.9: opt-in only. Kept: the
+  track's received sun shadow counts only within `CAR_SHADOW_R` 2 m (full) .. 3 m (none) of a car
+  (`fm3_carshadow.gdshaderinc`, global `fm3_cars` texture of the cars' x / z and `fm3_car_k`, filled each live frame;
+  the static shadows are baked in the lightmaps; `FM3_CAR_SHADOW_R=<full>,<zero>`, 0 = before). RoadAtlanta: the changed
+  pixels 38.9 -> 28.9, the lower half 17.76 -> 17.42, whole 19.98 -> 19.82 (3 / 4.5 m and 5 / 7 m hardly cut).
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended

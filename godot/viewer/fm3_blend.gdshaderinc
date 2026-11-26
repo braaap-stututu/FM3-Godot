@@ -8,6 +8,7 @@
 //   mode 7 refl (windows): lerp(t0 lit, environment, t0.a * tint0.x * fresnel)
 // (fm3_blend.gdshader: opaque; fm3_blend_alpha.gdshader: FM3_ALPHA, modes 13-14 blend by their opacity)
 #include "res://viewer/fm3_fog.gdshaderinc"
+#include "res://viewer/fm3_carshadow.gdshaderinc"
 
 uniform sampler2D albedo_tex : filter_linear_mipmap_anisotropic, repeat_enable, hint_default_white;
 uniform sampler2D tex1 : filter_linear_mipmap_anisotropic, repeat_enable, hint_default_white;
@@ -70,6 +71,7 @@ vec3 to_linear(vec3 c) {
 }
 
 void fragment() {
+	fm3_wpos = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	vec3 a;
 	float alpha_v = 1.0;
 	float spec_mask = -1.0;  // >= 0: this mode has the road specular (the base texture's alpha)
@@ -201,6 +203,6 @@ void fragment() {
 
 void light() {
 	if (LIGHT_IS_DIRECTIONAL) {
-		DIFFUSE_LIGHT += shadow_tint.r >= 0.0 ? mix(shadow_tint, vec3(1.0), ATTENUATION) : vec3(1.0 - shadow_strength + shadow_strength * ATTENUATION);
+		DIFFUSE_LIGHT += shadow_tint.r >= 0.0 ? mix(shadow_tint, vec3(1.0), fm3_car_shadow(ATTENUATION)) : vec3(1.0 - shadow_strength + shadow_strength * fm3_car_shadow(ATTENUATION));
 	}
 }

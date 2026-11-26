@@ -31,3 +31,11 @@ fm3_fog_k={
 "type": "vec4",
 "value": Vector4(0, 0, 0, 0)
 }
+fm3_cars={
+"type": "sampler2D",
+"value": ""
+}
+fm3_car_k={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}

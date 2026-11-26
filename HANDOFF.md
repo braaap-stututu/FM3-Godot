@@ -30,6 +30,8 @@ live comparisons with the game at 4x MSAA as the viewer (`FM3_UPSCALER=off FM3_M
 traced to HDR highlights (capped). LIVE.md "Tail lamps and lenses with the game's own formulas", "White specks".
 Then: the PT Cruiser's grey tails were its clear lamp cover wiping out the red lens (transparent parts blending from
 the same screen copy): covers now blend normally, last. FM3's settings.ini is at 4x MSAA, no upscaler.
+Then (evening): the car shadows decoded (per-car sun depth maps projected near the car; drop shadow quads): the
+track now takes the cars' sun shadows within 2-3 m of a car only (RoadAtlanta 19.98 -> 19.82).
 Open, in order: RoadAtlanta's car shadows (still too long / dark where the game's are short / faint;
 `FM3_NO_SHADOWS=1` gives 16.8 -> 15.9 there); reflection contrast (our reflected clouds have less contrast than the game's); the RSX
 lenses less pink; slip ratio / angle for the telemetry. The other tracks were not rebuilt except Sebring and
