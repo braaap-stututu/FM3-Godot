@@ -1484,6 +1484,8 @@ def main():
             tl.append(q[1] + off)
             off += len(q[0])
         T = np.concatenate(tl).astype(np.uint32)
+        if len(P) == 0 or len(T) == 0:
+            continue  # (an empty group: the menus' UIWhite has one)
         N = smooth_normals(P, T)
         rec = parts[0][4]
         pbr = {'baseColorFactor': (list(colour_for(name)) + [1.0]) if base is None else list(rec.get('factor', [1, 1, 1, 1])),

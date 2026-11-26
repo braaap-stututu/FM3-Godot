@@ -39,6 +39,15 @@ def parse(data):
             break
         p = b.find(one, p + 1)
     if tex_at is None:
+        # (a scene with only one or two textures, e.g. the menus' UIWhite: the count before the table says so)
+        p = b.find(one)
+        while p >= 0:
+            q = p - 8
+            if q >= 8 and struct.unpack_from('>I', b, q + 4)[0] == 0 and 1 <= struct.unpack_from('>I', b, q - 4)[0] <= 2                     and (struct.unpack_from('>I', b, q - 4)[0] == 1 or struct.unpack_from('>I', b, q + 28 + 4)[0] == 1):
+                tex_at = q
+                break
+            p = b.find(one, p + 1)
+    if tex_at is None:
         raise ValueError('texture table not found')
     n = struct.unpack_from('>I', b, tex_at - 4)[0]
     tex = []

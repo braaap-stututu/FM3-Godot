@@ -82,7 +82,7 @@ func _el(name: String) -> Dictionary:
 func _origin(e: Dictionary, sz: Vector2) -> Vector2:
 	var a := String(e.get("anchor", "tl"))
 	var off: Array = e.get("offset", [20, 20])
-	var s := size
+	var s := get_viewport_rect().size  # (under a CanvasLayer the Control's anchors do not resolve: its size stays 0)
 	var x := float(off[0]) if a.ends_with("l") else s.x - sz.x - float(off[0])
 	var y := float(off[1]) if a.begins_with("t") else s.y - sz.y - float(off[1])
 	return Vector2(x, y)
@@ -125,7 +125,7 @@ func _draw() -> void:
 		draw_circle(c, 6.0 * k, Color(0.2, 0.2, 0.2))
 		var g := "N" if gear == 0 else ("R" if gear < 0 and gear != -1 else ("-" if gear == -1 else str(gear)))
 		draw_string(_font, c + Vector2(-14, 18) * k, g, HORIZONTAL_ALIGNMENT_CENTER, 28 * k, int(34 * k))
-		draw_string(_font, c + Vector2(-30, 52) * k, _speed_text(e) + (" mph" if units == "mph" else " km/h"), HORIZONTAL_ALIGNMENT_CENTER, 60 * k, int(14 * k))
+		draw_string(_font, c + Vector2(-45, 52) * k, _speed_text(e) + (" mph" if units == "mph" else " km/h"), HORIZONTAL_ALIGNMENT_CENTER, 90 * k, int(14 * k))
 	e = _el("speed")
 	if not e.is_empty():
 		var k := float(e.get("scale", 1.0))
