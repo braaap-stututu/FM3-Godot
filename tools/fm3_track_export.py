@@ -1269,6 +1269,8 @@ def main():
                     pngs = [bix_png(pv['textures'][texl_[sl]]['id']) if 0 <= sl < len(texl_) else None for sl in r_['slots']]
                     if all(pngs):
                         def uv_src(o, me=me):
+                            if o == 'uv1':  # (the mesh's lightmap UV, wherever its stride keeps it)
+                                return me['uv1'] if me.get('uv1') is not None else me['uv0']
                             return me['positions'][:, [0, 2]] if o == 'xz' else fm3_track.uv_pair(me, o)
                         base_png, uv = pngs[0], uv_src(r_['src0']).astype(np.float32)
                         fam = dict(r_, tex=pngs, slots=None)

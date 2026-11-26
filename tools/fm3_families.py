@@ -188,6 +188,17 @@ def recipe(shader, params, stride, slots):
         return {'mode': 'road1', 'src0': 'xz', 'src1': 16, 'mask': None, 'lm': None, 'vclr': False,
                 'scale0': [params[1][0]] * 2, 'scale1': list(params[1][1:3]), 'tint0': list(params[0][:3]),
                 'tint1': list(params[2][:3]), 'slots': slots[:2]}
+    if PAINT.match(shader) and len(slots) >= 3 and min(slots[:3]) >= 0 and len(params) >= 5:
+        # painted asphalt (kerb stripes, pit markings; SHLDR_4CLR_BLND_MASK_2.fxobj disassembled, 2026-11-26): the grain
+        # g (slot 0) at world (x, z) * P[1].x; the paint mask (slot 1) at UV 16 * P[3].xy, its red channel (P[1].y == 0)
+        # or green; the blend value v (slot 2, rgb) at the lightmap's UV * P[5].xy. g' = g + mask * P[2] (the paint is
+        # added to the grain: the asphalt shows through it), colour = g' * P[0] + v * (g' + P[4] - g' * P[0]), x the
+        # lightmap. (Until then a fitted flat paint colour over the mask's alpha: clean, too bright stripes.)
+        return {'mode': 'paint4', 'src0': 'xz', 'src1': 16, 'mask': 'uv1', 'lm': None, 'vclr': False,
+                'scale0': [params[1][0]] * 2, 'scale1': list(params[3][:2]),
+                'scale2': list(params[5][:2]) if len(params) > 5 else [1.0, 1.0],
+                'tint0': list(params[0][:3]), 'tint1': list(params[4][:3]), 'tint2': list(params[2][:3]),
+                'chan': float(params[1][1]), 'slots': slots[:3]}
     if ROAD.match(shader) or PAINT.match(shader):
         if len(slots) < 2 or min(slots[:2]) < 0 or len(params) < 2:
             return None

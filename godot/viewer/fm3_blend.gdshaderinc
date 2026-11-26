@@ -22,6 +22,8 @@ uniform vec2 scale0 = vec2(1.0);
 uniform vec2 scale1 = vec2(1.0);
 uniform vec3 tint0 = vec3(1.0);
 uniform vec3 tint1 = vec3(1.0);
+uniform vec3 tint2 = vec3(0.0);  // mode 19: the paint colour added to the grain (P[2])
+uniform float paint_chan = 0.0;  // mode 19: the paint mask's channel (P[1].y: 0 = red, else green)
 uniform float grain_mean = 0.5;
 // mode 3 (track paint): the game's stripes are brighter than tint1 (CrownJewel pit lane white 232 vs 210, orange 231 vs
 // 220); x1.1 fitted on the grid (stripe crop 24.0 -> 23.0; coverage below 1 or the asphalt grain through the paint
@@ -97,6 +99,14 @@ void fragment() {
 		a = (g.rgb * tint0 + v * (g.rgb + tint1 - g.rgb * tint0)) * road1_gain;
 		spec_mask = g.a;
 		spec_skid = v.r;
+	} else if (mode == 19) {
+		// shldr_4clr_blnd_mask (painted asphalt, disassembled): g' = grain + mask * P[2],
+		// g' * P[0] + v * (g' + P[4] - g' * P[0]) (fm3_families.py paint4)
+		vec3 g = texture(albedo_tex, UV * scale0).rgb;
+		vec4 mk = texture(tex1, uv23.xy * scale1);
+		vec3 gp = g + (paint_chan == 0.0 ? mk.r : mk.g) * tint2;
+		vec3 v = texture(tex2, uv23.zw * scale2).rgb;
+		a = gp * tint0 + v * (gp + tint1 - gp * tint0);
 	} else if (mode == 17) {
 		// rdline_blnd_diff_spec_opac_3 (disassembled): lerp(tint0, t0, t1) * tint1.x, opacity = tex2.a at UV * scale2
 		vec4 t0 = texture(albedo_tex, UV * scale0);

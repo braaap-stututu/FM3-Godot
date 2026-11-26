@@ -636,7 +636,18 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   (0.1 kept the dashes).
 - The CrownJewel grid's largest differences otherwise: the game's lap counter overlay (top right, not ours to fix) and
   the white kerb stripes on the right, brighter and crisper in ours (141-163 against 115-136): the road-lines item.
-- **Track stripes too clean and bright** (the user, 2026-11-26: they lack the worn, driven-over look of the game's
+- **Done 2026-11-26 morning: the stripes are painted asphalt, now with the game's formula.** The CrownJewel kerb
+  stripes are not road lines but `shldr_4clr_blnd_mask` meshes (Asphalt_White / _Orange / ...), drawn by a fitted
+  flat-colour recipe (family 'paint'). Disassembled (`SHLDR_4CLR_BLND_MASK_2.fxobj`): g' = grain + mask x P[2] (the
+  paint is added to the asphalt grain), colour = g' x P[0] + v x (g' + P[4] - g' x P[0]) x the lightmap; grain at world
+  xz x P[1].x, mask (red / green by P[1].y) at UV 16 x P[3].xy, blend value v at the lightmap UV x P[5].xy. New family
+  'paint4' (`fm3_families.py`, `fm3_blend.gdshaderinc` mode 19; only CrownJewel's files use this shader). The scene
+  rebuilt (`build_track.ps1 -Track CrownJewel -Ribbon 04`: Ribbon_04 is the grid race's layout, the default
+  Ribbon_00 lacks most of its props: the grandstand, garages; whole frame 23.2 that way). Live CrownJewel grid against
+  last night's final: right stripes 28.4 -> 10.5 (ours 94 / 92 / 84, game 93 / 93 / 89), left stripes 24.1 -> 20.0,
+  road 9.8 -> 9.0, the CR-X 12.9 -> 11.4, the grandstand 16.1 -> 16.7; **whole frame 18.4 / 17.8 / 16.9 -> 16.8 /
+  16.7 / 16.3** (the rebuild also carries every exporter change since 2026-11-24).
+- (Before that) **Track stripes too clean and bright** (the user, 2026-11-26: they lack the worn, driven-over look of the game's
   and its rough asphalt showing through). Cause in the code: the main road-line shader `rdline_blnd_spec_opac_3` is
   baked by `tools/fm3_track_export.py` (~line 1209) as the line texture alone, alpha = its mask, dimmed by a fitted
   0.6. The game's code (captured ps 94e08de1, PLAN-CARS "Road lines") is `lerp(c0 asphalt grey 0.157, t0 line,
