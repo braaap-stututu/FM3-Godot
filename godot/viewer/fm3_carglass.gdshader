@@ -76,6 +76,8 @@ uniform float lens_filter = 0.0;
 // came out at its full colour (119 / 48 / 36) where the game shows it lit at about a third (60 / 23 / 20 on the
 // CrownJewel grid, the car's rear in shade). FM3_LENS_LIGHT=<k> (world_view.gd).
 uniform float lens_light = 1.0;
+// amber lenses (green > 0.25, blue < 0.2) lit by this instead when >= 0 (FM3_AMBER_LIGHT)
+uniform float amber_light = -1.0;
 // The sun highlight's weight (SpecularAmount x this; FM3_GLASS_SPEC=<w>): 0.25 from 2026-11-24, 0 since 2026-11-26:
 // on the lamps' clear covers (<glass>, SpecularAmount 3.5 at 50; few, curved polygons) it drew saturated white dashes
 // the game does not show (the CrownJewel Eclipse's right lamp 34.3 -> 24.7 at 0; 0.1 kept them; the CR-X 12.6 -> 13.0).
@@ -120,7 +122,7 @@ void fragment() {
 	if (lens) {
 		spec = 0.0;
 	}
-	vec3 c = mix(glass_color.rgb * (lens ? lens_light : 1.0), env, f) + spec_color * spec * spec_weight;
+	vec3 c = mix(glass_color.rgb * (lens ? ((amber_light >= 0.0 && glass_color.g > 0.25 && glass_color.b < 0.2) ? amber_light : lens_light) : 1.0), env, f) + spec_color * spec * spec_weight;
 	vec3 lamp = glass_color.rgb / max(max(glass_color.r, glass_color.g), max(glass_color.b, 0.001));
 	c = mix(c, lamp, clamp(glow, 0.0, 1.0));
 	float al = clamp(max(a + spec * spec_weight, glow * 0.95), 0.0, 1.0);

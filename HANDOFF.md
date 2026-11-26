@@ -16,6 +16,9 @@ CrownJewel neutral); library cars' per-colour base textures (`tools/fm3_car_base
 Turbo's blue decals); `rdline_diff_opac` road lines dimmed and blended as the game's code (Motegi 15.0 -> 13.5).
 Rebuilt today: CrownJewel (-Ribbon 04), RoadAtlanta, Sebring, Motegi. The other tracks need a rebuild for the new
 road lines, but first check their `*_nolm` shaders (the per-vertex light rule was verified on CrownJewel only).
+Then (12:05, the user: "start with the taillights"): lamp reflectors and bulbs drawn as one opaque material so the
+lenses tint their reflection (`fm3_lamp.gdshader`), lens filter 0.45: Sebring RSX tails 33.6 / 30.6 -> 25.2 / 23.2,
+CrownJewel CR-X rear 14.8 -> 13.0 (picture sent to the user). Still a little darker / redder than the game's.
 Open, in order: RoadAtlanta's car shadows (still too long / dark where the game's are short / faint;
 `FM3_NO_SHADOWS=1` gives 16.8 -> 15.9 there); reflection contrast (our reflected clouds have less contrast than the game's); the RSX
 lenses less pink; slip ratio / angle for the telemetry. The other tracks were not rebuilt except Sebring and

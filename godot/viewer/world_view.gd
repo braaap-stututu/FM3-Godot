@@ -389,6 +389,7 @@ func _init() -> void:
 					gm_.set_shader_parameter("lens", true)
 					gm_.set_shader_parameter("lens_filter", _lens_filter())
 					gm_.set_shader_parameter("lens_light", float(OS.get_environment("FM3_LENS_LIGHT")) if OS.get_environment("FM3_LENS_LIGHT") != "" else LENS_LIGHT)
+					gm_.set_shader_parameter("amber_light", float(OS.get_environment("FM3_AMBER_LIGHT")) if OS.get_environment("FM3_AMBER_LIGHT") != "" else AMBER_LIGHT)
 				# this mesh's own glass (the game's Media\Cars\ShaderSettings + the car's overrides: lenses red / amber /
 				# clear, windows, mirrors); without an entry the shader's defaults = the window
 				var gp_: Dictionary = _carmats.get(String(mi.name), {})
@@ -700,6 +701,7 @@ const LENS_FILTER := 0.45
 const REFLECTOR_TINT := 0.5
 # A lens's own colour as lit (fm3_carglass.gdshader lens_light): fitted on the CrownJewel grid's CR-X (2026-11-25).
 const LENS_LIGHT := 0.35
+const AMBER_LIGHT := -1.0  # (amber lenses: as LENS_LIGHT unless set)
 static func _lens_filter() -> float:
 	return float(OS.get_environment("FM3_LENS_FILTER")) if OS.get_environment("FM3_LENS_FILTER") != "" else LENS_FILTER
 
@@ -2057,6 +2059,7 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 				gm.set_shader_parameter("lens", true)
 				gm.set_shader_parameter("lens_filter", _lens_filter())
 				gm.set_shader_parameter("lens_light", float(OS.get_environment("FM3_LENS_LIGHT")) if OS.get_environment("FM3_LENS_LIGHT") != "" else LENS_LIGHT)
+				gm.set_shader_parameter("amber_light", float(OS.get_environment("FM3_AMBER_LIGHT")) if OS.get_environment("FM3_AMBER_LIGHT") != "" else AMBER_LIGHT)
 			var gp: Dictionary = cm.get(nm, {})
 			for k in gp:
 				var v = gp[k]

@@ -656,7 +656,9 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   as emission too; `FM3_LAMP_PASS=1` = before), bulbs untinted at 15 x <tail_light>'s CubeScale 0.2, and the lens
   filter refitted to 0.45. Sebring RSX tails (one boot): 33.6 / 30.6 -> **25.2 / 23.2** (74 / 45 / 40 -> 83 / 53 / 48,
   game 114 / 64 / 62), rear 18.5 -> 16.7; CrownJewel CR-X rear 14.8 -> 13.0, its red panel 10.4 -> 9.4, Eclipse
-  18.7 -> 19.5. Still darker than the game's overall; the amber corners read yellow where the game's are orange.
+  18.7 -> 19.5. Still darker than the game's overall; the amber corners read yellow where the game's are orange. A
+  separate light for amber lenses (`FM3_AMBER_LIGHT`, test switch; default = the 0.35 of all lenses): 0.7 / 1.0 gave
+  mixed small changes (corner 33.7 -> 32.6 / 36.5, whole frame 22.2 -> 22.5 / 23.5): left as is.
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended
