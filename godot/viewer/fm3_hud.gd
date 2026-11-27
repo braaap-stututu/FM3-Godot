@@ -260,27 +260,38 @@ func _draw_game() -> void:
 			draw_string(_font, P.call(1208 - 7 * String(rows[i][1]).length(), y + 17), String(rows[i][1]), HORIZONTAL_ALIGNMENT_LEFT, -1, int(13 * u), white)
 	e = _el("tach")
 	if not e.is_empty():
-		var c: Vector2 = P.call(1120, 597)
-		var r := 88.0 * u
-		draw_circle(c, r * 1.12, Color(0.05, 0.06, 0.08, 0.55))
-		draw_circle(c, r * 0.48, Color(0.12, 0.13, 0.15, 0.85))
+		# (the game's dial, measured on its grid shot 2026-11-27: a band of 25 segments at radius ~72-82, grey getting
+		# lighter towards the redline and red past it, no disc behind it; the numbers inside the band; a thin fuel arc
+		# on from 10 round to the pump icon at the lower right; a dark centre of radius ~39 with the gear; a short needle
+		# from the centre's edge)
+		var c: Vector2 = P.call(1121, 599)
 		var a0 := deg_to_rad(95.0)
 		var sweep := deg_to_rad(222.0)
 		var top := 10000.0 if redline <= 10000.0 else ceilf(redline / 2000.0) * 2000.0  # (the game's dial: 0-10 for a 9,500 rpm CR-X)
-		for i in 51:
-			var f := float(i) / 50.0
+		draw_arc(c, 77.0 * u, a0 - 0.02, a0 + sweep + 0.02, 64, Color(0.05, 0.06, 0.08, 0.35), 15.0 * u)
+		var n_seg := 25  # (the game's: five between 8 and 10)
+		var gap := deg_to_rad(1.6)
+		for i in n_seg:
+			var f0 := float(i) / n_seg
+			var f1 := float(i + 1) / n_seg
+			var col := Color(0.85, 0.12, 0.12, 0.95) if f1 * top > redline + 1.0 else Color.from_hsv(0.0, 0.0, lerpf(0.45, 0.92, f0), 0.95)
+			draw_arc(c, 77.0 * u, a0 + sweep * f0 + gap * 0.5, a0 + sweep * f1 - gap * 0.5, 4, col, 9.0 * u)
+		var fa0 := a0 + sweep + deg_to_rad(4.0)
+		draw_arc(c, 79.0 * u, fa0, fa0 + deg_to_rad(58.0), 24, Color(0.85, 0.85, 0.88, 0.85), 3.0 * u)
+		var pump: Vector2 = c + Vector2(cos(fa0 + deg_to_rad(66.0)), sin(fa0 + deg_to_rad(66.0))) * 80.0 * u
+		draw_rect(Rect2(pump - Vector2(4, 5) * u, Vector2(8, 11) * u), Color(0.85, 0.85, 0.88, 0.85))
+		draw_rect(Rect2(pump - Vector2(2.5, 3.5) * u, Vector2(5, 3) * u), Color(0.15, 0.15, 0.17, 0.9))
+		for k in 6:
+			var f := float(k) / 5.0
 			var a := a0 + sweep * f
 			var d := Vector2(cos(a), sin(a))
-			var red := f * top >= redline
-			var big := i % 5 == 0
-			draw_line(c + d * r * (0.86 if big else 0.92), c + d * r, Color(0.85, 0.1, 0.1) if red else white, (3.0 if big else 1.5) * u)
-			if i % 10 == 0:
-				var lbl := str(int(f * top / 1000.0))
-				draw_string(_font, c + d * r * 0.72 - Vector2(5, -5) * u, lbl, HORIZONTAL_ALIGNMENT_LEFT, -1, int(12 * u), white)
+			draw_string(_font, c + d * 59.0 * u - Vector2(5, -5) * u, str(int(f * top / 1000.0)), HORIZONTAL_ALIGNMENT_LEFT, -1, int(13 * u), Color(0.85, 0.85, 0.88, 0.9))
+		draw_circle(c, 40.0 * u, Color(0.16, 0.17, 0.19, 0.85))
+		draw_circle(c, 37.0 * u, Color(0.08, 0.09, 0.11, 0.9))
 		if rpm >= 0.0:
 			var a := a0 + sweep * clampf(rpm / top, 0.0, 1.0)
 			var d := Vector2(cos(a), sin(a))
-			draw_line(c + d * r * 0.5, c + d * r * 0.98, Color(0.9, 0.1, 0.1), 5.0 * u)
+			draw_line(c + d * 41.0 * u, c + d * 66.0 * u, Color(0.95, 0.12, 0.1), 5.0 * u)
 		var g := "N" if gear == 0 else ("-" if gear < 0 else str(gear))
 		draw_string(_font, c + Vector2(-16, 16) * u, g, HORIZONTAL_ALIGNMENT_CENTER, 32 * u, int(44 * u), white)
 		var mph := String(cfg.get("units", "kmh")) == "mph"

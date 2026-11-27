@@ -109,8 +109,9 @@ and switching the HUD on in the comparisons. Measured 2026-11-27 (CrownJewel, ou
 nor widens the gap yet. Seen side by side on the grid: the race time (fixed: held at 0 until the start, the physics
 clock runs through the countdown), the lap total ("/-" against "/3"), no minimap on a fresh start (ours is drawn from the
 cars' driven path; since 2026-11-27 a whole lap's path is kept in `user://fm3_map_<track>.json` and drawn from the
-next start on; the game's own line data `.seg` / `.irt` / `.geo` would give it at once: not decoded), no opponent name tags (the game's red names over the cars ahead), and the tach's style (the
-game's dark disc with a red redline arc and a fuel icon; ours white ticks). (The old route, for reference: the HUD's own code reads them; the tach's rpm getter is called
+next start on; the game's own line data `.seg` / `.irt` / `.geo` would give it at once: not decoded), no opponent name tags (the game's red names over the cars ahead), and the tach's style (redrawn
+2026-11-27 to the game's shapes: segmented band, fuel arc and pump, small dark centre, short needle; the fuel level
+is not streamed: the arc is drawn full). (The old route, for reference: the HUD's own code reads them; the tach's rpm getter is called
 for the HUD from 0x821F2044 (`FM3-ReGPU recomp/src/hooks/live_camera.cpp` notes), so the HUD update function around
 that return address also fetches position / lap / lap time: read it in `out/ppc-rexenon` and follow its other getters
 to the race object, then stream them in FM3E. (Searching the image for the time format: `%02d.%03d` is at image offset
