@@ -94,6 +94,9 @@ vertex-animation textures and draw with MultiMesh; (4) where pit crew / marshals
 
 ## 3. The driver (first person) and its animations
 
+**Done 2026-11-27 evening (static):** the arms and hands from Driver.skinbin on each car's wheel grips (carbin
+anchors), the hands turning with the wheel (LIVE.md "The in-car driver"). Left: the arms' animations (below).
+
 Found: `Media\Cars\Driver\`: `Driver.skinbin` (hands and arms, the same skinbin format as the crowd), `Driver.xds`,
 and Granny 3D files (`.gr2`, magic 29de6cc0..., little-endian 32-bit, file format 7): `DriverLOD0.gr2` (2.1 MB: the
 skeleton + mesh), `Hands.gr2`, `FlexFingers.gr2`, `Lateral.gr2` / `Longitudinal.gr2` (body sway), `SteerLock2Lock*`

@@ -1251,6 +1251,18 @@ The user's last question was whether to chase the remaining uneven steps or call
   loose parts themselves (their translation is known; their rotation would need vc8-10 too). Cost: a 0.5 s pause of
   stage B after a crash (the game draws everything for those frames). `FM3_PARTS=0` off, `FM3_PARTS_LOG=1` why a
   report was not applied.
+- **The in-car driver (2026-11-27 ~19:30; PLAN-NEXT 3):** Media\Cars\Driver\Driver.skinbin is the first-person
+  driver (arms, hands, legs; 1,156 vertices, 13 bones: the 13-track animations the game samples on the grid; the crowd's
+  vertex layout behind a one-level header). `tools/fm3_driver.py` writes it (x mirrored to the library's space,
+  triangles reversed, the texture's v flipped: unflipped the hands wore the suit's striped sleeves) as three meshes,
+  arms / left hand / right hand. Each car's carbin header (after the exhaust emitters) starts with the driver's anchors:
+  the wheel's centre, its axis, the two hand grips, two more points (`tools/fm3_car_anchors.py` -> `<car>_anchors.json`,
+  all 510 cars; the CR-X's wheel centre (0.351, 0.546, -0.313) against its cockpit wheel's (0.350, 0.553, -0.280)). The
+  viewer adds the meshes to each library car as cockpit parts, moved so the hands' midpoint meets the grips' midpoint;
+  both hands turn with the steering needle; the cockpit shader discards their back faces (`cull` 1: the in-car camera
+  sits inside the shoulders, double-sided they filled the view). CrownJewel grid in-car against the game: 18.0 (the
+  same view without them ~17-19 in earlier runs). Not yet: the arms' steering animation (the Granny SteerLock2Lock
+  files, Oodle1), the gloves' lighting (they read darker than the game's, as the whole cockpit). FM3_DRIVER=0 off.
 - **Scuffs (2026-11-27 ~18:30):** the paint VS passes the clamped damage amount on as o[1].w (r3.w is not touched
   after the lattice); the paint PS e41e183a423e6f1b blends texture 2 (the car's damage_lod0, grey scuffs and
   scratches with alpha) as colour x (1 - D.a x a) + D.rgb x a and its highlight x (1 - a). `tools/fm3_car_damage_tex.py`
