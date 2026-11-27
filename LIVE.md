@@ -1317,7 +1317,11 @@ The user's last question was whether to chase the remaining uneven steps or call
   mirrors, badges kept apart; the damage directions follow, meta dmg_src): **~40 -> ~50 fps**, main 2,192 -> 1,828,
   shadows 1,314 -> 898; the picture the same (mean 0.1 between two runs). `FM3_CAR_MERGE=0` off. Visibility ranges
   for small track meshes (`_visibility_ranges`, <= 6 m across, hidden beyond 40 x size; FM3_VIS_K=0 off) hit only 64
-  of CrownJewel's 1,928 meshes (the track is already merged into big groups): no measurable change, kept.
+  of CrownJewel's 1,928 meshes (the track is already merged into big groups): no measurable change; **off by default
+  since ~21:40**: on Sebring they hid 737 of 3,217 meshes, visible scenery among them (live_track against the game
+  19.4 / 20.3 / 21.8 without, 22.5 / 23.9 / 25.8 with; FM3_VIS_K=40 to try). Seen in the same Sebring runs: the
+  viewer's exposure settles at W ~0.75 (L ~0.38-0.40), the picture brighter than the game's (the 2026-11-26 note had
+  W 0.953 matching the game): to look at, not from today's changes (the same with and without them).
   Then (~19:40): the cars' lamps, glass, lenses, gauges, mirrors, badges and reflectors cast no sun shadow (each caster
   is drawn again per cascade): shadow draws 898 -> 694, ~50 -> ~52.5 fps, the cars' area identical (0.0);
   `FM3_CAR_SMALL_SHADOWS=1` as before. The in-car driver costs nothing measurable. Left: the live cube's faces draw

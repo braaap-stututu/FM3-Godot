@@ -1622,7 +1622,9 @@ func _merge_car_body(scene_: Node, car) -> void:
 # most FM3_VIS_SIZE m (default 6) across is hidden beyond FM3_VIS_K x its size (default 40, at least 60 m), from every
 # camera (the live cube's faces too: they are at the car). FM3_VIS_K=0 off. Logs how many meshes got a range.
 func _visibility_ranges(scene: Node) -> void:
-	var k := float(OS.get_environment("FM3_VIS_K")) if OS.get_environment("FM3_VIS_K") != "" else 40.0
+	# (off by default since 2026-11-27 evening: on Sebring it hid 737 of 3,217 meshes, visible scenery among them, the
+	# picture against the game 19.4 -> 22.5; on CrownJewel no measurable gain. FM3_VIS_K=40 to try)
+	var k := float(OS.get_environment("FM3_VIS_K")) if OS.get_environment("FM3_VIS_K") != "" else 0.0
 	if k <= 0.0:
 		return
 	var max_size := float(OS.get_environment("FM3_VIS_SIZE")) if OS.get_environment("FM3_VIS_SIZE") != "" else 6.0
