@@ -80,7 +80,7 @@ var _library_queue := []  # cars waiting for their library model
 # its cockpit has no directional light (TrackSettings SHCockpitDir 0) and the view a higher exposure. Cockpit meshes
 # sit on their own render layer the sun leaves out, and the exposure rises in-car by IN_CAR_EXPOSURE.
 const COCKPIT_LAYER := 8
-var COCKPIT_PRT := OS.get_environment("FM3_COCKPIT_PRT") == "1"  # (the game's cockpit light, fm3_cockpit_prt.gdshader)
+var COCKPIT_PRT := OS.get_environment("FM3_COCKPIT_PRT") in ["1", "2"]  # (the game's cockpit light, fm3_cockpit_prt.gdshader; 2: its dash shader as decoded)
 var _prt_logged := false
 const CROWD_LAYER := 64  # (the 3D crowd: left out of the live reflection cube)
 const STATIC_LAYER := 16  # (the lightmapped track: casts shadows only for the DYNLIT sun)
@@ -3148,7 +3148,11 @@ func _cockpit_material(bm: BaseMaterial3D) -> ShaderMaterial:
 	sm.set_shader_parameter("albedo_color", _vec4(bm.albedo_color))
 	sm.set_shader_parameter("use_vcol", bm.vertex_color_use_as_albedo and OS.get_environment("FM3_COCKPIT_VCOL") != "0")  # (=0: tests)
 	# (the game's cockpit light from the vertices' SH transfer, fm3_cockpit.gdshader: opt-in, FM3_COCKPIT_PRT=1)
-	sm.set_shader_parameter("prt_on", OS.get_environment("FM3_COCKPIT_PRT") == "1")
+	sm.set_shader_parameter("prt_on", COCKPIT_PRT)
+	if COCKPIT_PRT:
+		sm.set_shader_parameter("mode", int(OS.get_environment("FM3_COCKPIT_PRT")))
+		if OS.get_environment("FM3_COCKPIT_TEX_K") != "":
+			sm.set_shader_parameter("tex_k", float(OS.get_environment("FM3_COCKPIT_TEX_K")))
 	sm.set_shader_parameter("sun_world", _sun_to)
 	if OS.get_environment("FM3_COCKPIT_PRT_DIR") != "":
 		sm.set_shader_parameter("dir_scale", float(OS.get_environment("FM3_COCKPIT_PRT_DIR")))
@@ -4992,7 +4996,9 @@ func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, 
 		if bool(part[5]):
 			gi.visible = mine and not (_steer_mode == "off" and part[7] != null and part[7].get("gauge") == "steering") and not gi.has_meta("fm3_hidden")
 			if COCKPIT_PRT and mine:
-				gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON  # (the cockpit's own roof edge and pillars shade it)
+				# (the cockpit's own roof edge and pillars shade it; its glass does not: the windscreen darkened the dash)
+				var nm_ := String(gi.name)
+				gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if (nm_.contains("window") or nm_.contains("glass") or nm_.contains("mirror")) else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		else:
 			# (the body stays as a shadow caster only: its roof and doors still shade the cabin, as in the game)
 			var own: int = part[6]

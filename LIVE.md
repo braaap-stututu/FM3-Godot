@@ -1412,7 +1412,13 @@ The user's last question was whether to chase the remaining uneven steps or call
   1.5 x shadow x (0.09 (r.l)^3 + 0.7 (r.l)^5), light = the vertex SH ambient (o4) + 1.5 x SHDir x the sun term, X a
   second light term; the max(.., 0.5) acts as a floor (like the needle's MinDiffuse 0.5) and would bring the dark-
   textured pillar to about the game's 13, but the same reading gives the roof ~79 where the game has 18: one term is
-  still misread (X, or the texture's scale). Not built.) Also seen: hiding the
+  still misread (X, or the texture's scale). Not built.) **Built ~22:40 as `FM3_COCKPIT_PRT=2`** (fm3_cockpit_prt mode 2,
+  re-read: colour = 2 tex (0.5 L + 0.5 max(SHDir h, 0.5)), h = (0.5 n.l + 0.5)^2 a half-Lambert, L = the vertex SH +
+  1.5 SHDir n.l vis, vis = max(shadow, 0.25), the specular left out; `FM3_COCKPIT_TEX_K` the texture's scale in the
+  game's fetch, unknown): k 0.25 roof 20.0 (game 18.2) but dash 8.6 / 10.3 (game 21.9 / 25.7), pillar 3.0 (13.0),
+  in-car 17.4; k 0.4 18.1 (roof 40.9). The dash subsets are other shaders of that family (e.g. plastic = 4d69c593)
+  with their own constants: one formula for all cockpit materials does not hold. Mode 1 stays the better opt-in
+  (16.2); the default the old fitted light. (The cockpit glass no longer casts in these modes: no change.) Also seen: hiding the
   cockpit's `window` gives in-car 16.1 (16.4): the inside of the cockpit glass costs a little. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
   29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
   until the animation is in, the user's call.

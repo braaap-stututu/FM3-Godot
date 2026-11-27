@@ -38,6 +38,12 @@ uniform vec3 dir_color = vec3(0.78, 0.76, 0.73);  // (the track's SHDir)
 uniform float dir_scale = 1.5;
 uniform float prt_k = 1.0;  // (the material's colour against ours: tests)
 uniform float sun_k = 1.0;  // (the n.l sun term's strength: tests)
+// mode 2 (FM3_COCKPIT_PRT=2, ~22:40): the dash / headliner pixel shader 1074f157fdbf9db8 as decoded (LIVE.md "The
+// cockpit's light"): colour = 2 tex (0.5 L + 0.5 max(SHDir h, 0.5)), L = the vertex SH light + 1.5 SHDir n.l vis,
+// h = (0.5 n.l + 0.5)^2, vis = max(shadow, 0.25) (its specular left out); tex_k = the texture's scale in the game's
+// fetch (fitted, unknown)
+uniform int mode = 1;
+uniform float tex_k = 0.25;
 varying vec3 prt_light;
 varying vec3 prt_sun;
 varying vec3 alb_g;
@@ -100,7 +106,13 @@ void fragment() {
 
 void light() {
 	if (LIGHT_IS_DIRECTIONAL) {
-		if (prt_use > 0.5) {
+		if (prt_use > 0.5 && mode == 2) {
+			float nl = dot(NORMAL, LIGHT);
+			float h = pow(0.5 * nl + 0.5, 2.0);
+			float vis = max(ATTENUATION, 0.25);
+			vec3 l1 = prt_light + dir_scale * dir_color * max(nl, 0.0) * vis;
+			DIFFUSE_LIGHT += to_linear(2.0 * tex_k * alb_g * (0.5 * l1 + 0.5 * max(dir_color * h, vec3(0.5))));
+		} else if (prt_use > 0.5) {
 			float ndl = max(dot(NORMAL, LIGHT), 0.0);
 			DIFFUSE_LIGHT += to_linear(alb_g * (prt_light + dir_scale * dir_color * sun_k * ndl * ATTENUATION));
 		} else {
