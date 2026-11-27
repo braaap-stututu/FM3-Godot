@@ -1295,6 +1295,11 @@ The user's last question was whether to chase the remaining uneven steps or call
   files, Oodle1). FM3_DRIVER=0 off. The cockpit (gloves included) had gone ~2.5x darker than the game's since its
   2026-11-24 fit (roof liner 7.8 vs 20.0): COCKPIT_GAIN 1.0 -> 2.5 (roof 17.8, dash 19.0 vs 26.9; in-car view 18.0 ->
   16.4; gain 5: 19.9). Vertical faces stay too dark (A-pillar 2.1 vs 14.7).
+  **The same driver is in every car (~19:20):** the game draws it once per car (vs 3fd7a3519ea31c8e, 8 draws on the
+  grid, its vertex buffer = Driver.skinbin's vertices, 1,156 x 32 bytes, a 512 x 512 DXT5 texture; there is no other
+  driver model: no head or torso), so the viewer now adds an outside copy (driver_*, lit as the car's parts, back faces
+  culled) to every library car, hidden in the player's own in-car view as the rest of its outside. CrownJewel grid /
+  chase / in-car unchanged (14.3 / 15.0 / 16.5).
 - **Scuffs (2026-11-27 ~17:00):** the paint VS passes the clamped damage amount on as o[1].w (r3.w is not touched
   after the lattice); the paint PS e41e183a423e6f1b blends texture 2 (the car's damage_lod0, grey scuffs and
   scratches with alpha) as colour x (1 - D.a x a) + D.rgb x a and its highlight x (1 - a). `tools/fm3_car_damage_tex.py`

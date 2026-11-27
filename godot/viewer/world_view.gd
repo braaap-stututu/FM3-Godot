@@ -1549,12 +1549,16 @@ func _attach_driver(scene_: Node, base: String, nd: Dictionary) -> void:
 		var am := ArrayMesh.new()
 		am.add_surface_from_arrays(src.surface_get_primitive_type(0), arrays)
 		am.surface_set_material(0, src.surface_get_material(0))
-		var mi := MeshInstance3D.new()
-		mi.mesh = am
-		mi.name = "cockpit_driver_%s" % part.trim_prefix("driver_")
-		scene_.add_child(mi)
-		if part.begins_with("driver_hand") and steer_key != "":
-			nd[String(mi.name)] = (nd[steer_key] as Dictionary).duplicate()  # (turns with the wheel)
+		# two copies: the cockpit's (the player's in-car view) and the car's own (every car, seen through its windows: the
+		# game draws this driver in all of them, vs 3fd7a3519ea31c8e, one draw a car; hidden in the player's in-car view
+		# as the rest of its outside)
+		for pre_ in ["cockpit_driver_", "driver_"]:
+			var mi := MeshInstance3D.new()
+			mi.mesh = am
+			mi.name = pre_ + part.trim_prefix("driver_")
+			scene_.add_child(mi)
+			if part.begins_with("driver_hand") and steer_key != "":
+				nd[String(mi.name)] = (nd[steer_key] as Dictionary).duplicate()  # (turns with the wheel)
 
 
 # A library car's body meshes merged by material (2026-11-27, optimizing: the viewer is bound by draw calls and per-part
@@ -3791,7 +3795,7 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 			# the exterior model's own cabin, seen through the windows: dark in the game (CABIN_K)
 			m.albedo_color = Color(m.albedo_color.r * CABIN_K, m.albedo_color.g * CABIN_K, m.albedo_color.b * CABIN_K, m.albedo_color.a)
 			m.metallic_specular = 0.0
-		m.cull_mode = BaseMaterial3D.CULL_BACK if OS.get_environment("FM3_CULL_BACK") == "1" else BaseMaterial3D.CULL_DISABLED
+		m.cull_mode = BaseMaterial3D.CULL_BACK if OS.get_environment("FM3_CULL_BACK") == "1" or nm.begins_with("driver_") else BaseMaterial3D.CULL_DISABLED
 		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 		if m.roughness >= 0.9:
 			m.metallic_specular = 0.04
