@@ -15,9 +15,20 @@ in-car driver's animations (Granny, Oodle1), the live cube's own shadow draws. D
 skid marks, dust, per-track smoke atlases, collision sparks, the crowd's cheers (~20:25). Open from those: grass /
 dirt particles by surface (the wheel's surface byte is not the surfaceTypes.xml index: CrownJewel gravel = 45),
 sparks while scraping without new damage, checking smoke / sparks against the game's own in the same moment.
-Also ~21:00: the crowd lit by the game's formula (done); the cockpit's light decoded (LIVE.md "The cockpit's light":
-opt-in; next: the game's cockpit material colours, i.e. which subsets the untextured 0.24 draw covers and where 0.24
-is defined, then rebuild every library car's cockpit and make it the default if the in-car view improves). The older items below are updated where done (2, 3).
+Also ~21:00: the crowd lit by the game's formula (done); the cockpit's light decoded (LIVE.md "The cockpit's light").
+The older items below are updated where done (2, 3).
+
+**Where the evening ended (~22:45), the open list in order of what it would gain (in-car 16.5 is the weakest view):**
+1. The in-car cabin: each cockpit subset is drawn by its own shader of the 618013738ec64643 family (headliner
+   1074f157, plastic 4d69c593, ...; the colour-pass draws matched to our subsets by their first indices: LIVE.md);
+   read each one's constants with a `REGPU_TRACE_VC=1` capture (the "(read)" marks give the packed ranks) and light
+   our subsets per shader. Opt-in modes so far: `FM3_COCKPIT_PRT=1` (the transfer's ambient + n.l x Godot's shadow,
+   16.2) and `=2` (the headliner shader for all, 17.4). Only the CR-X si's cockpit has the transfer data (rebuild the
+   library: tools/fm3_car_library.py, 2.5 s a car, ~20 min for all).
+2. The A-pillar (ours 2, the game 13: our headliner's dark texture there), the warning-lamp panel (game 4.3, ours 90.5:
+   our gauge material glows), the driver's arms (`FM3_DRIVER=0` scores 15.6 against 16.4: the animation is missing).
+3. Tyre smoke's threshold (at 26 degrees of slip the game's frame showed none yet: one sample, smokecmp.ps1),
+   grass / dirt by surface (a grass dump on a track with grass verges), sparks while scraping.
 
 ## 1. The cubemap (done for the paint; finish for the other shaders)
 
