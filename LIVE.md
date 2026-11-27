@@ -1338,7 +1338,10 @@ The user's last question was whether to chase the remaining uneven steps or call
   positions were the library scenes' roots, which stay at (0, 0, 0) (the parts move, not the root): the default 60 m
   cheered only near the world's origin (the 1 km test hid it; seen when the game's terrace cheered beside the stopped
   CR-X and ours did not). Now the positions _update_live_cars draws each car at (`FM3_CHEER_LOG=1` prints both: grid
-  cars drawn at ~(100, -3, 222..265), roots (0, 0, 0)). Motegi (24,299 people) live, ~21:20:
+  cars drawn at ~(100, -3, 222..265), roots (0, 0, 0)). Checked in the game's own moment (smokecmp.ps1, the CR-X stopped in the
+  gravel beside the terrace, stage B off): both terraces now cheer (raised arms in a mix of people); ours ~15% darker
+  there, the barrier wall just as much (crowd 44.5 vs 52.8, wall 112 vs 127): this view's exposure, not the crowd's
+  light. Motegi (24,299 people) live, ~21:20:
   the last steady fps sample 52 with cheering, 49 with `FM3_CROWD_CHEER_M=0` (the loop skipped): no measurable cost
   (these track runs give one or two steady samples; Motegi's frozen-picture difference varies 31-49 by the freeze
   moment, the game's exposure on a black car close-up, as before). `FM3_CROWD_ANIM=0` still people. (Earlier dead ends, kept in PLAN-NEXT 2: the skeleton
