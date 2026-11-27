@@ -1178,8 +1178,21 @@ The user's last question was whether to chase the remaining uneven steps or call
   position scaled into grid cells (vc4 / vc5 / vc8-10), clamped to the grid (vc7 / vc11), the lattice table at vertex
   fetch 94 (two float4 per entry, interpolated across the cell into one amount), the vertex moved along its own
   direction by it, clamped by vc6 (damageClamps); e.g. vs_0b663c87079d33bf (shadow pass). The damage textures:
-  `damage*.xds` / `damagelights*.xds` per car folder. Next: the table's address in the car object (stage B skips the
-  draws that bind it), its dims from a capture, the per-vertex use in a Godot vertex shader.
+  `damage*.xds` / `damagelights*.xds` per car folder.
+  **Decoded further (2026-11-27 evening, capture with the game's constant numbers, paint VS a102319a5aef757b):** the
+  lattice is 10 x 10 x 10 cells on every car (vc116-118 = 10), fitted to the car: origin vc41 (its back-left-bottom
+  corner, e.g. -0.93 / -0.59 / -2.00 m), inverse extent vc42 (0.54 / 0.62 / 0.25 = 1.86 m wide, 1.61 high, 3.98 long),
+  the model's position offset vc190, clamps vc58 = 0 .. 1. Table = vertex fetch 94, 1,000 entries x 32 bytes (32,000):
+  per cell its 8 corner amounts, blended trilinearly by the position in the cell; the vertex moves by the amount along
+  a per-vertex damage direction (vertex stream 95, offset 7, 3 normalized components: not in the car library's export).
+  Undamaged: all zero. The game writes the table through the B0000000 mirror of physical memory (e.g. B0DF1000).
+  **Not found yet: which table is which car's.** The B pointers sit in allocator-like records (400722xx, stride
+  0x40-0x50, no vtable before them) and a render list (460Cxxxx); no pointer to a table, its fetch word (addr | 3) or
+  its B address within two levels of the car objects or of the car draw's arguments (r3, r5-r9; scripts in the
+  scratchpad: argscan / vbscan / holderscan). Next: hook the call that binds fetch 94 inside the car draw (sub_828329C8)
+  and take the address there (with stage B, run that part of the draw and skip the drawing); then stream the 32 KB
+  table per car when it changes ("FM3D"), and deform the library car's vertices on the CPU when it does (normals as
+  the direction until the direction stream is exported).
 - **Optimizing the viewer (measured, frozen CrownJewel race in stage B, 1280 x 720, vsync off, `FM3_FPS_LOG=1`):** the
   viewer is bound by Godot's draw-call submission on the CPU, not the GPU: 31-36 fps at ~5,800 draw calls; the 3D
   crowd's 36 M of the 43 M triangles, MSAA and the shadows changed nothing. Our own script is ~7 ms a frame (cars 2.7,
