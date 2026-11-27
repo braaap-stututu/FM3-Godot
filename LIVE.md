@@ -1251,6 +1251,23 @@ The user's last question was whether to chase the remaining uneven steps or call
   loose parts themselves (their translation is known; their rotation would need vc8-10 too). Cost: a 0.5 s pause of
   stage B after a crash (the game draws everything for those frames). `FM3_PARTS=0` off, `FM3_PARTS_LOG=1` why a
   report was not applied.
+- **The crowd's animations (2026-11-27 ~20:30; PLAN-NEXT 2):** the game animates its 3D people on the GPU: its crowd
+  vertex shader 6ee601730a7f9f87 (114 draws on the grid: the near people) skins each person from one 1,201,992-byte
+  buffer (fetch 94) that the race load builds by sampling every crowd animation through the codec (sub_82AABED0, at
+  normalized times). Decoded (`tools/fm3_crowd_anim.py`): the skeletons in spectators.xml order (Sitting 12 bones:
+  Sit_Cheer_01..07; Standing 17: Stand_Idle_*, _Drunk, _Photo, Stand_Cheer_*), each animation's frames at 30 a second,
+  one entry per bone and frame (the sizes add up to the byte: 11,664 + 88,502 entries); an entry = three 11:11:10
+  normalized vectors: rotation rows r0, r1 and a translation t, the bone's skinning transform relative to the bind
+  pose: p' = r0 p.x + r1 p.y + (r0 x r1) p.z + (2 t.x, 3.5 t.y, 2 t.z) (constants c255.x / c254.w), blended over the
+  vertex's two bones. A draw's c10.w = its animation's first entry, c10.x = the current frame's (Stand_Idle_Photo at
+  62035: posed on the CPU, the photographer raises the camera to the face). The buffer is read from a running game
+  (`tools/research/crowd_anim_dump.ps1` -> Godot\work\crowd_anim\crowdbuf.bin, game data). The viewer skins the
+  same way in `fm3_crowd.gdshader` (the buffer as a 2048 x 147 float texture; bones / weights in the people's UV2,
+  `fm3_spectators.py`; per person INSTANCE_CUSTOM = first entry, frames, bones, start frame: its class's idle list,
+  one picked per person, looped at 30 a second). Two viewer shots 8 s apart: the pit workers change pose (one arm
+  out, as in the game's frame). Not yet: cheering when cars pass (the classes' cheer lists), which idle the game
+  picks per person. `FM3_CROWD_ANIM=0` still people. (Earlier dead ends, kept in PLAN-NEXT 2: the skeleton
+  reconstructed from names and weights; not needed, the buffer holds the final transforms.)
 - **The crowd's classes (2026-11-27 ~20:00):** the .crowd record's second index (0-5, the open question of
   2026-11-26) is the person's crowd class in spectators.xml's crowdclass order: Sitting, Standing, Drunk, Photographer,
   Marshall, PitWorker (CrownJewel Ribbon_04: 1,347 / 1,168 / 0 / 79 / 9 / 24). The viewer draws each class with its

@@ -56,7 +56,11 @@ def read_skinbin(path, lod=0):
     s, c = lods[lod]
     tri = idx[s:s + c]
     return {'pos': v['p'].astype(np.float32), 'nrm': v['n'].astype(np.float32),
-            'uv': _uv(v['uv']), 'idx': tri, 'lods': lods}
+            'uv': _uv(v['uv']), 'idx': tri, 'lods': lods,
+            # (skinning, as TEXCOORD_1: x = bone 0 + weight 0 / 2, y = bone 1 (weight 1 = 1 - weight 0: the two sum to 255):
+            # the viewer's crowd shader animates with the game's baked animations, tools/fm3_crowd_anim.py)
+            'skin': np.stack([v['b'][:, 0].astype(np.float32) + v['b'][:, 2].astype(np.float32) / 255.0 * 0.5,
+                              v['b'][:, 1].astype(np.float32)], axis=1)}
 
 
 def write_gltf(path, meshes, png_names):
@@ -83,8 +87,12 @@ def write_gltf(path, meshes, png_names):
         accs.append({'bufferView': view(U.tobytes(), 34962), 'componentType': 5126, 'count': len(U), 'type': 'VEC2'})
         accs.append({'bufferView': view(I.astype(np.uint32).tobytes(), 34963), 'componentType': 5125, 'count': len(I),
                      'type': 'SCALAR'})
-        gmeshes.append({'primitives': [{'attributes': {'POSITION': a0, 'NORMAL': a0 + 1, 'TEXCOORD_0': a0 + 2},
-                                        'indices': a0 + 3, 'material': tex}]})
+        attrs = {'POSITION': a0, 'NORMAL': a0 + 1, 'TEXCOORD_0': a0 + 2}
+        if m.get('skin') is not None:
+            accs.append({'bufferView': view(np.ascontiguousarray(m['skin']).tobytes(), 34962), 'componentType': 5126,
+                         'count': len(P), 'type': 'VEC2'})
+            attrs['TEXCOORD_1'] = len(accs) - 1
+        gmeshes.append({'primitives': [{'attributes': attrs, 'indices': a0 + 3, 'material': tex}]})
         nodes.append({'mesh': len(gmeshes) - 1, 'translation': list(at)})
     g = {'asset': {'version': '2.0', 'generator': 'fm3_spectators.py'}, 'scene': 0,
          'scenes': [{'nodes': list(range(len(nodes)))}], 'nodes': nodes, 'meshes': gmeshes, 'materials': mats,

@@ -1139,6 +1139,20 @@ func _crowd3d() -> void:
 			groups[key] = []
 		groups[key].append(p)
 	var yaw0 := deg_to_rad(float(OS.get_environment("FM3_CROWD3D_YAW"))) if OS.get_environment("FM3_CROWD3D_YAW") != "" else 0.0
+	# the game's baked crowd animations (tools/fm3_crowd_anim.py; FM3_CROWD_ANIM=0 still people)
+	var anims := {}
+	var anim_classes := {}
+	var aj := idx_path.get_base_dir() + "/crowd_anim.json"
+	if OS.get_environment("FM3_CROWD_ANIM") != "0" and FileAccess.file_exists(aj) and FileAccess.file_exists(idx_path.get_base_dir() + "/crowd_anim.bin"):
+		var ad = JSON.parse_string(FileAccess.get_file_as_string(aj))
+		if ad is Dictionary:
+			_crowd_anim_w = int(ad["width"])
+			var bytes := FileAccess.get_file_as_bytes(idx_path.get_base_dir() + "/crowd_anim.bin")
+			var img := Image.create_from_data(_crowd_anim_w, int(ad["height"]), false, Image.FORMAT_RGBF, bytes)
+			_crowd_anim_tex = ImageTexture.create_from_image(img)
+			anims = ad["anims"]
+			anim_classes = ad["classes"]
+			print("world_view: 3D crowd animated: %d animations (%d x %d texels)" % [anims.size(), _crowd_anim_w, int(ad["height"])])
 	for key in groups:
 		var parts: PackedStringArray = (key as String).split("_")
 		var files: Array = sit[int(parts[0])] if parts.size() == 2 else []
@@ -1164,6 +1178,8 @@ func _crowd3d() -> void:
 		var mesh := (mis[0] as MeshInstance3D).mesh
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
+		var animated := not anims.is_empty()
+		mm.use_custom_data = animated
 		mm.mesh = mesh
 		var g: Array = groups[key]
 		mm.instance_count = g.size()
@@ -1173,6 +1189,17 @@ func _crowd3d() -> void:
 			var b := Basis(Vector3.UP, float(q[5]) + yaw0)
 			xfs.append(Transform3D(b, Vector3(q[2], q[3], q[4])))
 			mm.set_instance_transform(i, xfs[i])
+			if animated:
+				# the person's animation: its class's idle list (spectators.xml), one picked per person, a start frame
+				# of its own (the game picks too; which one is not in the record)
+				var cl: Dictionary = anim_classes.get(CROWD_CLASSES[clampi(int(q[1]), 0, CROWD_CLASSES.size() - 1)], {})
+				var lst: Array = cl.get("idle", [])
+				var h := absi(int(q[2] * 97.0) * 31 + int(q[4] * 89.0) * 17 + i)
+				if not lst.is_empty() and anims.has(lst[h % lst.size()]):
+					var an: Array = anims[lst[h % lst.size()]]
+					mm.set_instance_custom_data(i, Color(float(an[0]), float(an[1]), float(an[2]), float(h % int(an[1]))))
+				else:
+					mm.set_instance_custom_data(i, Color(0, 0, 0, 0))
 		_crowd_sets.append([mm, xfs])
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
@@ -1184,6 +1211,17 @@ func _crowd3d() -> void:
 				m1s.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 				m1s.albedo_color = shade
 				mmi.material_override = m1s
+		elif animated and mesh.get_surface_count() > 0 and mesh.surface_get_material(0) is BaseMaterial3D:
+			# (animated: fm3_crowd.gdshader skins each person from the game's baked animations; the same brightness)
+			var cs := ShaderMaterial.new()
+			cs.shader = CROWD_SHADER
+			cs.set_shader_parameter("albedo_tex", (mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture)
+			var kk2 := float(OS.get_environment("FM3_CROWD3D_K")) if OS.get_environment("FM3_CROWD3D_K") != "" else 0.7
+			cs.set_shader_parameter("albedo_color", Vector4(kk2, kk2, kk2, 1.0))
+			cs.set_shader_parameter("anim_tex", _crowd_anim_tex)
+			cs.set_shader_parameter("anim_on", true)
+			cs.set_shader_parameter("tex_width", _crowd_anim_w)
+			mmi.material_override = cs
 		elif OS.get_environment("FM3_CROWD3D_K") != "0" and mesh.get_surface_count() > 0:
 			# (the people's brightness under Godot's light: x0.7 fitted (CrownJewel people 38.8 -> 29.5, mean 69 / 63 / 57
 			# against the game's 70 / 65 / 61); the game's own crowd shading (TrackSettings Crowds dark / light) is not
@@ -1200,6 +1238,10 @@ func _crowd3d() -> void:
 
 
 var _crowd_sets := []  # [MultiMesh, [Transform3D per person]]
+const CROWD_SHADER := preload("res://viewer/fm3_crowd.gdshader")
+const CROWD_CLASSES := ["Sitting", "Standing", "Drunk", "Photographer", "Marshall", "PitWorker"]  # (the record's second index)
+var _crowd_anim_tex: ImageTexture = null
+var _crowd_anim_w := 2048
 var _crowd_sd := 0.0  # SpriteDistance (m); 0 = every person in 3D
 
 

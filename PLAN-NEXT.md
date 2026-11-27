@@ -35,6 +35,11 @@ Left (the AI dampener is done: the game's StaticEnvLightmapDampner 0.5 for AI pa
 
 ## 2. Animated 3D crowd, pit crew, marshals, photographers
 
+**Done 2026-11-27 evening:** the people are animated with the game's own baked animations (decoded from its crowd
+buffer; LIVE.md "The crowd's animations") and drawn by crowd class (seated / standing / photographer / marshal / pit
+worker; LIVE.md "The crowd's classes"). Left: cheers when cars pass, the game's idle choice per person, the crowd's
+shading. The notes below are the research that led there.
+
 **Done that night, static:** the crowd is drawn with the game's own 3D people (seated pose, real textures; LIVE.md
 "The 3D crowd, static"; CrownJewel grid 14.36 -> 14.01). Left: the animations below, the crowd's shading (TrackSettings
 Crowds dark / light), the far sprites, standing crowds, pit crew / marshals / photographers' placement.
