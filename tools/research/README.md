@@ -12,7 +12,11 @@ you can point anywhere. Run from `frame-ir` (Python ones import `tools/`). LIVE.
 | `cubecmp.ps1 [-Index N] -Gltf <abs>` | the game's car reflection cube against the viewer's live cube: a capture (resolve dumps) plus the viewer's six faces (`FM3_DUMP_LIVE_CUBE=1`), same frozen moment |
 | `paintdbg.ps1 [-Index N] -Gltf <abs> [-Modes 0,1,2,3]` | the paint's reflection terms one at a time: the game's paint ps edited live, the viewer with `FM3_PAINT_DEBUG` |
 | `wtrack.ps1 [-Index N] [-Modes ..]` | the game's exposure W, scene (t0) and bloom (t4) on a Free Play track: the final pass edited live, display gamma off |
+| `physdump.ps1 -Out <dir> [-Count N -Every s -Start s]` | the player's physics object (8 KB) dumped over a race the AI drives (finding fields by behaviour) |
+| `physdrive.ps1 -Out <dir>` | the same while the debug pad drives: full throttle, hard braking, full steering lock (slip) |
+| `carobjdump.ps1 -Out <dir>` | a car object (16 KB) over a race (race position / laps / lap time hunt) |
 | `lumpeek.ps1` | tries to read the adapted-luminance 32x32 texture from guest memory (gave zeros: it stays on the GPU) |
+| `gridterms.ps1 [-Modes ...]` | (also) modes 13 / 14: the paint vertex shader's ambient o[5] / sun o[2].w; 20 / 21 / 22: the static-cube slot t7 drawn as tiles / panoramas through the shader's CubeOp |
 | `gamshots.ps1` | game shots with and without the display gamma (`REGPU_NO_GAMMA`, `REGPU_NO_GAMMA_PWL`): the gamma table is a fixed toe curve |
 | `roadprobe.py`, `roadfit.py` | road_3clr_blnd_2's shadowed variant run in `tools/fir_vs.py`: the road sun specular, probed input by input |
 | `specgen.py` | the same probe for any road shader: which sampler's alpha masks the specular |

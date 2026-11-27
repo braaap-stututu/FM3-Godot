@@ -1,8 +1,31 @@
-# HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-26)
+# HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-27)
 
-**Start the next session here (stopped 2026-11-26 ~11:00, after a 2-hour morning session).** Everything is committed
-and pushed (frame-ir `live-mirror` = master, FM3-ReGPU `origin/main`). LIVE.md "Next for stage A" has every result.
-This morning (all measured live against the game, mostly on the CrownJewel grid):
+**Start the next session here (stopped 2026-11-27 ~01:05, after a full day and night of sessions).** Everything is
+committed and pushed (frame-ir `live-mirror` = master; FM3-ReGPU unchanged since 2026-11-25, `origin/main`).
+**`PLAN-NEXT.md` is the work plan** (the user's list of 2026-11-26 22:50, item by item: what was done, what is left,
+where to start, how to measure). LIVE.md has every result in detail.
+
+State at the end (CrownJewel grid, live against the game at 4x MSAA, `live_compare.ps1` / scratch cjiter):
+- **Whole frame 13.92-14.12** (boots vary ~0.2; this morning 15.2). In-car (cam3) **19.3 / 18.8 / 17.0** (40.8 an hour
+  before the end). Our scene before the exposure matches the game's own scene texture within ~2% on RoadAtlanta,
+  Sebring and Motegi: the remaining differences are exposure (RoadAtlanta's L), the HUD (~31% of the grid's
+  difference), the crowd's animation / shading, the driver's hands, content.
+- **Decoded and in today:** the exposure adapting by time (ToneMapeDelay per track), the cockpit's exposure limits
+  (TrackCockpitLumLimits), the car paint's light (SH ambient + sun from the vertex shader's terms, measured from the
+  game's own outputs), the same light on the other car parts (`fm3_carsolid`, not the cockpit), AI cars' paint and
+  windows reflecting the per-frame cube (the game's AI "static" cube slot holds a dynamic cube), the static 3D crowd
+  (the game's own people, `tools/fm3_spectators.py` + `tools/fm3_crowd3d.py`), a HUD in the game's layout
+  (`fm3_hud.gd`), the menus' scenes building, car shadows near the cars only, lamps / lenses / black plastic.
+- **Measuring rules learned today:** the test picture waits for the exposure to settle (FM3_EXPO_INSTANT); compare
+  variants within one boot (boots differ ~0.2); scratch cjiter's camera switch does not reach the in-car view (use
+  `tools/live/live_compare.ps1 -Cameras 2`); probe the game's own shader values with live ps edits
+  (`tools/research/gridterms.ps1` modes 13/14/20-22, `wtrack.ps1`, scratch-style `lensiter -Probe`).
+- **Open, by value (PLAN-NEXT.md):** crowd animations (decoder `sub_82AADA30` in the recomp), the driver (Granny
+  Oodle1: dump via the recomp), the HUD's race values (HUD `sub_821F19A8`; physics clock +2704), RoadAtlanta's
+  exposure offset, slip telemetry (+4172 / +3444 candidates), the menus' exposure and car, the static cube's
+  orientation for lamps / lenses, the game's menus shown in the viewer.
+
+The day in order (2026-11-26, all measured live against the game, mostly on the CrownJewel grid). Morning:
 - **Painted asphalt from the game's code** (`shldr_4clr_blnd_mask`, family 'paint4'): the grain runs through the
   paint; CrownJewel's stripes 28.4 -> 10.5. The CrownJewel scene must be built with **`-Ribbon 04`** (the grid
   race's layout; the default Ribbon_00 lacks the grandstand and garages).
