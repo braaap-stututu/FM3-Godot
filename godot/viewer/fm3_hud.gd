@@ -5,8 +5,9 @@
 #   - pedals:   throttle and brake bars
 #   - map:      a track map built from the cars' own paths as they drive (no track file needed), a dot per car
 #   - info:     the stream's state (game frames, latency) for debugging; off by default
-# The data comes from the game's stream (world_view.gd: "FM3E" telemetry, the cars' matrices). The race position and
-# lap counter are not in the stream yet (LIVE.md continuation plan).
+# The data comes from the game's stream (world_view.gd: "FM3E" telemetry, the cars' matrices; v9 (2026-11-27): the race
+# clock, the race position and the track segment the viewer counts laps from). The race's lap total is not in the
+# stream: "total_laps" in the config.
 # Two styles: "game" (default: the game's own layout, place / laps / round tach / map, see _draw_game) and "simple"
 # (the elements below, each placed by anchor / offset / scale).
 # Config: res://viewer/hud_default.json, overridden key by key by user://fm3_hud.json (and FM3_HUD_CONFIG=<path>);
@@ -23,6 +24,12 @@ var brake := 0.0
 var cars := {}  # car -> Vector2 (world x, z)
 var player := -1
 var info := ""
+var place := 0  # (the stream's race position, 1-based; 0 = not known)
+var lap := -1  # (laps completed, as the game's "LAPS" counter; -1 = not known)
+var race_time := -1.0
+var lap_time := -1.0
+var last_lap := -1.0
+var best_lap := -1.0
 var _trail := []  # the player's path (Vector2), the map's outline
 var _bounds := Rect2()
 var _font: Font
@@ -65,6 +72,12 @@ func feed(d: Dictionary) -> void:
 	cars = d.get("cars", cars)
 	player = d.get("player", player)
 	info = d.get("info", info)
+	place = d.get("place", place)
+	lap = d.get("lap", lap)
+	race_time = d.get("race_time", race_time)
+	lap_time = d.get("lap_time", lap_time)
+	last_lap = d.get("last_lap", last_lap)
+	best_lap = d.get("best_lap", best_lap)
 	if cars.has(player):
 		var p: Vector2 = cars[player]
 		if _trail.is_empty() or (_trail[-1] as Vector2).distance_to(p) > 4.0:
@@ -93,6 +106,14 @@ func _origin(e: Dictionary, sz: Vector2) -> Vector2:
 func _col(e: Dictionary, k: String, d: Color) -> Color:
 	var c = e.get(k)
 	return Color(c[0], c[1], c[2], c[3] if c.size() > 3 else 1.0) if c is Array else d
+
+
+# mm:ss.mmm, as the game's HUD
+static func _clock_text(t: float) -> String:
+	if t < 0.0:
+		return "--:--.---"
+	var ms := int(round(t * 1000.0))
+	return "%02d:%02d.%03d" % [ms / 60000, (ms / 1000) % 60, ms % 1000]
 
 
 func _speed_text(e: Dictionary) -> String:
@@ -186,19 +207,31 @@ func _draw_game() -> void:
 	var e := _el("place")
 	if not e.is_empty():
 		draw_rect(Rect2(P.call(60, 33), Vector2(350, 44) * u), panel)
-		draw_string(_font, P.call(78, 70), str(cfg.get("position", "-")), HORIZONTAL_ALIGNMENT_LEFT, -1, int(34 * u), white)
+		draw_string(_font, P.call(78, 70), str(place) if place > 0 else "-", HORIZONTAL_ALIGNMENT_LEFT, -1, int(34 * u), white)
 		draw_string(_font, P.call(104, 56), "/" + str(cfg.get("cars", cars.size() if cars.size() > 0 else "-")), HORIZONTAL_ALIGNMENT_LEFT, -1, int(17 * u), white)
 		draw_string(_font, P.call(288, 61), "PLACE", HORIZONTAL_ALIGNMENT_LEFT, -1, int(15 * u), white)
 	e = _el("laps")
 	if not e.is_empty():
 		draw_rect(Rect2(P.call(955, 33), Vector2(262, 44) * u), panel)
 		draw_string(_font, P.call(962, 61), "LAPS", HORIZONTAL_ALIGNMENT_LEFT, -1, int(15 * u), white)
-		draw_string(_font, P.call(1150, 70), str(cfg.get("lap", "-")), HORIZONTAL_ALIGNMENT_LEFT, -1, int(34 * u), white)
+		draw_string(_font, P.call(1150, 70), str(lap) if lap >= 0 else "-", HORIZONTAL_ALIGNMENT_LEFT, -1, int(34 * u), white)
 		draw_string(_font, P.call(1176, 56), "/" + str(cfg.get("total_laps", "-")), HORIZONTAL_ALIGNMENT_LEFT, -1, int(17 * u), white)
 		draw_rect(Rect2(P.call(955, 79), Vector2(127, 22) * u), Color(0.05, 0.07, 0.1, 0.75))
 		draw_rect(Rect2(P.call(1082, 79), Vector2(126, 22) * u), Color(0.1, 0.13, 0.17, 0.6))
-		draw_string(_font, P.call(962, 96), str(cfg.get("lap_time", "--:--.---")), HORIZONTAL_ALIGNMENT_LEFT, -1, int(14 * u), white)
-		draw_string(_font, P.call(1168, 96), "race", HORIZONTAL_ALIGNMENT_LEFT, -1, int(13 * u), white)
+		# (the game's rows: race time, then last, best and the current lap once there are any)
+		var rows := [[race_time, "race"]]
+		if last_lap >= 0.0:
+			rows.append([last_lap, "last"])
+		if best_lap >= 0.0:
+			rows.append([best_lap, "best"])
+		if lap_time >= 0.0 and rows.size() > 1:
+			rows.append([lap_time, "lap"])
+		for i in rows.size():
+			var y := 79.0 + 22.0 * i
+			if i > 0:
+				draw_rect(Rect2(P.call(955, y), Vector2(253, 22) * u), Color(0.05, 0.07, 0.1, 0.5))
+			draw_string(_font, P.call(962, y + 17), _clock_text(float(rows[i][0])), HORIZONTAL_ALIGNMENT_LEFT, -1, int(14 * u), white)
+			draw_string(_font, P.call(1208 - 7 * String(rows[i][1]).length(), y + 17), String(rows[i][1]), HORIZONTAL_ALIGNMENT_LEFT, -1, int(13 * u), white)
 	e = _el("tach")
 	if not e.is_empty():
 		var c: Vector2 = P.call(1120, 597)
@@ -207,7 +240,7 @@ func _draw_game() -> void:
 		draw_circle(c, r * 0.48, Color(0.12, 0.13, 0.15, 0.85))
 		var a0 := deg_to_rad(95.0)
 		var sweep := deg_to_rad(222.0)
-		var top := 10000.0 if redline <= 9000.0 else ceilf(redline / 2000.0 + 0.5) * 2000.0
+		var top := 10000.0 if redline <= 10000.0 else ceilf(redline / 2000.0) * 2000.0  # (the game's dial: 0-10 for a 9,500 rpm CR-X)
 		for i in 51:
 			var f := float(i) / 50.0
 			var a := a0 + sweep * f

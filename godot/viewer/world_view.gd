@@ -119,6 +119,13 @@ var _clock_off := INF  # Godot clock minus game clock (smallest seen)
 var _frame_dt := 1.0 / 120.0  # the game's frame interval (smoothed)
 var _live_raw := false  # --live-raw: the newest frame, no interpolation
 var _live_last_now := 0.0
+var _race_clock := -1.0  # (FM3E v9: the race clock, s; place 1-based; segment; laps counted here)
+var _race_place := 0
+var _race_segment := -1
+var _race_laps := 0
+var _race_lap_start := 0.0
+var _race_last_lap := -1.0
+var _race_best_lap := -1.0
 var _engine_redline := -1.0  # (FM3E: the player's redline, rpm; the HUD's red zone)
 var _hud: Control = null  # fm3_hud.gd (live only; FM3_HUD=0: off)
 var _engine_rpm := -1.0  # the player's engine speed ("FM3E"; -1 = none yet): the cockpit tach
@@ -1178,7 +1185,10 @@ func _hud_feed(player: int, moves: Dictionary) -> void:
 		pos[car] = Vector2(o.x, o.z)
 	_hud.call("feed", {"speed": _player_speed, "rpm": _engine_rpm, "redline": _engine_redline, "gear": _player_gear,
 		"throttle": maxf(_player_throttle, 0.0), "brake": maxf(_player_brake, 0.0), "cars": pos, "player": player,
-		"info": "game frames every %.1f ms" % (_frame_dt * 1000.0)})
+		"info": "game frames every %.1f ms" % (_frame_dt * 1000.0),
+		"place": _race_place, "lap": _race_laps if _race_clock >= 0.0 else -1, "race_time": _race_clock,
+		"lap_time": _race_clock - _race_lap_start if _race_clock >= 0.0 and _race_laps >= 1 else -1.0,
+		"last_lap": _race_last_lap, "best_lap": _race_best_lap})
 
 
 # The AI cars' paint reflecting the per-frame cube too (2026-11-26 late: the game's AI paint reads a near-field dynamic
@@ -2743,6 +2753,19 @@ func _live_step() -> void:
 				_player_speed = b.decode_float(56)
 				for i in 4:
 					_player_wheel_speed[i] = b.decode_float(60 + 4 * i)
+			if b.decode_u32(4) >= 9 and b.size() >= 132:
+				# v9: the race clock (s), the race position (1-based) and the track segment (laps counted from its drops)
+				_race_clock = b.decode_float(120)
+				_race_place = int(b.decode_u32(124))
+				var seg := int(b.decode_u32(128))
+				if _race_segment >= 0 and seg + 50 < _race_segment and _race_clock > 1.0:
+					_race_laps += 1  # (the segment drops back at the start / finish line)
+					if _race_laps >= 2:
+						# (a whole lap done: the game's "last" and "best"; the first crossing only starts lap 1)
+						_race_last_lap = _race_clock - _race_lap_start
+						_race_best_lap = _race_last_lap if _race_best_lap < 0.0 else minf(_race_best_lap, _race_last_lap)
+					_race_lap_start = _race_clock
+				_race_segment = seg
 			if b.decode_u32(4) >= 6 and b.size() >= 92:
 				# v6: the tyres' temperatures, deg C, FL FR RR RL (the game's telemetry page's values)
 				for i in 4:

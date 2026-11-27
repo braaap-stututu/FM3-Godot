@@ -912,6 +912,28 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   second index (0-5) and figure 14 mean is open: maybe animation variants (PLAN-NEXT 2).
   Measuring note: two boots' viewer pictures differed by 1.44 on average with the same settings (247 pixels by more
   than 10): a small whole-frame shift between boots; compare variants within one boot.
+- **HUD race data from the game** (2026-11-27 morning): race time, place and laps on our HUD, from the game.
+  - How they were found (all on the frozen CrownJewel grid race with the AI driving the player, the game's own HUD read
+    off shots as the reference): the eight car objects hold no race position (`tools/research/allcars.ps1`: the only
+    offset where the cars hold a permutation of 1..8 never changes: a car index at +2316); no float in memory follows
+    the wall clock (the game ran ~85% real time minimized); the debug server got **`findf LO HI`** and **`findu LO HI`**
+    (FM3-ReGPU `thirdparty/ReGPU/src/debug.cpp`, recorded as `patches/regpu-debug-findf-findu.patch`): on a frozen
+    frame, `findf` around the HUD's race time (e.g. 24.293) gave a handful of floats; the one that equalled the HUD again
+    after the race ran on is in **each car's physics object at +2772** (24.293 / 33.311 / 42.327 / 51.342 / 60.358 /
+    69.378 against the HUD's 24.293 / 33.312 / 42.328 / 51.345 / 60.361 / 69.381). `findhex <physics>` listed the
+    objects pointing at the physics object; dumped at two moments, one of them holds the **race position at +280 from
+    its pointer** (1-based: 6 -> 5, then 4, with the HUD) and a **track segment at +92** (245 -> 548 along the lap,
+    140 right after the line). Its class: the word 500 bytes before the pointer is 0x8286B06C. No lap counter was found
+    within 2 KB of it, nor the race's lap total. Scripts: `tools/research/raceclock.ps1`, `allcars.ps1`.
+  - The stream: FM3E **v9** (FM3-ReGPU 478cd0f): race clock, place, segment (the recomp finds the participant by a heap
+    scan once per physics object). The viewer counts laps from the segment's drops (the first crossing after the grid
+    starts lap 1, as the game's "LAPS 0" -> "1"), and from them last / best / current lap times.
+  - Checked live (game and viewer side by side after 70 s of race): place 5/8 = 5/8, laps 2 = 2, race time 01:09.650
+    (game) / 01:09.647 (viewer), gear 3, 129 km/h on both. The tach now reads 0-10 for redlines up to 10,000 (the
+    game's dial for the CR-X's 9,500). With last / best / lap rows (second run, 70 s): race 01:09.378 / 01:09.375,
+    last and best 00:50.396 / 00:50.326 (our lap starts when a packet shows the segment's drop, ~70 ms after the game's
+    line), lap 00:14.175 / 00:14.172, place 8/8 both. Not yet: the lap total ("/3": `"total_laps"` in the HUD config), a lap counter
+    for a viewer started mid-race (it counts from when it starts).
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended

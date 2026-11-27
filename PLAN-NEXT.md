@@ -4,8 +4,7 @@ The user's list of 2026-11-26 ~22:50 (to do until 01:30, then a plan for the res
 that night and what is left. Each item says where to start, the files involved and how to measure it. LIVE.md has the
 details of everything done; HANDOFF.md the overall state. Updated 2026-11-27 ~01:05 (the in-car fixes: 4).
 
-**Suggested order (by value against the game and how far each is):** (a) the HUD's race values (5: then the HUD can
-be on in the comparisons, ~31% of the grid's difference); (b) the crowd's animations (2: the decoder is located);
+**Suggested order (by value against the game and how far each is):** (a) done 2026-11-27: the HUD's race values; (b) the crowd's animations (2: the decoder is located);
 (c) the driver's hands (3: dump the Granny files through the recomp); (d) RoadAtlanta's exposure offset (4);
 (e) lamps / lenses on the live cube (1); (f) slip telemetry (8); (g) the menus (6, 7). Ask the user which first.
 
@@ -101,7 +100,9 @@ panel top left, laps + lap time top right, the round tach bottom right: 0-10 ove
 down, red from the redline, gear, km/h; the map bottom left with a green arrow); style "simple" keeps the free-placed
 elements. The HUD is ~31% of the CrownJewel grid's remaining difference, so with real race values it could also be
 switched on in the comparisons.
-Left: race position, lap counter and lap times. Route: the HUD's own code reads them; the tach's rpm getter is called
+**Done 2026-11-27:** race time, place, laps and last / best / lap times from the game (FM3E v9; LIVE.md "HUD race data"),
+checked against the game's HUD to a few ms. Left: the race's lap total, a lap counter for a viewer started mid-race,
+and switching the HUD on in the comparisons. (The old route, for reference: the HUD's own code reads them; the tach's rpm getter is called
 for the HUD from 0x821F2044 (`FM3-ReGPU recomp/src/hooks/live_camera.cpp` notes), so the HUD update function around
 that return address also fetches position / lap / lap time: read it in `out/ppc-rexenon` and follow its other getters
 to the race object, then stream them in FM3E. (Searching the image for the time format: `%02d.%03d` is at image offset
@@ -111,7 +112,7 @@ Also tried: `tools/research/carobjdump.ps1` (dumps a car object over a race): no
 object's address directly, so the first car was dumped (maybe not the player's): no clean timer or lap counter. The
 physics object does hold a clock: **+2704 rises exactly 1 s per second** (18.8 -> 39.3 s over a run; copies per wheel
 at +3472 + 1040 i): with the start-line crossing (or the race start) it gives lap times. The HUD function is
-`sub_821F19A8` (1710 lines of the recompiled code, ~40 callees; `out/ppc-rexenon/ppc_recomp.1.cpp`).
+`sub_821F19A8` (1710 lines of the recompiled code, ~40 callees; `out/ppc-rexenon/ppc_recomp.1.cpp`).)
 the game's own HUD look (its textures and fonts are in `Media\UI*` / the executable's Scaleform-like UI files: find
 them, then draw the same gauges); a small in-viewer editor (drag elements, save the JSON).
 
