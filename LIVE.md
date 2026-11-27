@@ -1219,6 +1219,14 @@ The user's last question was whether to chase the remaining uneven steps or call
   - *Tested by writing tables* (scratchpad dmgpoke.ps1: grid test + viewer, debug-server `poke` of the cells z 0..2 to
     1.0 on every car): 8 of 8 cars deform, the rear bumpers of the cars ahead push in (374 pixels changed in the view).
     Not yet seen with a real crash; the damage textures (damage*.xds, the scuffs) are not used yet.
+  - *A real crash* (scratchpad dmgcrash.ps1: grid test, the virtual pad at full throttle 14 s then full left 4 s into
+    the pit wall, frozen, then FM3_STAGE_B 0 live so the game draws its cars): the game's tables changed on 3 cars and
+    the viewer applied them (repeat updates ~20 ms of work over ~150 ms; the first ~0.4 s with the cell set-up). The
+    game's CR-X lost parts (its rear bumper lies on the ground beside it, two small pieces too) and has scuffs; the
+    viewer's CR-X shows neither: **detached parts** are another mechanism (the car's part list / debris objects, not
+    the lattice: find which flag hides a part, e.g. by comparing the car's part records before and after) and the
+    **scuff texture** (damage*.xds blended by an amount) is not used yet. Shots: scratchpad dmg\crash.png (viewer),
+    game-crash-drawn.png (game).
 - **Optimizing the viewer (measured, frozen CrownJewel race in stage B, 1280 x 720, vsync off, `FM3_FPS_LOG=1`):** the
   viewer is bound by Godot's draw-call submission on the CPU, not the GPU: 31-36 fps at ~5,800 draw calls; the 3D
   crowd's 36 M of the 43 M triangles, MSAA and the shadows changed nothing. Our own script is ~7 ms a frame (cars 2.7,
