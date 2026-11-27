@@ -2229,12 +2229,122 @@ func _damage_start(car) -> void:
 		return  # (undamaged and never moved: nothing to do)
 	if not _damage_ensure(car):
 		return
+	_sparks_from_damage(car, tab)
 	_dmg_moved[car] = true
 	var lat: Array = _dmg_lat[car]
 	var key := str(lat)
 	if not _dmg_pre.has(car) or String(_dmg_pre[car][0]) != key:
 		_dmg_pre[car] = [key, []]
 	_dmg_job = {"car": car, "tab": tab, "any": any, "i": 0, "moved": 0, "nv": 0, "t0": Time.get_ticks_usec(), "us": 0}
+
+
+# Collision sparks (2026-11-27): the game draws them in its skipped world steps too. A burst where a car's damage table
+# grew since its last table: the lattice cell with the largest increase (its centre, from the lattice origin and extent,
+# through the car's body mesh to the world), flying outward from the car's centre. The game's numbers: particles.xml
+# <spark><collision> (25 sparks, lifetimes 0.7-1.0 s, 5-20 m/s, drag 0.6, streaks 0.1-0.2 m long) and Sparks1.xml
+# (additive, orange 1 / 0.59 / 0.04 to 1 / 0.39 / 0.2). A bigger increase, more sparks. FM3_SPARKS=0 off.
+var _spark_prev := {}  # car -> the car's last damage table (host floats)
+var _spark_pool := []  # GPUParticles3D, used in turn
+var _spark_next := 0
+var _spark_proc: ParticleProcessMaterial = null
+var _spark_mesh: ArrayMesh = null
+var _spark_test := {}  # car -> msec of its last test burst (FM3_FX_TEST=3)
+
+
+func _sparks_from_damage(car, tab: PackedFloat32Array) -> void:
+	var prev = _spark_prev.get(car)
+	_spark_prev[car] = tab
+	if OS.get_environment("FM3_SPARKS") == "0" or not _dmg_parts.has(car):
+		return
+	var pv := PackedFloat32Array()
+	if prev == null:
+		pv.resize(8000)  # (the first damaged table: undamaged before it)
+	else:
+		pv = prev
+	var best := 0.0
+	var bc := -1
+	for c in 1000:
+		var d := 0.0
+		for k in 8:
+			d = maxf(d, tab[c * 8 + k] - pv[c * 8 + k])
+		if d > best:
+			best = d
+			bc = c
+	if bc < 0 or best < 0.01:
+		return
+	var parts: Array = _dmg_parts[car]
+	if parts.is_empty() or not is_instance_valid(parts[0][0]):
+		return
+	var lat: Array = _dmg_lat[car]
+	var org: Vector3 = lat[0]
+	var inv: Vector3 = lat[1] * 10.0
+	var g := Vector3(bc % 10, (bc / 10) % 10, bc / 100) + Vector3(0.5, 0.5, 0.5)
+	var loc := org + Vector3(g.x / inv.x, g.y / inv.y, g.z / inv.z)
+	var mid := org + Vector3(5.0 / inv.x, 5.0 / inv.y, 5.0 / inv.z)
+	var xf := (parts[0][0] as MeshInstance3D).global_transform
+	_spark_burst(xf * loc, (xf.basis * (loc - mid)).normalized(), clampf(best * 4.0, 0.3, 1.0))
+	print("world_view: car %08X sparks (damage +%.2f, cell %d)" % [car, best, bc])
+
+
+func _spark_burst(at: Vector3, out: Vector3, strength: float) -> void:
+	if _spark_proc == null:
+		_spark_proc = ParticleProcessMaterial.new()
+		_spark_proc.direction = Vector3(0, 1, 0)
+		_spark_proc.spread = 40.0
+		_spark_proc.initial_velocity_min = 3.0
+		_spark_proc.initial_velocity_max = 10.0
+		_spark_proc.damping_min = 8.0  # (the game's drag: streaks that stop within a metre or two)
+		_spark_proc.damping_max = 12.0
+		_spark_proc.gravity = Vector3(0, -9.8, 0)
+		_spark_proc.particle_flag_align_y = true
+		_spark_proc.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+		_spark_proc.emission_sphere_radius = 0.2  # (random_position_offset)
+		var gr := Gradient.new()
+		gr.set_color(0, Color(1.0, 0.592, 0.039, 1.0))
+		gr.set_color(1, Color(1.0, 0.388, 0.196, 0.0))
+		var grt := GradientTexture1D.new()
+		grt.gradient = gr
+		_spark_proc.color_ramp = grt
+		# a streak: two crossed thin quads along Y (the particle's velocity)
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for ax in [Vector3(0.012, 0, 0), Vector3(0, 0, 0.012)]:
+			var a: Vector3 = ax
+			var q := [-a + Vector3(0, -0.08, 0), a + Vector3(0, -0.08, 0), a + Vector3(0, 0.08, 0), -a + Vector3(0, 0.08, 0)]
+			for i in [0, 1, 2, 0, 2, 3]:
+				st.add_vertex(q[i])
+		_spark_mesh = st.commit()
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.vertex_color_use_as_albedo = true
+		m.albedo_color = Color(1.6, 1.6, 1.6)  # (a little over 1: additive sparks glow, still orange)
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.disable_receive_shadows = true
+		_spark_mesh.surface_set_material(0, m)
+	if _spark_pool.size() < 8:
+		var e := GPUParticles3D.new()
+		e.amount = 25
+		e.lifetime = 1.0
+		e.one_shot = true
+		e.explosiveness = 0.9
+		e.local_coords = false
+		e.process_material = _spark_proc
+		e.draw_pass_1 = _spark_mesh
+		e.emitting = false
+		e.visibility_aabb = AABB(Vector3(-15, -15, -15), Vector3(30, 30, 30))
+		e.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(e)
+		_spark_pool.append(e)
+	var em: GPUParticles3D = _spark_pool[_spark_next % _spark_pool.size()]
+	_spark_next += 1
+	var o := out
+	o.y = maxf(o.y, 0.0) + 0.15
+	o = o.normalized()
+	em.global_transform = Transform3D(Basis(Quaternion(Vector3(0, 1, 0), o)), at)
+	em.amount_ratio = strength
+	em.restart()
+	em.emitting = true
 
 
 # Each vertex with a direction: its cell (x 8, the table's float index) and its place in the cell, once per lattice.
@@ -2702,6 +2812,9 @@ func _fx_update(moves: Dictionary, wmoves: Dictionary) -> void:
 			var a := clampf((slip - lim[0]) / maxf(lim[1] - lim[0], 0.1), 0.0, 1.0)
 			if OS.get_environment("FM3_FX_TEST") == "1":
 				a = 1.0  # (tests: every wheel smoking)
+			if OS.get_environment("FM3_FX_TEST") == "3" and k == 0 and now - int(_spark_test.get(car, 0)) > 1000:
+				_spark_test[car] = now
+				_spark_burst(c + up * 0.3, body.basis.z.normalized(), 1.0)  # (tests: sparks at each car's front wheel)
 			var contact := c - up * WHEEL_RADIUS
 			var em: GPUParticles3D = _fx_emit.get(key)
 			if a > 0.02 and em == null:
