@@ -1464,6 +1464,7 @@ func _merge_car_body(scene_: Node, car) -> void:
 		var cat := []
 		cat.resize(Mesh.ARRAY_MAX)
 		var src := PackedInt32Array()
+		var ranges := PackedInt32Array()  # (source mesh index, first vertex, end) triples: parts can come off (FM3P)
 		var base_ := 0
 		for mm in ms:
 			var m := mm as MeshInstance3D
@@ -1485,14 +1486,16 @@ func _merge_car_body(scene_: Node, car) -> void:
 				cat[Mesh.ARRAY_INDEX] = off
 			else:
 				cat[Mesh.ARRAY_INDEX].append_array(off)
-			base_ += nv
 			var nm_ := String(m.name)
 			src.append(int(nm_.get_slice("_", nm_.get_slice_count("_") - 1)))
+			ranges.append_array(PackedInt32Array([src[src.size() - 1], base_, base_ + nv]))
+			base_ += nv
 		var am := ArrayMesh.new()
 		am.add_surface_from_arrays(first.mesh.surface_get_primitive_type(0), cat)
 		am.surface_set_material(0, first.mesh.surface_get_material(0))
 		first.mesh = am
 		first.set_meta("dmg_src", src)
+		first.set_meta("src_ranges", ranges)
 		for k in range(1, ms.size()):
 			(ms[k] as Node).get_parent().remove_child(ms[k])
 			(ms[k] as Node).queue_free()
@@ -1899,10 +1902,12 @@ func _damage_parts_load(car, scene_: Node, path: String) -> void:
 	var f := FileAccess.get_file_as_bytes(path)
 	if f.size() < 12 or f.slice(0, 4).get_string_from_ascii() != "FM3d":
 		return
-	if f.decode_u32(4) != 2:
+	var ver := int(f.decode_u32(4))
+	if ver != 2 and ver != 3:
 		return
 	# (Godot's glTF import drops a mesh's unused vertices: the directions are matched by position, per part)
 	var by_mesh := {}  # glTF mesh index -> {position: direction} of its part
+	var groups_ := []  # [vertices, [glTF mesh index, ...]] per part (FM3P: which parts are still on the car)
 	var o := 12
 	for _g in int(f.decode_u32(8)):
 		var nm := int(f.decode_u32(o))
@@ -1912,6 +1917,15 @@ func _damage_parts_load(car, scene_: Node, path: String) -> void:
 		o += 4 + 4 * nm
 		var nv := int(f.decode_u32(o))
 		o += 4
+		var psz := PackedInt32Array([nv * 40])
+		if ver >= 3:
+			# (every buffer size the part is drawn with: LOD 0, the main file's LOD 1-5)
+			var nsz := int(f.decode_u32(o))
+			o += 4
+			psz = PackedInt32Array()
+			for q in nsz:
+				psz.append(int(f.decode_u32(o + 4 * q)))
+			o += 4 * nsz
 		var pos := f.slice(o, o + 12 * nv).to_float32_array()
 		var dir := f.slice(o + 12 * nv, o + 24 * nv).to_float32_array()
 		o += 24 * nv
@@ -1920,6 +1934,7 @@ func _damage_parts_load(car, scene_: Node, path: String) -> void:
 			lut[_dmg_key(Vector3(pos[3 * i], pos[3 * i + 1], pos[3 * i + 2]))] = Vector3(dir[3 * i], dir[3 * i + 1], dir[3 * i + 2])
 		for mi_ in ms:
 			by_mesh[mi_] = lut
+		groups_.append([psz, ms])
 	var parts := []
 	var missed := 0
 	var total := 0
@@ -1961,6 +1976,7 @@ func _damage_parts_load(car, scene_: Node, path: String) -> void:
 		total += verts.size()
 		parts.append([m, verts, dirs])
 	_dmg_parts[car] = parts
+	_dmg_groups[car] = groups_
 	print("world_view: car %08X damage directions on %d meshes (%d of %d vertices not found by position)" % [car, parts.size(), missed, total])
 
 
@@ -2099,11 +2115,113 @@ func _damage_step() -> void:
 	j["nv"] = int(j["nv"]) + orig.size()
 	var arrays: Array = (pre[4] as Array).duplicate()
 	arrays[Mesh.ARRAY_VERTEX] = out
+	if m.has_meta("idx_now"):
+		arrays[Mesh.ARRAY_INDEX] = m.get_meta("idx_now")
 	var nm_ := ArrayMesh.new()
 	nm_.add_surface_from_arrays(int(pre[6]), arrays)
 	nm_.surface_set_material(0, pre[5])
 	m.mesh = nm_
 	j["us"] = int(j["us"]) + Time.get_ticks_usec() - t0
+
+
+# Parts knocked off ("FM3P" v2, 2026-11-27; FM3-ReGPU live_camera.cpp PartsProbeDone): after a crash the game reports
+# the sizes of the vertex buffers it draws on the car and of those it draws elsewhere (loose). A library part whose
+# buffer sizes (<car>_damage.bin v3) are among the loose ones and not on the car is hidden: a whole mesh, or its
+# triangles in a merged one. Applied only when most of the car's
+# parts are found (the car drawn at full detail; far away the game draws other buffers). FM3_PARTS=0 off.
+var _dmg_groups := {}  # car -> [[the part's buffer sizes, [glTF mesh index, ...]], ...]
+var _parts_hidden := {}  # car -> {glTF mesh index: true}
+
+
+func _parts_packet(b: PackedByteArray) -> void:
+	if OS.get_environment("FM3_PARTS") == "0":
+		return
+	var car := int(b.decode_u32(8))
+	if not _dmg_groups.has(car):
+		return
+	var sizes := {}
+	var loose := {}
+	var n_on := mini(int(b.decode_u32(12)), 255)
+	var n_off := mini(int(b.decode_u32(16)), 255 - n_on)
+	for i in n_on:
+		sizes[int(b.decode_u32(20 + 4 * i))] = true
+	for i in n_off:
+		loose[int(b.decode_u32(20 + 4 * (n_on + i)))] = true
+	var groups: Array = _dmg_groups[car]
+	var found := 0
+	var hidden := {}
+	for g in groups:
+		var on_car := false
+		var off := false
+		for z in (g[0] as PackedInt32Array):
+			on_car = on_car or sizes.has(z)
+			off = off or loose.has(z)
+		if on_car:
+			found += 1
+		elif off:
+			# (drawn, but at its own translation: off the car, hanging or lying on the ground; a part not drawn at all
+			# may only be culled or drawn by a shader the probe does not see, so it stays)
+			for mi_ in g[1]:
+				hidden[int(mi_)] = true
+	if groups.is_empty() or found * 10 < groups.size() * 6:
+		if OS.get_environment("FM3_PARTS_LOG") == "1":
+			var gs := []
+			for g in groups:
+				gs.append(g[0])
+			print("world_view: car %08X parts: %d of %d library parts' sizes among the %d drawn: left as they are (sizes %s; library %s)" % [car, found, groups.size(), sizes.size(), str(sizes.keys()), str(gs)])
+		return  # (not drawn at full detail: these sizes say nothing about its parts)
+	var old: Dictionary = _parts_hidden.get(car, {})
+	if old.keys() == hidden.keys():
+		return
+	_parts_hidden[car] = hidden
+	var n := 0
+	for p in _dmg_parts.get(car, []):
+		var m := p[0] as MeshInstance3D
+		if not is_instance_valid(m):
+			continue
+		if not m.has_meta("src_ranges"):
+			var nm_ := String(m.name)
+			var off := hidden.has(int(nm_.get_slice("_", nm_.get_slice_count("_") - 1)))
+			if m.visible == off:
+				m.visible = not off
+				n += 1
+			continue
+		# a merged mesh: its triangles of hidden parts left out
+		var am := m.mesh as ArrayMesh
+		if am == null:
+			continue
+		if not m.has_meta("idx0"):
+			m.set_meta("idx0", am.surface_get_arrays(0)[Mesh.ARRAY_INDEX])
+		var idx0: PackedInt32Array = m.get_meta("idx0")
+		var rg: PackedInt32Array = m.get_meta("src_ranges")
+		var cut := []
+		for r in range(0, rg.size(), 3):
+			if hidden.has(rg[r]):
+				cut.append(Vector2i(rg[r + 1], rg[r + 2]))
+		var idx := idx0
+		if not cut.is_empty():
+			idx = PackedInt32Array()
+			for t in range(0, idx0.size(), 3):
+				var v := idx0[t]
+				var keep := true
+				for c in cut:
+					if v >= c.x and v < c.y:
+						keep = false
+						break
+				if keep:
+					idx.append(idx0[t])
+					idx.append(idx0[t + 1])
+					idx.append(idx0[t + 2])
+		m.set_meta("idx_now", idx)
+		var arrays := am.surface_get_arrays(0)
+		arrays[Mesh.ARRAY_INDEX] = idx
+		var mat := am.surface_get_material(0)
+		var nm2 := ArrayMesh.new()
+		nm2.add_surface_from_arrays(am.surface_get_primitive_type(0), arrays)
+		nm2.surface_set_material(0, mat)
+		m.mesh = nm2
+		n += 1
+	print("world_view: car %08X parts: %d of %d on the car, %d meshes changed (hidden mesh parts: %s)" % [car, found, groups.size(), n, str(hidden.keys())])
 
 
 const WHEEL_RADIUS := 0.31  # m (FM3's cars' wheels are ~0.28-0.34 m; at speed the blurred wheel hides the difference)
@@ -3456,6 +3574,9 @@ func _live_step() -> void:
 			# every car's brake (and throttle) from its own physics object (2026-11-27): the brake lights
 			for i in mini(int(b.decode_u32(8)), 16):
 				_car_brake[int(b.decode_u32(12 + 12 * i))] = [b.decode_float(16 + 12 * i), Time.get_ticks_msec()]
+			continue
+		if b.size() == 1040 and b.slice(0, 4).get_string_from_ascii() == "FM3P" and b.decode_u32(4) == 2:
+			_parts_packet(b)
 			continue
 		if b.size() == 8080 and b.slice(0, 4).get_string_from_ascii() == "FM3D" and b.decode_u32(4) == 1:
 			_damage_packet(b)

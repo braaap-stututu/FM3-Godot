@@ -141,21 +141,23 @@ class Gltf:
 
 
 # <car>_damage.bin (2026-11-27): the body meshes' crash-damage directions (fm3_carbin.damage_dir), for the viewer to
-# move the vertices by the car's damage lattice ("FM3D"): 'FM3d', u32 version 2, u32 groups; per group (one part's
+# move the vertices by the car's damage lattice ("FM3D"): 'FM3d', u32 version 3, u32 groups; per group (one part's
 # vertices, shared by its meshes): u32 meshes, u32 mesh index (glTF, = the node's _<n> suffix) x meshes, u32 vertices,
-# f32 x 3 x vertices positions (as in the glTF), f32 x 3 x vertices directions. Parts with no damage direction are left
-# out. (The positions: Godot's glTF import drops each mesh's unused vertices, so the viewer matches by position.)
+# u32 sizes, u32 x sizes (the part's vertex buffer sizes in bytes: LOD 0 and the main file's LOD 1-5), f32 x 3 x vertices
+# positions (as in the glTF), f32 x 3 x vertices directions (zero for parts that do not dent; every body part is
+# listed, parts can come off). (The positions: Godot's glTF import drops each mesh's unused vertices, so the viewer matches by position.)
 DAMAGE_ONLY = False
 
 
 def write_damage(path, groups):
-    groups = [(sec, m) for sec, m in groups if np.abs(sec['damage_dir']).max() > 1e-6]
+    groups = list(groups)  # (every body part, also those with no damage direction: parts can come off, FM3P)
     with open(path, 'wb') as f:
-        f.write(b'FM3d' + np.array([2, len(groups)], '<u4').tobytes())
+        f.write(b'FM3d' + np.array([3, len(groups)], '<u4').tobytes())
         for sec, meshes in groups:
             d = np.nan_to_num(sec['damage_dir']).astype('<f4')
             pos = np.nan_to_num((sec['local'] + sec['offset']).astype(np.float32)).astype('<f4')
-            f.write(np.array([len(meshes)] + meshes + [len(d)], '<u4').tobytes())
+            sz = list(sec.get('part_sizes', []))
+            f.write(np.array([len(meshes)] + meshes + [len(d), len(sz)] + sz, '<u4').tobytes())
             f.write(pos.tobytes())
             f.write(d.tobytes())
 
@@ -278,12 +280,24 @@ def build(car, cdir, wdir, db, outdir):
     dmg = {}  # id(section) -> [section, [mesh index, ...]]: the body meshes' crash-damage directions (<car>_damage.bin)
     # body: LOD 0 + main LOD 1 for parts LOD 0 lacks; parts as build_cars keeps them (stock: the 'a' variants and
     # unlettered parts; 'race' / lettered alternates left out)
-    l0 = fm3_carbin.sections(fm3_carbin.parse(open(lod0, 'rb').read()), 0)
+    c0 = fm3_carbin.parse(open(lod0, 'rb').read())
+    l0 = fm3_carbin.sections(c0, 0)
     main = os.path.join(zdir, car + '.carbin')
     have = {s['name'] for s in l0}
     l1 = []
+    cmain = None
     if os.path.exists(main):
-        l1 = [s for s in fm3_carbin.sections(fm3_carbin.parse(open(main, 'rb').read()), 1) if s['name'] not in have]
+        cmain = fm3_carbin.parse(open(main, 'rb').read())
+        l1 = [s for s in fm3_carbin.sections(cmain, 1) if s['name'] not in have]
+    # every vertex buffer size a part can be drawn with (its LOD 0 buffer, the main file's LOD 1-5 one): the game reports
+    # the buffers still on a car after a crash by size ("FM3P", <car>_damage.bin v3)
+    part_sizes = {}
+    for cc in (c0, cmain):
+        for pp in (cc['parts'] if cc else []):
+            for kk in ('vb0', 'vb'):
+                vb = pp.get(kk)
+                if vb and vb['count']:
+                    part_sizes.setdefault(pp['name'], set()).add(vb['count'] * vb['stride'])
     for s in l0:
         s['lod'] = 0
     for s in l1:
@@ -396,6 +410,8 @@ def build(car, cdir, wdir, db, outdir):
                         add(f'brake_{car}_{k}_{kind}_{mname}', sec, P, sec.get('normal'), mname,
                             flat_mat(mname if mname in tx.CAR_FLAT else 'black'), None, fz=True)
     out = os.path.join(outdir, car + '.gltf')
+    for sec_, _m in dmg.values():
+        sec_['part_sizes'] = sorted(part_sizes.get(sec_['name'], set()))
     write_damage(os.path.join(outdir, car + '_damage.bin'), dmg.values())
     if DAMAGE_ONLY:
         return f'{car}: damage directions of {sum(len(m) for _, m in dmg.values())} meshes'
