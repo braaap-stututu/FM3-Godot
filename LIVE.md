@@ -1365,7 +1365,10 @@ The user's last question was whether to chase the remaining uneven steps or call
   15.3; dash middle |diff| 13.9 -> 9.9, cabin bottom 22.4 -> 20.0, roof 2.5 -> 4.3, the A-pillar 2.0 either way: it is
   not a cockpit-shader mesh); x1.3 on the materials 16.4. Within boot noise (~0.2), so not the default yet; only the
   CR-X si is rebuilt with the transfer (`tools/fm3_car_library.py ... out/cars <car>`, 2.5 s a car). Next: the A-pillar's
-  mesh (FM3_HIDE_PARTS), the rest of the 618 family's terms (its specular, pc5 / pc14), then rebuild the library. Default stays
+  mesh (FM3_HIDE_PARTS), the rest of the 618 family's terms (its specular, pc5 / pc14), then rebuild the library.
+  (~21:15: `FM3_HIDE_PARTS=cockpit_body` hides the hood, not the pillar; `cockpit_black` leaves the pillar too (2.0
+  both); it did respond to the light variants (4.7 with the transfer's sun), so it is one of the a_pillar section's
+  other cockpit meshes: plastic2, matte_colors or rubber_trim.) Default stays
   the old fitted light (in-car 16.5 / 15.8 / 15.4 after the change). The old switch `FM3_COCKPIT_VCOL=0` (no baked
   brightness) was tried too: 17.7, the pillar 4.1.
 - **The crowd's light (2026-11-27 ~20:30):** the game's crowd pixel shader b32f44c528968ecc with its constants
