@@ -1,7 +1,7 @@
 """fm3_car_library.py: every car as its own glTF from the game's files, no capture (PLAN-CARS phase 5 / LIVE.md stage A
 item 5: cars attached by the stream's identity, on any track).
 
-    python tools/fm3_car_library.py <car files dir> <wheel files dir> <gamedb.slt> <out dir> [car ...]
+    python tools/fm3_car_library.py <car files dir> <wheel files dir> <gamedb.slt> <out dir> [car ...] [--damage-only]
 
 <car files dir>/<car>/ = the car zip's contents (fm3_track_export.py --car-files), <wheel files dir>/<car>/ = its
 stock wheel zip (--wheel-files). Writes per car <out>/<car>.gltf (+ .bin, <car>_tex/):
@@ -140,6 +140,26 @@ class Gltf:
             json.dump(g, f)
 
 
+# <car>_damage.bin (2026-11-27): the body meshes' crash-damage directions (fm3_carbin.damage_dir), for the viewer to
+# move the vertices by the car's damage lattice ("FM3D"): 'FM3d', u32 version 2, u32 groups; per group (one part's
+# vertices, shared by its meshes): u32 meshes, u32 mesh index (glTF, = the node's _<n> suffix) x meshes, u32 vertices,
+# f32 x 3 x vertices positions (as in the glTF), f32 x 3 x vertices directions. Parts with no damage direction are left
+# out. (The positions: Godot's glTF import drops each mesh's unused vertices, so the viewer matches by position.)
+DAMAGE_ONLY = False
+
+
+def write_damage(path, groups):
+    groups = [(sec, m) for sec, m in groups if np.abs(sec['damage_dir']).max() > 1e-6]
+    with open(path, 'wb') as f:
+        f.write(b'FM3d' + np.array([2, len(groups)], '<u4').tobytes())
+        for sec, meshes in groups:
+            d = np.nan_to_num(sec['damage_dir']).astype('<f4')
+            pos = np.nan_to_num((sec['local'] + sec['offset']).astype(np.float32)).astype('<f4')
+            f.write(np.array([len(meshes)] + meshes + [len(d)], '<u4').tobytes())
+            f.write(pos.tobytes())
+            f.write(d.tobytes())
+
+
 # Disc 2's database patches (the packages' media\db\patch\*_merge.slt, extracted by add_cars.ps1 to
 # workssets\dlc_db): its cars' Data_Car and Combo_Colors rows (FOR_FusionSport_10 is only in 4064_merge.slt)
 EXTRA_DBS = []
@@ -250,9 +270,12 @@ def build(car, cdir, wdir, db, outdir):
             tris = fm3_car.triangles(sub['indices'], sub['prim'], restart=sub.get('restart', 0xFFFF))
             if len(tris) and tris.max() < len(P):
                 g.mesh(prefix, P, tris, sec['uv0'], Nf, lit, mat, flip, fz, U2=sec.get('env_sh'))
+                if prefix.startswith('carbin_') and sec.get('damage_dir') is not None and len(g.meshes) == len(g.nodes):
+                    dmg.setdefault(id(sec), [sec, []])[1].append(len(g.meshes) - 1)
 
     settings = tx.car_settings(zdir)
     carmats, needles = {}, {}
+    dmg = {}  # id(section) -> [section, [mesh index, ...]]: the body meshes' crash-damage directions (<car>_damage.bin)
     # body: LOD 0 + main LOD 1 for parts LOD 0 lacks; parts as build_cars keeps them (stock: the 'a' variants and
     # unlettered parts; 'race' / lettered alternates left out)
     l0 = fm3_carbin.sections(fm3_carbin.parse(open(lod0, 'rb').read()), 0)
@@ -373,6 +396,9 @@ def build(car, cdir, wdir, db, outdir):
                         add(f'brake_{car}_{k}_{kind}_{mname}', sec, P, sec.get('normal'), mname,
                             flat_mat(mname if mname in tx.CAR_FLAT else 'black'), None, fz=True)
     out = os.path.join(outdir, car + '.gltf')
+    write_damage(os.path.join(outdir, car + '_damage.bin'), dmg.values())
+    if DAMAGE_ONLY:
+        return f'{car}: damage directions of {sum(len(m) for _, m in dmg.values())} meshes'
     g.write(out)
     for suffix, data in (('_colors.json', car_colors(db, car)), ('_carmaterials.json', carmats), ('_needles.json', needles),
                          ('_lamps.json', tx.lamp_params(zdir))):
@@ -387,6 +413,13 @@ def main():
     if len(a) < 4:
         print(__doc__)
         return 2
+    global DAMAGE_ONLY
+    if '--damage-only' in a:
+        # (only <car>_damage.bin: the meshes are built as always, so their indices match the existing glTF; no
+        # textures written)
+        a.remove('--damage-only')
+        DAMAGE_ONLY = True
+        Gltf.texture = lambda self, img, name: 0
     cdir, wdir, db, outdir = a[:4]
     tx.CAR_FILE_DIRS[:] = [cdir]
     import glob

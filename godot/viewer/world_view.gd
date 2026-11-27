@@ -1747,6 +1747,256 @@ func _update_lights(player) -> void:
 # steering and suspension but stood still (0-0.6 degrees a viewer frame at 35 m/s, where a 31 cm wheel turns ~30). Each
 # wheel turns here about its axle (the car's up crossed with its direction of travel, so no axis convention is assumed;
 # backwards too) by the distance the car moved over the wheel's radius, accumulated per wheel. FM3_WHEEL_SPIN=0: off.
+# Crash damage (2026-11-27; LIVE.md "Crash damage"). The game moves each car vertex along its own damage direction by
+# the car's damage lattice: 10 x 10 x 10 cells fitted to the car (origin vc41, inverse extent vc42), each cell 8 corner
+# amounts blended trilinearly, the sum clamped to 0..1 and to vc58 (the paint vertex shader a102319a5aef757b).
+# FM3-ReGPU live_camera.cpp streams each car's table ("FM3D", 4 packets of 8,000 bytes, big-endian floats, sent when it
+# changes and every 2 s); the library's <car>_damage.bin holds the body meshes' directions (fm3_car_library.py). On a
+# change the car's body meshes get new vertex positions (CPU, at most twice a second a car). FM3_DAMAGE=0 off.
+var _dmg_raw := {}  # car -> PackedByteArray(32000): the table as received
+var _dmg_lat := {}  # car -> [origin Vector3, inverse extent Vector3, clamp lo, clamp hi]
+var _dmg_chunks := {}  # car -> bit mask of the chunks received
+var _dmg_dirty := {}  # car -> true: a new table to apply
+var _dmg_applied := {}  # car -> msec of the last deformation
+var _dmg_count := {}  # car -> FM3D packets received (FM3_DAMAGE_LOG=1 prints them every 5 s)
+var _dmg_log_at := 0
+var _dmg_job := {}  # the deformation in progress (car, table, next part)
+var _dmg_pre := {}  # car -> [lattice key, per part: vertex index, cell, place in the cell, direction]
+var _dmg_moved := {}  # car -> true: its meshes were rebuilt once (a later all-zero table puts them back)
+var _dmg_parts := {}  # car -> [[MeshInstance3D, original vertices, directions], ...]
+var _dmg_on := OS.get_environment("FM3_DAMAGE") != "0"
+
+
+func _damage_packet(b: PackedByteArray) -> void:
+	if not _dmg_on:
+		return
+	var car := int(b.decode_u32(8))
+	var chunk := int(b.decode_u32(12))
+	if chunk > 3:
+		return
+	_dmg_count[car] = int(_dmg_count.get(car, 0)) + 1
+	if not _dmg_raw.has(car):
+		var z := PackedByteArray()
+		z.resize(32000)
+		_dmg_raw[car] = z
+		_dmg_chunks[car] = 0
+	var raw: PackedByteArray = _dmg_raw[car]
+	var data := b.slice(80, 8080)
+	_dmg_lat[car] = [Vector3(b.decode_float(16), b.decode_float(20), b.decode_float(24)),
+		Vector3(b.decode_float(32), b.decode_float(36), b.decode_float(40)), b.decode_float(64), b.decode_float(68)]
+	var had := int(_dmg_chunks[car])
+	if raw.slice(chunk * 8000, chunk * 8000 + 8000) != data or (had & (1 << chunk)) == 0:
+		for i in 8000:
+			raw[chunk * 8000 + i] = data[i]
+		_dmg_chunks[car] = had | (1 << chunk)
+		if int(_dmg_chunks[car]) == 15:
+			_dmg_dirty[car] = true
+
+
+func _damage_parts_load(car, scene_: Node, path: String) -> void:
+	if not _dmg_on or not FileAccess.file_exists(path):
+		return
+	var f := FileAccess.get_file_as_bytes(path)
+	if f.size() < 12 or f.slice(0, 4).get_string_from_ascii() != "FM3d":
+		return
+	if f.decode_u32(4) != 2:
+		return
+	# (Godot's glTF import drops a mesh's unused vertices: the directions are matched by position, per part)
+	var by_mesh := {}  # glTF mesh index -> {position: direction} of its part
+	var o := 12
+	for _g in int(f.decode_u32(8)):
+		var nm := int(f.decode_u32(o))
+		var ms := []
+		for k in nm:
+			ms.append(int(f.decode_u32(o + 4 + 4 * k)))
+		o += 4 + 4 * nm
+		var nv := int(f.decode_u32(o))
+		o += 4
+		var pos := f.slice(o, o + 12 * nv).to_float32_array()
+		var dir := f.slice(o + 12 * nv, o + 24 * nv).to_float32_array()
+		o += 24 * nv
+		var lut := {}
+		for i in nv:
+			lut[_dmg_key(Vector3(pos[3 * i], pos[3 * i + 1], pos[3 * i + 2]))] = Vector3(dir[3 * i], dir[3 * i + 1], dir[3 * i + 2])
+		for mi_ in ms:
+			by_mesh[mi_] = lut
+	var parts := []
+	var missed := 0
+	var total := 0
+	for mi in scene_.find_children("carbin_*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		var nm_ := String(m.name)
+		var idx := int(nm_.get_slice("_", nm_.get_slice_count("_") - 1))
+		if not by_mesh.has(idx) or m.mesh == null or m.mesh.get_surface_count() != 1:
+			continue
+		var lut: Dictionary = by_mesh[idx]
+		var verts: PackedVector3Array = m.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		var dirs := PackedFloat32Array()
+		dirs.resize(3 * verts.size())
+		for i in verts.size():
+			var kk := _dmg_key(verts[i])
+			var d = lut.get(kk)
+			if d == null:
+				# (Godot keeps imported positions 16-bit within the mesh's box: up to ~0.1 mm off, maybe over a step)
+				for dz in [-1, 0, 1]:
+					for dy in [-1, 0, 1]:
+						for dx in [-1, 0, 1]:
+							if d == null:
+								d = lut.get(kk + Vector3i(dx, dy, dz))
+			if d == null:
+				missed += 1
+				continue
+			dirs[3 * i] = d.x
+			dirs[3 * i + 1] = d.y
+			dirs[3 * i + 2] = d.z
+		total += verts.size()
+		parts.append([m, verts, dirs])
+	_dmg_parts[car] = parts
+	print("world_view: car %08X damage directions on %d meshes (%d of %d vertices not found by position)" % [car, parts.size(), missed, total])
+
+
+func _dmg_key(v: Vector3) -> Vector3i:
+	return Vector3i(roundi(v.x * 2000.0), roundi(v.y * 2000.0), roundi(v.z * 2000.0))
+
+
+func _damage_update() -> void:
+	var now := Time.get_ticks_msec()
+	if OS.get_environment("FM3_DAMAGE_LOG") == "1" and now - _dmg_log_at > 5000:
+		_dmg_log_at = now
+		var parts_ := []
+		for c in _dmg_count:
+			parts_.append("%08X %d pk mask %d%s%s" % [c, _dmg_count[c], int(_dmg_chunks.get(c, 0)), " dirty" if _dmg_dirty.has(c) else "", " parts" if _dmg_parts.has(c) else ""])
+		print("world_view: damage packets: " + ", ".join(parts_))
+	# (the work is spread over frames: about 3 ms a frame, a part's mesh at a time)
+	var t_end := Time.get_ticks_usec() + 3000
+	while Time.get_ticks_usec() < t_end:
+		if _dmg_job.is_empty():
+			var start = null
+			for car in _dmg_dirty.keys():
+				if _dmg_parts.has(car) and (not _dmg_applied.has(car) or now - int(_dmg_applied[car]) >= 500):
+					start = car
+					break
+			if start == null:
+				return
+			_dmg_dirty.erase(start)
+			_dmg_applied[start] = now
+			_damage_start(start)
+			continue
+		_damage_step()
+
+
+# A car's new table: big-endian floats to host, and the job over its parts (none if it is undamaged and never moved).
+func _damage_start(car) -> void:
+	var raw: PackedByteArray = _dmg_raw[car]
+	var sw := PackedByteArray()
+	sw.resize(32000)
+	for i in range(0, 32000, 4):
+		sw[i] = raw[i + 3]
+		sw[i + 1] = raw[i + 2]
+		sw[i + 2] = raw[i + 1]
+		sw[i + 3] = raw[i]
+	var tab := sw.to_float32_array()
+	var any := false
+	for v in tab:
+		if v != 0.0:
+			any = true
+			break
+	if not any and not _dmg_moved.has(car):
+		return  # (undamaged and never moved: nothing to do)
+	_dmg_moved[car] = true
+	var lat: Array = _dmg_lat[car]
+	var key := str(lat)
+	if not _dmg_pre.has(car) or String(_dmg_pre[car][0]) != key:
+		_dmg_pre[car] = [key, []]
+	_dmg_job = {"car": car, "tab": tab, "any": any, "i": 0, "moved": 0, "nv": 0, "t0": Time.get_ticks_usec(), "us": 0}
+
+
+# Each vertex with a direction: its cell (x 8, the table's float index) and its place in the cell, once per lattice.
+func _damage_prepare(car, p: Array) -> Array:
+	var lat: Array = _dmg_lat[car]
+	var org: Vector3 = lat[0]
+	var inv: Vector3 = lat[1] * 10.0
+	var orig: PackedVector3Array = p[1]
+	var dirs: PackedFloat32Array = p[2]
+	var vi := PackedInt32Array()
+	var cell := PackedInt32Array()
+	var fr := PackedVector3Array()
+	var dv := PackedVector3Array()
+	for i in orig.size():
+		var d := Vector3(dirs[3 * i], dirs[3 * i + 1], dirs[3 * i + 2])
+		if d == Vector3.ZERO:
+			continue
+		var q := orig[i]
+		var g := Vector3((q.x - org.x) * inv.x, (q.y - org.y) * inv.y, (q.z - org.z) * inv.z)
+		var f := g.floor()
+		vi.append(i)
+		cell.append((int(clampf(f.z, 0.0, 9.0)) * 100 + int(clampf(f.y, 0.0, 9.0)) * 10 + int(clampf(f.x, 0.0, 9.0))) * 8)
+		fr.append(g - f)
+		dv.append(d)
+	return [vi, cell, fr, dv]
+
+
+func _damage_step() -> void:
+	var t0 := Time.get_ticks_usec()
+	var j := _dmg_job
+	var car = j["car"]
+	var parts: Array = _dmg_parts[car]
+	var i := int(j["i"])
+	if i >= parts.size():
+		print("world_view: car %08X damage applied: %d of %d vertices moved (%d us over %d ms)" % [car, int(j["moved"]), int(j["nv"]), int(j["us"]), (Time.get_ticks_usec() - int(j["t0"])) / 1000])
+		_dmg_job = {}
+		return
+	j["i"] = i + 1
+	var p: Array = parts[i]
+	var m := p[0] as MeshInstance3D
+	if not is_instance_valid(m) or not (m.mesh is ArrayMesh):
+		return
+	var pre_all: Array = _dmg_pre[car][1]
+	while pre_all.size() <= i:
+		pre_all.append(null)
+	if pre_all[i] == null:
+		pre_all[i] = _damage_prepare(car, p)
+		var am0 := m.mesh as ArrayMesh
+		pre_all[i].append_array([am0.surface_get_arrays(0), am0.surface_get_material(0), am0.surface_get_primitive_type(0)])
+	var pre: Array = pre_all[i]
+	var orig: PackedVector3Array = p[1]
+	var out := orig
+	var moved := 0
+	if bool(j["any"]):
+		out = orig.duplicate()
+		var tab: PackedFloat32Array = j["tab"]
+		var lat: Array = _dmg_lat[car]
+		var lo := float(lat[2])
+		var hi := float(lat[3])
+		if hi <= lo:
+			hi = 1.0
+		var vi: PackedInt32Array = pre[0]
+		var cell: PackedInt32Array = pre[1]
+		var fr: PackedVector3Array = pre[2]
+		var dv: PackedVector3Array = pre[3]
+		for k in vi.size():
+			var c := cell[k]
+			var f := fr[k]
+			# (first float4 = the cell's corners at y + 1, second at y; components (x0 z0), (x1 z0), (x1 z1), (x0 z1))
+			var l0 := lerpf(tab[c + 4], tab[c], f.y)
+			var l1 := lerpf(tab[c + 5], tab[c + 1], f.y)
+			var l2 := lerpf(tab[c + 6], tab[c + 2], f.y)
+			var l3 := lerpf(tab[c + 7], tab[c + 3], f.y)
+			var amt := clampf(clampf(lerpf(lerpf(l0, l3, f.z), lerpf(l1, l2, f.z), f.x), 0.0, 1.0), lo, hi)
+			if amt != 0.0:
+				out[vi[k]] = orig[vi[k]] + dv[k] * amt
+				moved += 1
+	j["moved"] = int(j["moved"]) + moved
+	j["nv"] = int(j["nv"]) + orig.size()
+	var arrays: Array = (pre[4] as Array).duplicate()
+	arrays[Mesh.ARRAY_VERTEX] = out
+	var nm_ := ArrayMesh.new()
+	nm_.add_surface_from_arrays(int(pre[6]), arrays)
+	nm_.surface_set_material(0, pre[5])
+	m.mesh = nm_
+	j["us"] = int(j["us"]) + Time.get_ticks_usec() - t0
+
+
 const WHEEL_RADIUS := 0.31  # m (FM3's cars' wheels are ~0.28-0.34 m; at speed the blurred wheel hides the difference)
 var _spin_prev := {}  # car -> [origin, msec]
 var _spin_angle := {}  # car -> radians turned so far
@@ -2801,6 +3051,7 @@ func _attach_library_car(car) -> void:
 		n += 1
 	if _drop_shadows():
 		_add_drop_shadow(scene_, car, a_att, w_att)
+	_damage_parts_load(car, scene_, base + "_damage.bin")
 	_live_player = -2  # (re-evaluate has_live: this car's new paint / glass materials may be the player's)
 	_library_cars[car] = true
 	print("world_view: live car %08X is %s colour %s: %d meshes from the car library (%d ms; paint %s)" % [car, info["name"], key, n, Time.get_ticks_msec() - t0, paint_col])
@@ -3095,6 +3346,9 @@ func _live_step() -> void:
 			# every car's brake (and throttle) from its own physics object (2026-11-27): the brake lights
 			for i in mini(int(b.decode_u32(8)), 16):
 				_car_brake[int(b.decode_u32(12 + 12 * i))] = [b.decode_float(16 + 12 * i), Time.get_ticks_msec()]
+			continue
+		if b.size() == 8080 and b.slice(0, 4).get_string_from_ascii() == "FM3D" and b.decode_u32(4) == 1:
+			_damage_packet(b)
 			continue
 		if b.size() == 56 and b.slice(0, 4).get_string_from_ascii() == "FM3T":
 			_live_track(b.slice(8, 40).get_string_from_ascii(), b.slice(40, 48).get_string_from_ascii())
@@ -3600,6 +3854,7 @@ func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, 
 		_was_in_car = in_car
 		_world_env.environment.tonemap_exposure = _base_exposure * (_in_car_exposure() if in_car else 1.0)
 	_update_lights(player)
+	_damage_update()
 	_update_engine_audio(player, moves)
 	_hud_feed(player, moves)
 	if player != _live_player and not _live_cube_cams.is_empty():

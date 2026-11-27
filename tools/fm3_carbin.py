@@ -220,6 +220,16 @@ def vertices(part, lod0=False):
     return out
 
 
+def damage_dir(t):
+    """(n, 3) per-vertex crash-damage displacement (car space, metres at full damage) from the stride-40 damage word
+    (11:11:10 at 28; LIVE.md "Crash damage", the paint vertex shader a102319a5aef757b): with t = (x, y, z) the word's
+    signed components, the vertex moves by amount x 2 y (x, sqrt(1 - x^2 - z^2), z) (a direction, length 2 |y|; on the
+    NSX it points inward, 0-30 cm). amount = the car's damage lattice at the vertex, 0..1."""
+    tx, ty, tz = t[:, 0], t[:, 1], t[:, 2]
+    s = np.sqrt(np.abs(1.0 - tx * tx - tz * tz))
+    return np.stack([2 * tx * ty, 2 * ty * s, 2 * tz * ty], axis=1)
+
+
 def sections(car, lod):
     """The parts' meshes of one LOD as fm3_car.parse-like sections, for building cars: name, offset (the part origin),
     local (xyz * w: car space = local + offset, settled on all 18,444 FM3 parts: their bounds are symmetric, so EVO's
@@ -235,7 +245,8 @@ def sections(car, lod):
             continue
         out.append({'name': p['name'], 'offset': p['origin'], 'local': v['xyzw'][:, :3] * v['xyzw'][:, 3:4],
                     'uv0': v['uv0'], 'normal': v.get('normal'), 'light': v.get('light'), 'subs': subs,
-                    'env_sh': env_sh(v['raw40'], car['sh_factors']) if 'raw40' in v else None})
+                    'env_sh': env_sh(v['raw40'], car['sh_factors']) if 'raw40' in v else None,
+                    'damage_dir': damage_dir(v['damage']) if 'damage' in v else None})
     return out
 
 
