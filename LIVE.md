@@ -1321,7 +1321,9 @@ The user's last question was whether to chase the remaining uneven steps or call
   since ~21:40**: on Sebring they hid 737 of 3,217 meshes, visible scenery among them (live_track against the game
   19.4 / 20.3 / 21.8 without, 22.5 / 23.9 / 25.8 with; FM3_VIS_K=40 to try). Seen in the same Sebring runs: the
   viewer's exposure settles at W ~0.75 (L ~0.38-0.40), the picture brighter than the game's (the 2026-11-26 note had
-  W 0.953 matching the game): to look at, not from today's changes (the same with and without them).
+  W 0.953 matching the game). Most likely the freeze moment, not a fault: this run's frozen view is a close-up with
+  the black RSX over half the frame (low L), and a frozen game keeps the L it had adapted to before (the morning's
+  note; there L 0.580 both ways). To confirm: `-FreezeAfter 11` or wtrack.ps1 in the same boot.
   Then (~19:40): the cars' lamps, glass, lenses, gauges, mirrors, badges and reflectors cast no sun shadow (each caster
   is drawn again per cascade): shadow draws 898 -> 694, ~50 -> ~52.5 fps, the cars' area identical (0.0);
   `FM3_CAR_SMALL_SHADOWS=1` as before. The in-car driver costs nothing measurable. Left: the live cube's faces draw
