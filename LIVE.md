@@ -1493,6 +1493,11 @@ The user's last question was whether to chase the remaining uneven steps or call
   live_track compare came out 26.8, against 17.3 this afternoon: the game froze at another camera moment (its view
   closer, framed differently); the viewer files of 20:08 (52f04c1) restored for one run gave 30.8 on the same route, so
   not tonight's changes: these one-shot track compares vary with the freeze moment (Motegi 31-49 likewise).
+- **The library rebuilt (2026-11-27 ~22:58-23:18):** all 510 cars with tools/fm3_car_library.py (none failed), so
+  every cockpit carries the SH transfer (COLOR rg / alpha 0.5) for the opt-in cockpit modes. Checked 2026-11-28 00:18:
+  grid / chase / in-car 14.3 / 15.0 / 16.4, the same as before. Seen then: live_compare.ps1 can leave fm3 and the
+  viewer running after it prints, and a test that waits for fm3 to exit then hangs (the first check after the rebuild
+  did, ~23:20 to midnight): close them by hand before the next boot.
 - **A stale game feed (fixed ~21:47):** the feed file (the game's own frames for stage B) outlives the game; a boot
   without stage B never rewrites it, and the viewer showed the last boot's menu frame (Road Atlanta's environment
   select, left by the round-trip test) over the whole race (live_compare 164.9). The viewer now takes the feed only
