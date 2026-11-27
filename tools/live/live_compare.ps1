@@ -78,6 +78,10 @@ try {
     }
     Select-String -Path $glog -Pattern 'live (car|director)' | ForEach-Object { $_.Line }
 } finally {
-    Stop-Process -Id $p.Id -ErrorAction SilentlyContinue
+    Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
     Get-Process fm3 -ErrorAction SilentlyContinue | ForEach-Object { $_.CloseMainWindow() | Out-Null }
+    # (a minimized game does not always close on CloseMainWindow (2026-11-28: one stayed up for an hour and the next
+    # test waited on it): it has saved by then, so stop it)
+    for ($i = 0; $i -lt 10 -and (Get-Process fm3 -ErrorAction SilentlyContinue); $i++) { Start-Sleep 1 }
+    Get-Process fm3 -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 }
