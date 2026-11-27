@@ -1297,7 +1297,9 @@ The user's last question was whether to chase the remaining uneven steps or call
   way (damage_tex, has_damage set only once the mesh carries the amounts). **Not yet seen in a picture:** the poke
   test at 0.6 on the rear cells showed no scuffs in the game either (the game may rewrite the table from its physics
   state), and the chase camera after a crash shows the undamaged rear; the right stick switched to a trackside camera,
-  not a look-back. Next: a reverse crash or the in-car / bumper camera.
+  not a look-back. Checked instead with a forced amount on every car (`FM3_SCUFF_TEST=0.6`, ~21:15): the scratches
+  and scraped patches sit on the panels where they belong (the texture's UVs are the paint's), paint lightened and
+  greyed where scuffed; real crashes apply them only where the lattice has damage.
   (Side finding from that trackside view: near the barrier the game draws standing 3D people, e.g. a photographer
   with a camera, where the viewer has one dark seated figure: PLAN-NEXT 2.)
 - **Optimizing, round 2 (2026-11-27 ~16:30; frozen CrownJewel grid, stage B, the game running beside it; scratchpad

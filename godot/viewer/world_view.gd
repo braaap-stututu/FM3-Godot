@@ -3519,6 +3519,14 @@ func _attach_library_car(car) -> void:
 	if _drop_shadows():
 		_add_drop_shadow(scene_, car, a_att, w_att)
 	_dmg_pending[car] = [scene_, base + "_damage.bin"]  # (loaded once the car is damaged: ~0.27 s a car, _damage_ensure)
+	if OS.get_environment("FM3_SCUFF_TEST") != "":
+		# (tests: the damage texture on every paint surface at one amount, to look at the scuffs without a crash)
+		_damage_ensure(car)
+		for p_ in _dmg_parts.get(car, []):
+			for si in (p_[0] as MeshInstance3D).get_surface_override_material_count():
+				var sm_ := (p_[0] as MeshInstance3D).get_surface_override_material(si) as ShaderMaterial
+				if sm_ != null and sm_.shader == CARPAINT_SHADER:
+					sm_.set_shader_parameter("force_amt", float(OS.get_environment("FM3_SCUFF_TEST")))
 	_live_player = -2  # (re-evaluate has_live: this car's new paint / glass materials may be the player's)
 	_library_cars[car] = true
 	print("world_view: live car %08X is %s colour %s: %d meshes from the car library (%d ms; paint %s)" % [car, info["name"], key, n, Time.get_ticks_msec() - t0, paint_col])

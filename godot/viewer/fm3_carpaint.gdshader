@@ -137,12 +137,13 @@ uniform int debug_out = 0;
 // + D.rgb x a (gamma values), and the highlight / reflection x (1 - a).
 uniform sampler2D damage_tex : filter_linear_mipmap_anisotropic, repeat_enable, hint_default_transparent;
 uniform bool has_damage = false;
+uniform float force_amt = -1.0;  // (tests: every vertex at this amount, FM3_SCUFF_TEST=<a>)
 varying float dmg_amt;
 varying float dmg_light;  // (the same for light(): varyings reach it from fragment())
 
 void vertex() {
 	env_ab = UV2;
-	dmg_amt = has_damage ? clamp(CUSTOM0.r, 0.0, 1.0) : 0.0;
+	dmg_amt = force_amt >= 0.0 ? force_amt : (has_damage ? clamp(CUSTOM0.r, 0.0, 1.0) : 0.0);
 }
 
 uniform bool cull_back = false;
