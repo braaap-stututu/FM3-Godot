@@ -14,7 +14,10 @@ Status 2026-11-27 ~18:15: everything on the list has been worked on (HANDOFF top
 in-car driver's animations (Granny, Oodle1), the live cube's own shadow draws. Done since (LIVE.md): tyre smoke,
 skid marks, dust, per-track smoke atlases, collision sparks, the crowd's cheers (~20:25). Open from those: grass /
 dirt particles by surface (the wheel's surface byte is not the surfaceTypes.xml index: CrownJewel gravel = 45),
-sparks while scraping without new damage, checking smoke / sparks against the game's own in the same moment. The older items below are updated where done (2, 3).
+sparks while scraping without new damage, checking smoke / sparks against the game's own in the same moment.
+Also ~21:00: the crowd lit by the game's formula (done); the cockpit's light decoded (LIVE.md "The cockpit's light":
+opt-in; next: the game's cockpit material colours, i.e. which subsets the untextured 0.24 draw covers and where 0.24
+is defined, then rebuild every library car's cockpit and make it the default if the in-car view improves). The older items below are updated where done (2, 3).
 
 ## 1. The cubemap (done for the paint; finish for the other shaders)
 

@@ -1,6 +1,6 @@
 # HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-27)
 
-**2026-11-27 evening session (14:09 -> midnight; the user's notes, PLAN-NEXT section 0; status ~20:10):**
+**2026-11-27 evening session (14:09 -> midnight; the user's notes, PLAN-NEXT section 0; status ~21:00):**
 - From the user's list: brake lights binary per car (FM3B), the countdown vignette key, wheels spinning in stage B,
   glossy badges. **Crash damage, end to end:** each car's damage lattice mapped through a ReGPU fetch watch and
   streamed (FM3D), the library cars bent on the CPU (loaded when a car is first damaged); parts the game knocks off
@@ -29,6 +29,12 @@
 - ~19:40-20:10: **dust on loose surfaces** (FM3B v3: each wheel's surface byte, +621 in its physics block; the game's
   tire_dust parameters and the atlas' dust quarter): forced on every wheel (`FM3_FX_TEST=2`) it renders as brown
   clouds at the wheels; a real gravel excursion not yet seen in a picture. Loose parts in FM3B too.
+- ~20:10-21:00: **collision sparks** (a burst where a car's damage table grows; the game's spark parameters), **per-track
+  smoke atlases**, **the crowd cheers** when a car is within 60 m (the classes' cheer lists, in the crowd shader),
+  **the crowd lit by the game's own formula** (its crowd pixel shader decoded: TrackSettings Crowds dark / light by
+  n.l, per track), and **the cockpit's light decoded** (the vertices' SH transfer against the cockpit hemisphere and
+  the sun; built opt-in `FM3_COCKPIT_PRT=1`, not default: the game's cockpit material colours are the open part).
+  Grass / dirt by surface: the wheel's surface byte is not the surfaceTypes.xml index (open).
 
 **2026-11-27 afternoon: stage B, as a switch** (user: boot the game and race without its own rendering costing the
 frame rate). Launcher "Godot renders races (stage B)" / settings.ini `stage_b=1`: in races the game stops drawing the
