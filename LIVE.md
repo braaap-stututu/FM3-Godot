@@ -1416,6 +1416,11 @@ The user's last question was whether to chase the remaining uneven steps or call
   cockpit's `window` gives in-car 16.1 (16.4): the inside of the cockpit glass costs a little. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
   29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
   until the animation is in, the user's call.
+- **Regression check at the end of the evening (~22:30):** CrownJewel live grid / chase / in-car 14.4 / 15.0 / 16.5
+  (earlier 14.3 / 15.0 / 16.4; the grid's crowd now cheers near the cars, in poses of its own). Road Atlanta's
+  live_track compare came out 26.8, against 17.3 this afternoon: the game froze at another camera moment (its view
+  closer, framed differently); the viewer files of 20:08 (52f04c1) restored for one run gave 30.8 on the same route, so
+  not tonight's changes: these one-shot track compares vary with the freeze moment (Motegi 31-49 likewise).
 - **A stale game feed (fixed ~21:47):** the feed file (the game's own frames for stage B) outlives the game; a boot
   without stage B never rewrites it, and the viewer showed the last boot's menu frame (Road Atlanta's environment
   select, left by the round-trip test) over the whole race (live_compare 164.9). The viewer now takes the feed only
