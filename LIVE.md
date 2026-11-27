@@ -1180,4 +1180,14 @@ The user's last question was whether to chase the remaining uneven steps or call
   direction by it, clamped by vc6 (damageClamps); e.g. vs_0b663c87079d33bf (shadow pass). The damage textures:
   `damage*.xds` / `damagelights*.xds` per car folder. Next: the table's address in the car object (stage B skips the
   draws that bind it), its dims from a capture, the per-vertex use in a Godot vertex shader.
+- **Optimizing the viewer (measured, frozen CrownJewel race in stage B, 1280 x 720, vsync off, `FM3_FPS_LOG=1`):** the
+  viewer is bound by Godot's draw-call submission on the CPU, not the GPU: 31-36 fps at ~5,800 draw calls; the 3D
+  crowd's 36 M of the 43 M triangles, MSAA and the shadows changed nothing. Our own script is ~7 ms a frame (cars 2.7,
+  exposure 1.8, feed 1.4, ~135 packets 1.1). The live reflection cube's faces each draw the whole scene: 6 faces a
+  frame 31-32 fps, 2 faces 44-46, 1 face 45-51; its far plane at 300 / 150 m ~37. **The cube now renders 2 faces a
+  frame** (each renewed every third frame, ~15 times a second; `--live-cube-faces 6` as before). Next (planned):
+  fewer draw calls in the main view: the track's meshes are grouped by (shader, texture, lightmap, parameters), 2,454
+  on CrownJewel with 842 lightmap textures; packing the lightmaps into atlases in fm3_track_export.py would let the
+  groups merge (per material and spatial cell, to keep culling), then rebuild the tracks. The game's per-instance LOD
+  distances (.pvs instances, e.g. 80 / 160 / 240 m on ~500 of CrownJewel's 2,635) could then become visibility ranges.
 

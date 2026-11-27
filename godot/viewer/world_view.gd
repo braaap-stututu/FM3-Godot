@@ -1355,7 +1355,11 @@ const LIVE_UPS = [Vector3.UP, Vector3.UP, Vector3.FORWARD, Vector3.BACK, Vector3
 var _live_cube_size := 128
 # Faces rendered per frame (round-robin; the others keep their last picture). The six faces cost ~40% of the live
 # frame on the capture-free CrownJewel (RX 6650 XT, 720p: 32 fps with the cube, 52 without, 2026-11-24).
-var _live_cube_faces := 6
+# 2 since 2026-11-27 (the optimization pass: the viewer is bound by Godot's draw-call submission on the CPU, ~5,800 draw
+# calls a frame of which each face draws the whole scene again; MSAA, shadows and the crowd's 36 M triangles changed
+# nothing): 6 faces 31-32 fps, 2 faces 44-46, 1 face 45-51 (frozen CrownJewel race, stage B); each face is renewed
+# every third frame, ~15 times a second. --live-cube-faces 6 / FM3_LIVE_CUBE=128,6: every face every frame.
+var _live_cube_faces := 2
 var _live_cube_next := 0
 var _live_cube_msaa := 0  # (--live-cube-msaa: the game draws its car cube's faces with 4x MSAA)
 var _live_cube_vps := []
@@ -1393,7 +1397,7 @@ func _make_live_cube(at: Vector3) -> void:
 		c.fov = 90.0
 		c.keep_aspect = Camera3D.KEEP_HEIGHT
 		c.near = 0.05
-		c.far = 3000.0
+		c.far = float(OS.get_environment("FM3_LIVE_CUBE_FAR")) if OS.get_environment("FM3_LIVE_CUBE_FAR") != "" else 3000.0  # (tests: the cube cameras' far plane)
 		c.cull_mask = 0xFFFFF & ~2 & ~COCKPIT_LAYER  # (not layer 2: the cars; nor the cockpits)
 		vp.add_child(c)
 		root.add_child(vp)
@@ -3083,6 +3087,7 @@ func _live_step() -> void:
 	_view_t = raw_now if _view_t == 0.0 or absf(raw_now - pred) > 0.03 else pred + 0.05 * (raw_now - pred)
 	var now := _view_t
 	var budget := 4000  # (a frame always ends: after a stall the backlog is caught up over a few frames)
+	var tpk_ := Time.get_ticks_usec()
 	while _udp.get_available_packet_count() > 0 and budget > 0:
 		budget -= 1
 		var b := _udp.get_packet()
@@ -3235,6 +3240,9 @@ func _live_step() -> void:
 			_live_director = director
 		if director == _live_director:
 			latest = b
+	_pf("packets", tpk_)
+	if _fps_log_on:
+		_pf_sum["packets_n"] = int(_pf_sum.get("packets_n", 0)) + (4000 - budget) * 1000
 	if not _library_queue.is_empty() and _car_attached:
 		_attach_library_car(_library_queue.pop_front())
 	_poll_liveries()
@@ -3316,7 +3324,9 @@ func _show_drawn(now: float) -> void:
 		_cam.fov = float(own["fov"]) if not own.is_empty() else rad_to_deg(float(s["fov"]))
 	if not _car_attached:
 		return
+	var tuc_ := Time.get_ticks_usec()
 	_update_live_cars(cam, moves, s.get("wmoves", {}), now)
+	_pf("update_cars", tuc_)
 
 
 # The game's own cameras computed here (2026-11-25), not taken from the stream: FM3_GAME_CAM = chase_near, chase_far,
@@ -3791,21 +3801,60 @@ func _update_car_shadow_tex() -> void:
 	RenderingServer.global_shader_parameter_set("fm3_car_k", Vector4(n, r.x, r.y, 1.0))
 
 
+var _fps_log_ms := 0
+var _pf_sum := {}  # (FM3_FPS_LOG: microseconds per part of the frame, summed over the log's 5 s)
+var _pf_frames := 0
+var _fps_log_on := false
+
+
+func _pf(part: String, t0: int) -> int:
+	var t := Time.get_ticks_usec()
+	if _fps_log_on:
+		_pf_sum[part] = int(_pf_sum.get(part, 0)) + (t - t0)
+	return t
+
+
 func _process(_delta: float) -> bool:
 	_frames += 1
+	_fps_log_on = OS.get_environment("FM3_FPS_LOG") == "1"
+	if _fps_log_on:
+		# (measuring: frames a second, draw calls, primitives and the CPU's process time, every 5 s; FM3_NO_VSYNC=1 with it)
+		if _frames == 2 and OS.get_environment("FM3_NO_VSYNC") == "1":
+			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+		if Time.get_ticks_msec() - _fps_log_ms > 5000:
+			_fps_log_ms = Time.get_ticks_msec()
+			print("world_view: fps log: %.1f fps, %d draw calls, %.2f M primitives, process %.2f ms" % [Engine.get_frames_per_second(),
+				RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+				RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME) / 1e6,
+				Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0])
+			var parts := []
+			for k in _pf_sum:
+				parts.append("%s %.2f" % [k, float(_pf_sum[k]) / 1000.0 / maxi(_pf_frames, 1)])
+			print("world_view: fps log: ms a frame: " + ", ".join(parts))
+			_pf_sum.clear()
+			_pf_frames = 0
+		_pf_frames += 1
 	if _frames == 3:
 		_crowd3d()
+	var tp_ := Time.get_ticks_usec()
 	_crowd3d_update()
+	tp_ = _pf("crowd", tp_)
 	_exposure_update()
+	tp_ = _pf("exposure", tp_)
 	_game_feed_update()
+	tp_ = _pf("feed", tp_)
 	_fog_update()
+	tp_ = _pf("fog", tp_)
 	# the sky dome stays centred on the camera, as FM3 draws it (fm3_track_export.py: skydome_ nodes)
 	if _cam != null and _cam.is_inside_tree():
 		for sk in _sky_nodes:
 			(sk as Node3D).global_position = _cam.global_position
 	if _live_port > 0 and _frames > 3:
+		tp_ = Time.get_ticks_usec()
 		_live_step()
+		tp_ = _pf("live_step", tp_)
 		_update_car_shadow_tex()
+		_pf("car_shadow_tex", tp_)
 		return false
 	if _fly and _frames > 3:
 		if _frames == 4:
