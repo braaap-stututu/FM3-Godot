@@ -903,6 +903,100 @@ def needle_turn(a, m, b):
     return {'pivot': pivot.tolist(), 'axis': ax1.tolist(), 'mid': an1, 'max': an1 + an2 * float(np.sign(ax1 @ ax2))}
 
 
+def _read_rgba_png(path):
+    """An RGBA PNG as written by fir_read.write_png (8-bit RGBA, filter 0 on every row), else None."""
+    import zlib
+    try:
+        d = open(path, 'rb').read()
+    except OSError:
+        return None
+    if d[:8] != b'\x89PNG\r\n\x1a\n':
+        return None
+    i, idat, w = 8, b'', 0
+    while i < len(d):
+        n = struct.unpack('>I', d[i:i + 4])[0]
+        t = d[i + 4:i + 8]
+        c = d[i + 8:i + 8 + n]
+        if t == b'IHDR':
+            w, h, bd, ct = struct.unpack('>IIBB', c[:10])
+            if bd != 8 or ct != 6:
+                return None
+        elif t == b'IDAT':
+            idat += c
+        i += 12 + n
+    raw = np.frombuffer(zlib.decompress(idat), np.uint8).reshape(h, 1 + 4 * w)
+    if np.any(raw[:, 0] != 0):
+        return None
+    return raw[:, 1:].reshape(h, w, 4)
+
+
+def atlas_lightmaps(groups, tex_out, page=4096, pad=4):
+    """Lightmaps packed into atlas pages, so the groups that differ only by their lightmap merge into one mesh (2026-11-27,
+    the viewer's optimization: it is bound by Godot's draw calls on the CPU, one per group; groups are keyed (shader,
+    base texture, lightmap, parameters), and the lightmap split them: CrownJewel 2,449 groups, 1,743 without it,
+    RoadAtlanta 4,448 -> 722). A lightmap goes into a page when every part using it keeps its lightmap UVs in 0..1 (no
+    tiling; up to 0.01 past the edge is clamped); it is copied with `pad` pixels of its own edge around it (filtering and the first mips do not bleed into a
+    neighbour); shelf packing, tallest first. Pages: lmpage_NN.png in tex_out. --no-lm-atlas: off."""
+    uses = {}
+    for key, parts in groups.items():
+        lm = key[2]
+        if lm is None:
+            continue
+        ok = all(q[3] is not None and len(q[3]) and float(q[3].min()) >= -0.01 and float(q[3].max()) <= 1.01 for q in parts)
+        uses[lm] = uses.get(lm, True) and ok
+    imgs = {}
+    for lm, ok in uses.items():
+        if not ok:
+            continue
+        img = _read_rgba_png(os.path.join(tex_out, lm))
+        if img is not None and img.shape[0] + 2 * pad <= page and img.shape[1] + 2 * pad <= page:
+            imgs[lm] = img
+    if not imgs:
+        return groups
+    # shelf packing
+    order = sorted(imgs, key=lambda k: (-imgs[k].shape[0], -imgs[k].shape[1], k))
+    place, pages, x, y, shelf = {}, [0], 0, 0, 0
+    for k in order:
+        h, w = imgs[k].shape[0] + 2 * pad, imgs[k].shape[1] + 2 * pad
+        if x + w > page:
+            x, y, shelf = 0, y + shelf, 0
+        if y + h > page:
+            pages.append(0)
+            x, y, shelf = 0, 0, 0
+        place[k] = (len(pages) - 1, x, y)
+        x += w
+        shelf = max(shelf, h)
+    canvases = [np.zeros((page, page, 4), np.uint8) for _ in pages]
+    for k, (pg, px, py) in place.items():
+        img = imgs[k]
+        padded = np.pad(img, ((pad, pad), (pad, pad), (0, 0)), mode='edge')
+        canvases[pg][py:py + padded.shape[0], px:px + padded.shape[1]] = padded
+    names = []
+    for i, cv in enumerate(canvases):
+        nm = 'lmpage_%02d.png' % i
+        used = int(max((py + imgs[k].shape[0] + 2 * pad for k, (pg, px, py) in place.items() if pg == i), default=0))
+        cv = np.ascontiguousarray(cv[:max(used, 1)])  # (the page's used rows only)
+        fr.write_png(os.path.join(tex_out, nm), page, cv.shape[0], cv.tobytes())
+        names.append((nm, cv.shape[0]))
+    out = {}
+    for key, parts in groups.items():
+        lm = key[2]
+        if lm not in place:
+            out.setdefault(key, []).extend(parts)
+            continue
+        pg, px, py = place[lm]
+        h, w = imgs[lm].shape[:2]
+        ph = names[pg][1]
+        sc = np.array([w / page, h / ph], np.float32)
+        of = np.array([(px + pad) / page, (py + pad) / ph], np.float32)
+        nk = (key[0], key[1], names[pg][0], key[3])
+        for q in parts:
+            # (UVs up to 0.01 past the edge, rounding at the lightmap's border: clamped to it)
+            out.setdefault(nk, []).append((q[0], q[1], q[2], (np.clip(q[3], 0.0, 1.0) * sc + of).astype(np.float32)) + tuple(q[4:]))
+    print(f'lightmap atlas: {len(place)} of {len(uses)} lightmaps in {len(pages)} page(s) of {page}; groups {len(groups)} -> {len(out)}')
+    return out
+
+
 def main():
     if len(sys.argv) < 3:
         print(__doc__)
@@ -1479,6 +1573,8 @@ def main():
              {'factor': crowd_shade + [1.0], 'blend': 'MASK'}, None))
         print(f'crowd: {npeople} people in {ncell} cells from {os.path.basename(crowd_file)}')
 
+    if '--no-lm-atlas' not in sys.argv:
+        groups = atlas_lightmaps(groups, tex_out)
     nv = nt = 0
     for (name, base, lm, famj), parts in sorted(groups.items(), key=lambda kv: str(kv[0])):
         P = np.concatenate([q[0] for q in parts])

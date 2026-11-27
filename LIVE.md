@@ -1203,4 +1203,11 @@ The user's last question was whether to chase the remaining uneven steps or call
   on CrownJewel with 842 lightmap textures; packing the lightmaps into atlases in fm3_track_export.py would let the
   groups merge (per material and spatial cell, to keep culling), then rebuild the tracks. The game's per-instance LOD
   distances (.pvs instances, e.g. 80 / 160 / 240 m on ~500 of CrownJewel's 2,635) could then become visibility ranges.
+- **Lightmap atlas in the track export (fm3_track_export.py atlas_lightmaps, on by default, --no-lm-atlas off):** the
+  groups were split by their lightmap texture; the lightmaps whose parts keep their UVs in 0..1 (+-0.01, clamped) are
+  packed into 4096-wide pages (lmpage_NN.png, 4 px of their own edge around each) and the groups that then differ only
+  by page merge. RoadAtlanta: 1,502 of 2,109 lightmaps in 5 pages, meshes 4,569 -> 2,748; the viewer alone (no crowd,
+  600 frames) 136 -> 188 fps, 5,943 -> 1,949 draw calls; the same view from both exports differs by 0.5 levels
+  (filtering at the padded edges). All tracks rebuilt with it the same evening (CrownJewel -Ribbon 04, the others
+  their default layout; Amalfi not in this game folder, unchanged).
 
