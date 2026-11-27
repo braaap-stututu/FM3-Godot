@@ -1292,7 +1292,9 @@ The user's last question was whether to chase the remaining uneven steps or call
   both hands turn with the steering needle; the cockpit shader discards their back faces (`cull` 1: the in-car camera
   sits inside the shoulders, double-sided they filled the view). CrownJewel grid in-car against the game: 18.0 (the
   same view without them ~17-19 in earlier runs). Not yet: the arms' steering animation (the Granny SteerLock2Lock
-  files, Oodle1), the gloves' lighting (they read darker than the game's, as the whole cockpit). FM3_DRIVER=0 off.
+  files, Oodle1). FM3_DRIVER=0 off. The cockpit (gloves included) had gone ~2.5x darker than the game's since its
+  2026-11-24 fit (roof liner 7.8 vs 20.0): COCKPIT_GAIN 1.0 -> 2.5 (roof 17.8, dash 19.0 vs 26.9; in-car view 18.0 ->
+  16.4; gain 5: 19.9). Vertical faces stay too dark (A-pillar 2.1 vs 14.7).
 - **Scuffs (2026-11-27 ~17:00):** the paint VS passes the clamped damage amount on as o[1].w (r3.w is not touched
   after the lattice); the paint PS e41e183a423e6f1b blends texture 2 (the car's damage_lod0, grey scuffs and
   scratches with alpha) as colour x (1 - D.a x a) + D.rgb x a and its highlight x (1 - a). `tools/fm3_car_damage_tex.py`

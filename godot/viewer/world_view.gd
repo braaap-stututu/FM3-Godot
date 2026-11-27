@@ -88,7 +88,10 @@ var DYNLIT_SHADOWS := OS.get_environment("FM3_DYNLIT") == "1"  # (2 = the shader
 # windows read as one dark tint with the seats barely visible; ours showed grey seats framed by the black trim):
 # Sebring RSX rear window 14 -> 10.5, CrownJewel CR-X 10.8 -> 11.5, Mazda 19.9 -> 19.7.
 var CABIN_K := float(OS.get_environment("FM3_CABIN_K")) if OS.get_environment("FM3_CABIN_K") != "" else 0.5
-const COCKPIT_GAIN := 1.0  # (fm3_cockpit.gdshader's light scale)
+# (fm3_cockpit.gdshader's light scale; 2026-11-27 evening 1.0 -> 2.5: the cabin had gone ~2.5x darker than the game's
+# since its fit (the roof liner 7.8 against 20.0, the dash 8.4 / 26.9); at 2.5 the roof 17.8, the dash 19.0, the CR-X
+# in-car view against the game 18.0 -> 16.4 (5: 19.9). Vertical faces stay too dark (A-pillar 2.1 / 14.7).)
+const COCKPIT_GAIN := 2.5
 # Cockpit mirrors (fm3_mirror.gdshader): one small viewport each, rendered only while the player's car is seen in-car.
 const MIRROR_SIZE := Vector2i(512, 256)
 # (fitted on the CR-X's middle mirror, live: 30 deg level 37.4, 6 deg up 33.8, 40 deg + 6 up 31.5 mean |diff| in its crop)
