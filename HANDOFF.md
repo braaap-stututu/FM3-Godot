@@ -1,6 +1,6 @@
 # HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-27)
 
-**2026-11-27 evening session (14:09 -> midnight; the user's notes, PLAN-NEXT section 0; status ~18:15):**
+**2026-11-27 evening session (14:09 -> midnight; the user's notes, PLAN-NEXT section 0; status ~19:35):**
 - From the user's list: brake lights binary per car (FM3B), the countdown vignette key, wheels spinning in stage B,
   glossy badges. **Crash damage, end to end:** each car's damage lattice mapped through a ReGPU fetch watch and
   streamed (FM3D), the library cars bent on the CPU (loaded when a car is first damaged); parts the game knocks off
@@ -16,8 +16,16 @@
 - **Optimizing:** lightmap atlas (all tracks rebuilt), live cube 2 faces a frame, car bodies merged by material,
   small car parts without sun shadows, the exposure measurement read back asynchronously: the live CrownJewel grid
   with the game running ~31 -> ~57 fps over the day. Visibility ranges by size turned off (they hurt Sebring).
+- Since ~18:15: the 3D crowd per 512 m cell, no shadows, out of the cube (Motegi live 3 -> ~55 fps: the 96 m cells
+  were the slowdown), library cars loading on a worker thread, the cockpit light x2.5 (in-car 18.0 -> 16.4), the
+  driver in every car (the game draws Driver.skinbin once per car), each car's own steering for its wheel and hands
+  (FM3B v2), tyre smoke and skid marks from each wheel's slip angle (the game's tire_smoke parameters and textures),
+  parts probes at most every 5 s. Visibility ranges by size off (they hurt Sebring). Regression checks: CrownJewel
+  grid 14.3 / chase 15.0 / in-car 16.5, RoadAtlanta 17.3 (morning 17.9); Sebring / Motegi frozen pictures brighter
+  than the game's from the test's freeze moment (a black car close-up), not today's changes.
 - LIVE.md has each in detail ("Crash damage, built", "Parts knocked off", "Scuffs", "The crowd's classes", "The
-  crowd's animations", "The in-car driver", "Optimizing, round 2"); FM3-ReGPU NOTES.md the game side.
+  crowd's animations", "The in-car driver", "Optimizing, round 2", "Tyre smoke and skid marks", "Every car's own
+  steering"); FM3-ReGPU NOTES.md the game side.
 
 **2026-11-27 afternoon: stage B, as a switch** (user: boot the game and race without its own rendering costing the
 frame rate). Launcher "Godot renders races (stage B)" / settings.ini `stage_b=1`: in races the game stops drawing the
