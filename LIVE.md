@@ -1286,6 +1286,11 @@ The user's last question was whether to chase the remaining uneven steps or call
   shadows 1,314 -> 898; the picture the same (mean 0.1 between two runs). `FM3_CAR_MERGE=0` off. Visibility ranges
   for small track meshes (`_visibility_ranges`, <= 6 m across, hidden beyond 40 x size; FM3_VIS_K=0 off) hit only 64
   of CrownJewel's 1,928 meshes (the track is already merged into big groups): no measurable change, kept.
+  Then (~19:40): the cars' lamps, glass, lenses, gauges, mirrors, badges and reflectors cast no sun shadow (each caster
+  is drawn again per cascade): shadow draws 898 -> 694, ~50 -> ~52.5 fps, the cars' area identical (0.0);
+  `FM3_CAR_SMALL_SHADOWS=1` as before. The in-car driver costs nothing measurable. Left: the live cube's faces draw
+  their own sun shadows (~110 calls a face; Godot has no per-viewport switch for directional shadows); 1 face a frame
+  would give ~53 (each face then renewed ~8 times a second).
 - **Lightmap atlas in the track export (fm3_track_export.py atlas_lightmaps, on by default, --no-lm-atlas off):** the
   groups were split by their lightmap texture; the lightmaps whose parts keep their UVs in 0..1 (+-0.01, clamped) are
   packed into 4096-wide pages (lmpage_NN.png, 4 px of their own edge around each) and the groups that then differ only

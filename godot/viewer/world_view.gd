@@ -3466,6 +3466,10 @@ func _library_swap_test(spec: String) -> void:
 func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, metal: float) -> void:
 	mi.layers = 2
 	var nm := String(mi.name)
+	# (optimizing, 2026-11-27: lamps, glass, lenses, gauges, mirrors, badges and reflectors cast no sun shadow: their
+	# shadows are hidden in the body's; each shadow-casting mesh is drawn again per cascade. FM3_CAR_SMALL_SHADOWS=1 keeps them)
+	if nm.begins_with("carbin_") and OS.get_environment("FM3_CAR_SMALL_SHADOWS") != "1" and RegEx.create_from_string(CAR_MERGE_SKIP).search(nm) != null:
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# (tests: FM3_HIDE_PARTS=<name part>,... hides library meshes whose names contain one, to find which part draws what)
 	for h in OS.get_environment("FM3_HIDE_PARTS").split(",", false):
 		if nm.contains(h):
