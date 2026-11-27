@@ -1,6 +1,6 @@
 # HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-27)
 
-**2026-11-27 evening session (14:09 -> midnight; the user's notes, PLAN-NEXT section 0; status ~19:35):**
+**2026-11-27 evening session (14:09 -> midnight; the user's notes, PLAN-NEXT section 0; status ~20:10):**
 - From the user's list: brake lights binary per car (FM3B), the countdown vignette key, wheels spinning in stage B,
   glossy badges. **Crash damage, end to end:** each car's damage lattice mapped through a ReGPU fetch watch and
   streamed (FM3D), the library cars bent on the CPU (loaded when a car is first damaged); parts the game knocks off
@@ -26,6 +26,9 @@
 - LIVE.md has each in detail ("Crash damage, built", "Parts knocked off", "Scuffs", "The crowd's classes", "The
   crowd's animations", "The in-car driver", "Optimizing, round 2", "Tyre smoke and skid marks", "Every car's own
   steering"); FM3-ReGPU NOTES.md the game side.
+- ~19:40-20:10: **dust on loose surfaces** (FM3B v3: each wheel's surface byte, +621 in its physics block; the game's
+  tire_dust parameters and the atlas' dust quarter): forced on every wheel (`FM3_FX_TEST=2`) it renders as brown
+  clouds at the wheels; a real gravel excursion not yet seen in a picture. Loose parts in FM3B too.
 
 **2026-11-27 afternoon: stage B, as a switch** (user: boot the game and race without its own rendering costing the
 frame rate). Launcher "Godot renders races (stage B)" / settings.ini `stage_b=1`: in races the game stops drawing the
