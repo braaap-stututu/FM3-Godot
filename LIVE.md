@@ -1391,7 +1391,7 @@ The user's last question was whether to chase the remaining uneven steps or call
   element 2 (half2, the one we read as uv0) to o0 unchanged. So it is the light: 1074f157's output is
   tex x light + r1.w, an additive term after the texture (a specular / sheen), which lifts dark-textured trim the most;
   our cockpit has none. Next: that term's constants from draw #737 with `REGPU_TRACE_VC=1`.)
-  (~22:20, draw #737's pixel constants from the same capture; ps 1074f157 reads 17, ranks -> numbers: 0 pc116 0.5,
+  (~22:15, draw #737's pixel constants from the same capture; ps 1074f157 reads 17, ranks -> numbers: 0 pc116 0.5,
   1 pc117 0.5, 2 pc118 3, 3 pc119 5, 4 pc136 the sun direction, 5 pc179 SHDir colour, 6 pc180 0.09 (TrackSettings
   CockpitSpecularAmount), 7 pc189 0.7, 8 pc190 0.25, 9 pc191 2, 10 pc197 1, 11 pc206 the camera?, 12 pc207 (0.301,
   0.501), 13 pc208 0, 14 pc209 1.5, 15 pc254, 16 pc255. Read so: colour = 2 x tex x lerp(light, max(X, 0.5), 0.5) +
