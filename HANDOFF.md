@@ -1,5 +1,14 @@
 # HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-27)
 
+**2026-11-27 evening session (14:09 -> midnight; the user's notes, PLAN-NEXT section 0; status ~17:15):** brake
+lights binary per car (FM3B), the countdown vignette key, wheels spinning in stage B, glossy badges, **crash damage**
+(each car's damage lattice mapped through a ReGPU fetch watch and streamed as FM3D, the library cars bent on the CPU;
+parts the game draws loose after a crash are hidden, FM3P; the scuff texture blended as the game's paint shader does,
+not yet seen in a picture), **optimizing** (lightmap atlas for all tracks; the live cube 2 faces a frame; car bodies
+merged by material: live grid ~40 -> ~50 fps), and the **crowd animation path** found (the codec samples the crowd
+class's animations at race load; dumps in Godot\work\crowd_anim; left: the skeleton). LIVE.md has each in detail
+("Crash damage, built", "Parts knocked off", "Scuffs", "Optimizing, round 2"); FM3-ReGPU NOTES.md the game side.
+
 **2026-11-27 afternoon: stage B, as a switch** (user: boot the game and race without its own rendering costing the
 frame rate). Launcher "Godot renders races (stage B)" / settings.ini `stage_b=1`: in races the game stops drawing the
 world, cars, crowd, mirror, reflections and shadows (2,663 -> ~300 draws, GPU 1.6 ms a frame left) and runs at 120 fps;
