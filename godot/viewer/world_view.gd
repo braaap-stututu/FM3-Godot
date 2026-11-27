@@ -1283,6 +1283,7 @@ var _crowd_anim_tex: ImageTexture = null
 var _cheer_img: Image = null
 var _cheer_tex: ImageTexture = null
 var _cheer_ms := 0
+var _cheer_log_ms := 0
 
 
 # The cars' positions for the crowd's cheering (fm3_crowd.gdshader): one 16 x 1 float texture all crowd materials
@@ -1301,15 +1302,23 @@ func _crowd_cheer_update() -> void:
 		return
 	_cheer_ms = now
 	_cheer_img.fill(Color(0, 0, 0, 0))
+	# (each car's position as _update_live_cars computed it this frame: the library scenes' roots stay put, their parts
+	# move; the first version read the roots and cheered only near the world's origin)
 	var k := 0
-	for c in _car_scene:
-		var sc_ = _car_scene[c]
-		if k >= 16 or not is_instance_valid(sc_) or not (sc_ as Node3D).visible:
-			continue
-		var p := (sc_ as Node3D).global_position
+	for c in _drawn_car_pos:
+		if k >= 16:
+			break
+		var p: Vector3 = _drawn_car_pos[c]
 		_cheer_img.set_pixel(k, 0, Color(p.x, p.y, p.z, 1.0))
 		k += 1
 	_cheer_tex.update(_cheer_img)
+	if OS.get_environment("FM3_CHEER_LOG") == "1" and now - _cheer_log_ms > 5000:
+		_cheer_log_ms = now
+		var parts_ := []
+		for c in _drawn_car_pos:
+			var sc_ = _car_scene.get(c)
+			parts_.append("%08X drawn %s root %s" % [c, str((_drawn_car_pos[c] as Vector3).round()), str((sc_ as Node3D).global_position.round()) if is_instance_valid(sc_) else "-"])
+		print("world_view: cheer positions: ", ", ".join(parts_))
 var _crowd_anim_w := 2048
 var _crowd_sd := 0.0  # SpriteDistance (m); 0 = every person in 3D
 
