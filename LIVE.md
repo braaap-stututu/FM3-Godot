@@ -1371,7 +1371,15 @@ The user's last question was whether to chase the remaining uneven steps or call
   mesh (FM3_HIDE_PARTS), the rest of the 618 family's terms (its specular, pc5 / pc14), then rebuild the library.
   (~21:15: `FM3_HIDE_PARTS=cockpit_body` hides the hood, not the pillar; `cockpit_black` leaves the pillar too (2.0
   both); it did respond to the light variants (4.7 with the transfer's sun), so it is one of the a_pillar section's
-  other cockpit meshes: plastic2, matte_colors or rubber_trim.) Default stays
+  other cockpit meshes: plastic2, matte_colors or rubber_trim.)
+  Seen in the same in-car crops (~21:40): **the warning-lamp panel** under our fuel gauge glows (white car outline,
+  green fuel lamp) where the game's is dim grey: the game draws the gauge_emissive subset (indices 23603 ..., draw #735,
+  vs fa88eae10194de84 / ps 417907f8a8ea8a43) as texture x light (the same vertex SH + shadowed sun as the dash, its uv
+  scaled by pc116.x = 1), not as an emissive; the icons are in interior_lod0 at full alpha (no mask). Our gauge material
+  is emissive (GAUGE_GAIN): to be lit like the dash once the cockpit light is settled (the dial numbers are bright in
+  both, so the game's light there is high: check its pc5 / pc7 terms first). **The gloves** are misshapen against the
+  game's (palms stretched over the rim): the arms are posed from the carbin grip anchors without the driver's
+  animation (Granny / Oodle, still open). Default stays
   the old fitted light (in-car 16.5 / 15.8 / 15.4 after the change). The old switch `FM3_COCKPIT_VCOL=0` (no baked
   brightness) was tried too: 17.7, the pillar 4.1.
 - **The crowd's light (2026-11-27 ~20:30):** the game's crowd pixel shader b32f44c528968ecc with its constants
