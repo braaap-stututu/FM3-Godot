@@ -1147,6 +1147,10 @@ The user's last question was whether to chase the remaining uneven steps or call
   moving cars (not checked in motion yet). Behind the game's frames (menus, the pre-race orbit) the viewer draws no 3D
   and no reflection cube (~20 -> 130-290 frames a second, every feed frame shown); a feed read caught mid-write keeps
   what is shown (it flickered to the viewer's own scene). `FM3_SHADOW_HQ=1`: sharper sun shadows (opt-in).
+- **Second drive's fixes:** in-car views use a 5 cm near plane (the scenes' 0.3 m cut the roof lining away); the
+  pre-race orbit is drawn by the viewer (stage B covers it); the game's overlay treats a grey darker than its key as a
+  black layer at that opacity (the pre-race menu's vignette, the HUD's dark panels came out as grey bands), and the key
+  only follows mid greys, gradually.
 - **Open:** the layout (Ribbon_NN) is not matched (a scene is built for one layout); the race's own menus (pre-race, pause, results) are only in the game's window (the game's flat-grey
   frame could be keyed and laid over the viewer's race); leaving a race back to the menus not yet tested; the game's
   remaining fixed GPU passes in a stage B race.

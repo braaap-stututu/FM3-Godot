@@ -6,6 +6,7 @@ var _out := ""
 var _frames := 0
 var _scene: Node
 var _cam: Camera3D
+var _cam_near_base := -1.0  # (the scene camera's own near plane; in-car views use 5 cm: _update_live_cars)
 var _sky_nodes := []  # the sky dome's meshes: kept on the camera (_process)
 var _triple_layout := ""  # --triple <layout.json>: three screens (core/triple_view layout), stitched side by side
 var _screens := []
@@ -2484,7 +2485,11 @@ func _game_feed_read() -> void:
 					_feed_ms = Time.get_ticks_msec()
 					_feed_tag = tag
 					if (tag & 0x100) != 0:
-						_feed_key = _feed_key_colour(img)
+						# (only a mid grey can be the undrawn scene; followed gradually, so a fade's white frame does not take it)
+						var k := _feed_key_colour(img)
+						var kl := (k.r + k.g + k.b) / 3.0
+						if kl > 0.15 and kl < 0.7 and absf(k.r - kl) + absf(k.g - kl) + absf(k.b - kl) < 0.06:
+							_feed_key = _feed_key.lerp(k, 0.3)
 			# (the game's last frame stays up while it shows nothing new: loading screens hold for seconds, and the
 			# viewer's own scene behind them means nothing; only a stage B race hides it)
 			show = _feed_tex != null and (_feed_tag & 0x80000000) != 0 and (_feed_tag & 0x100) == 0
@@ -2521,10 +2526,21 @@ func _game_feed_read() -> void:
 					var sh := Shader.new()
 					sh.code = """shader_type canvas_item;
 uniform vec3 key = vec3(0.36);
+// The game's frame = its undrawn grey (key) under its HUD and menus. A grey darker than the key is a black layer over
+// it at that opacity (the pre-race menu's vignette, the HUD's dark panels): drawn as black at that alpha. Anything
+// else (text, icons, colour) is opaque by its distance from the key.
 void fragment() {
 	vec4 c = texture(TEXTURE, UV);
+	float lk = max(dot(key, vec3(1.0 / 3.0)), 1e-3);
+	float lp = dot(c.rgb, vec3(1.0 / 3.0));
+	float chroma = distance(c.rgb, vec3(lp));
 	float d = distance(c.rgb, key);
-	COLOR = vec4(c.rgb, smoothstep(0.025, 0.07, d));
+	if (chroma < 0.035 && lp < lk) {
+		float a = clamp(1.0 - lp / lk, 0.0, 1.0);
+		COLOR = vec4(0.0, 0.0, 0.0, a < 0.04 ? 0.0 : a);
+	} else {
+		COLOR = vec4(c.rgb, smoothstep(0.025, 0.07, d));
+	}
 }"""
 					_feed_key_mat.shader = sh
 				_feed_key_mat.set_shader_parameter("key", Vector3(_feed_key.r, _feed_key.g, _feed_key.b))
@@ -3478,6 +3494,12 @@ func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, 
 			pdist = o.distance_to(cam.origin)
 			player = car
 	var in_car := _live_vtable == 0x8200206C or _live_vtable == 0x82034FC4
+	if _cam != null:
+		# (in-car the roof lining is nearer the eyes than the scenes' 0.3 m near plane: it was cut away, the sky showing
+		# through, user report 2026-11-27; 5 cm in the in-car views, as the game draws them close)
+		if _cam_near_base < 0.0:
+			_cam_near_base = _cam.near
+		_cam.near = 0.05 if in_car else _cam_near_base
 	if in_car != _was_in_car and _world_env != null:
 		_was_in_car = in_car
 		_world_env.environment.tonemap_exposure = _base_exposure * (_in_car_exposure() if in_car else 1.0)
