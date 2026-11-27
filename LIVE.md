@@ -1155,3 +1155,14 @@ The user's last question was whether to chase the remaining uneven steps or call
   frame could be keyed and laid over the viewer's race); leaving a race back to the menus not yet tested; the game's
   remaining fixed GPU passes in a stage B race.
 
+## The user's notes of 2026-11-27 evening (worked through 14:09-24:00)
+
+- **Wheels not turning (stage B):** the game puts a wheel's spin into its matrix (car +0x190) when it draws the car,
+  which stage B skips: the streamed wheels kept steering and suspension only (0-0.6 degrees a viewer frame at 35 m/s).
+  The viewer spins them (`_spin_wheels`: about the axle = the car's up x its direction of travel, by distance over a
+  0.31 m radius; FM3_WHEEL_SPIN=0 off): 28-85 degrees a viewer frame at 32-41 m/s now. `FM3_WHEEL_LOG=1` logs it.
+- **Brake lights:** binary in the game (its own shots: the CR-X's lamps fully lit at a 7% brake, dark at 0). The
+  viewer's followed the pedal and faded over 0.25 s, and lit the AI cars' from their deceleration (also when they only
+  lifted off): now on / off with no fade, from each car's own brake ("FM3B", FM3-ReGPU live_camera.cpp: every race
+  participant's physics object matched to its car).
+

@@ -7,6 +7,8 @@ var _frames := 0
 var _scene: Node
 var _cam: Camera3D
 var _cam_near_base := -1.0  # (the scene camera's own near plane; in-car views use 5 cm: _update_live_cars)
+var _wheel_log_ms := 0  # (FM3_WHEEL_LOG=1 debug)
+var _wheel_log_basis := Basis()
 var _sky_nodes := []  # the sky dome's meshes: kept on the camera (_process)
 var _triple_layout := ""  # --triple <layout.json>: three screens (core/triple_view layout), stitched side by side
 var _screens := []
@@ -56,6 +58,7 @@ var _car_accel := {}  # car -> acceleration along its path, m/s2 (smoothed)
 var _car_back := {}  # car -> true while it moves backwards
 var _car_lit := {}  # car -> brake light amount shown (0..1)
 var _player_brake := -1.0  # the player's brake input ("FM3E" v3; -1 = none)
+var _car_brake := {}  # car -> [brake 0..1, msec received] ("FM3B": every car's, from its physics object)
 var _light_mats := {}  # car -> [[material, "brake" | "reverse"], ...]
 # The live reflection cube is the player's car's only (the game's paint shader picks t6 / t7: the player car's cube,
 # rendered every frame around it, or the static one): the other cars reflect the layout's static cube. Before this they
@@ -1685,15 +1688,19 @@ func _update_engine_audio(player, moves: Dictionary) -> void:
 
 
 func _update_lights(player) -> void:
-	var dt := 1.0 / 60.0
 	for car in _light_mats:
+		# The game's brake lights are on or off (its own shots, 2026-11-27: the CR-X's lamps fully lit at a 7% brake,
+		# dark the frame before at 0), with no fade either way: each car's brake from its physics object ("FM3B"), else
+		# the player's own ("FM3E"), else (an older stream) a guess from the car's deceleration. Until 2026-11-27 the
+		# player's lamps followed the pedal (gradual) and faded over 0.25 s, and the AI cars' lit when they only lifted.
 		var on := 0.0
-		if car == player and _player_brake >= 0.0:
-			on = _player_brake
+		if _car_brake.has(car) and Time.get_ticks_msec() - int(_car_brake[car][1]) < 500:
+			on = 1.0 if float(_car_brake[car][0]) > 0.01 else 0.0
+		elif car == player and _player_brake >= 0.0:
+			on = 1.0 if _player_brake > 0.01 else 0.0
 		elif float(_car_accel.get(car, 0.0)) < -BRAKE_DECEL and float(_car_speed.get(car, 0.0)) > 1.5:
 			on = 1.0
-		var shown := float(_car_lit.get(car, 0.0))
-		shown = on if on >= shown else maxf(on, shown - dt * 4.0)
+		var shown := on
 		_car_lit[car] = shown
 		var back := bool(_car_back.get(car, false))
 		for e in _light_mats[car]:
@@ -1712,6 +1719,53 @@ func _update_lights(player) -> void:
 				lm.albedo_color = Color(1.0, 1.0 - 0.85 * shown, 1.0 - 0.85 * shown)
 			else:
 				lm.emission_energy_multiplier = 1.5 if back else 0.0
+
+
+# The wheels' spin in stage B (2026-11-27, user: "the cars' wheels not turning at all"): the game puts a wheel's spin
+# into its matrix (car +0x190, "FM3W") when it draws the car, which stage B skips: the streamed wheels kept their
+# steering and suspension but stood still (0-0.6 degrees a viewer frame at 35 m/s, where a 31 cm wheel turns ~30). Each
+# wheel turns here about its axle (the car's up crossed with its direction of travel, so no axis convention is assumed;
+# backwards too) by the distance the car moved over the wheel's radius, accumulated per wheel. FM3_WHEEL_SPIN=0: off.
+const WHEEL_RADIUS := 0.31  # m (FM3's cars' wheels are ~0.28-0.34 m; at speed the blurred wheel hides the difference)
+var _spin_prev := {}  # car -> [origin, msec]
+var _spin_angle := {}  # car -> radians turned so far
+
+
+func _spin_wheels(moves: Dictionary, wmoves: Dictionary) -> void:
+	var now := Time.get_ticks_msec()
+	for car in wmoves:
+		if not moves.has(car):
+			continue
+		# (moves / wmoves are moves from the car's / wheel's pose when it was attached, not poses: their positions come from
+		# those attach-time poses, as in _update_live_cars)
+		var body := moves[car] as Transform3D
+		if not _car_inv.has(car) or not _wheel_inv.has(car):
+			continue
+		var o := body * ((_car_inv[car] as Transform3D).affine_inverse().origin)
+		var angle := float(_spin_angle.get(car, 0.0))
+		var axis := Vector3.ZERO
+		if _spin_prev.has(car):
+			var d: Vector3 = o - (_spin_prev[car][0] as Vector3)
+			var up := body.basis.y.normalized()
+			d -= up * d.dot(up)
+			var dist := d.length()
+			if dist > 1e-4 and dist < 10.0:
+				axis = up.cross(d / dist).normalized()
+				angle = fmod(angle + dist / WHEEL_RADIUS, TAU)
+				_spin_angle[car] = angle
+				_spin_prev[car + 0x100000000] = axis  # (the last axis: kept while the car stands)
+		_spin_prev[car] = [o, now]
+		if axis == Vector3.ZERO:
+			if not _spin_prev.has(car + 0x100000000):
+				continue
+			axis = _spin_prev[car + 0x100000000]
+		var ws: Array = wmoves[car]
+		for k in ws.size():
+			var w := ws[k] as Transform3D
+			var c := w * ((_wheel_inv[car][k] as Transform3D).affine_inverse().origin)  # (the wheel's centre now)
+			var r := Transform3D(Basis(axis, angle), Vector3.ZERO)
+			# (about the axle through the wheel's centre: move it to the origin, turn, move it back)
+			ws[k] = Transform3D(Basis.IDENTITY, c) * r * Transform3D(Basis.IDENTITY, -c) * w
 
 
 # The glTF's textures, compressed (see the loader): each material's base colour, metallic-roughness, occlusion (FM3's
@@ -3005,6 +3059,11 @@ func _live_step() -> void:
 	while _udp.get_available_packet_count() > 0 and budget > 0:
 		budget -= 1
 		var b := _udp.get_packet()
+		if b.size() == 212 and b.slice(0, 4).get_string_from_ascii() == "FM3B" and b.decode_u32(4) == 1:
+			# every car's brake (and throttle) from its own physics object (2026-11-27): the brake lights
+			for i in mini(int(b.decode_u32(8)), 16):
+				_car_brake[int(b.decode_u32(12 + 12 * i))] = [b.decode_float(16 + 12 * i), Time.get_ticks_msec()]
+			continue
 		if b.size() == 56 and b.slice(0, 4).get_string_from_ascii() == "FM3T":
 			_live_track(b.slice(8, 40).get_string_from_ascii(), b.slice(40, 48).get_string_from_ascii())
 			continue
@@ -3527,6 +3586,17 @@ func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, 
 				gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY if mine else own
 			elif int(part[3]) < 0:
 				gi.visible = not mine
+	if (_feed_tag & 0x100) != 0 and OS.get_environment("FM3_WHEEL_SPIN") != "0":
+		_spin_wheels(moves, wmoves)
+	if OS.get_environment("FM3_WHEEL_LOG") == "1" and wmoves.has(player) and moves.has(player):
+		# (debug: the player's wheel 0 relative to its body, between two viewer frames: its turn, and the car's speed;
+		# logged every 2 s)
+		var wb: Basis = ((moves[player] as Transform3D).basis.orthonormalized().inverse() * (wmoves[player][0] as Transform3D).basis.orthonormalized())
+		if _wheel_log_basis != Basis() and Time.get_ticks_msec() - _wheel_log_ms > 2000:
+			_wheel_log_ms = Time.get_ticks_msec()
+			var rel := _wheel_log_basis.inverse() * wb
+			print("world_view: wheel log: player %08X wheel 0 turned %.2f deg in one viewer frame, speed %.1f m/s, wheel parts %d" % [player, rad_to_deg(rel.get_rotation_quaternion().get_angle()), float(_car_speed.get(player, 0.0)), _car_parts.filter(func(p): return int(p[1]) == player and int(p[3]) >= 0).size()])
+		_wheel_log_basis = wb
 	for part in _car_parts:
 		var wk: int = part[3]
 		if int(part[4]) >= 0:
