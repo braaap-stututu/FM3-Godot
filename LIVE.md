@@ -1472,13 +1472,14 @@ The user's last question was whether to chase the remaining uneven steps or call
   **Decisive (~22:56, cockpittint2.ps1: 1074f157 tinted alone, long waits, same-boot capture):** the game's 3870 list
   (our `headliner`, draw #744 here) lights up only the gauge-cluster surround (471-783 x 593-688; roof box 0.0,
   cluster 0.575 magenta), while the 13260 list (our `leather`) is the roof and the A-pillar. Same vertex buffer for
-  both (13CA133C, 947,480 bytes), same index lists: so our decode places the two lists the other way round. The lead
-  for next time: the two vertex-shader families decode the position differently. 6190 (flat colour): fetch
-  (t.y, t.x, t.w, t.z), then position = (t.x, t.w, t.y) x t.z + vc180.yzx; 618013738ec64643 (textured): position =
-  r2.yzw x (vc20.x - vc19.x) + vc19.x, three components times one global scale (a quantized box), not x w. Read both
-  vertex shaders in full (the matrices after), work out each one's car-space position for vertex 3870 and 13260, and
-  compare with fm3_carbin.vertices' (x, y, z) x w; the cockpit may need a per-subset (per-shader) position decode,
-  which would also explain the dark A-pillar and the odd cabin pieces. Also seen: hiding the
+  both (13CA133C, 947,480 bytes), same index lists: so the game shows the two lists the other way round from our
+  decode. (A first guess, that the two vertex-shader families decode positions differently, was a misreading: read
+  line by line both do position = permuted (x, y, z) x w + vc180 (618: r2.zxy x w + vc28.zxy, vc28 = vc180), the
+  same placement; withdrawn.) Hypotheses left: the roof drawn by both lists at one depth with the later draw (3bb8)
+  winning, which hides 1074's roof in its tint (but needs our `leather` list at the roof, which our decode does not
+  give); or the capture's index print belonging to another draw. Next: render our 13260 list alone in the viewer
+  (look-from the in-car camera) and the game's draw #738 alone (`REGPU_SKIP_SHADERS` / a ps edit to discard all but
+  it), and compare where each lands. Also seen: hiding the
   cockpit's `window` gives in-car 16.1 (16.4): the inside of the cockpit glass costs a little. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
   29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
   until the animation is in, the user's call.
