@@ -1380,9 +1380,15 @@ The user's last question was whether to chase the remaining uneven steps or call
   both, so the game's light there is high: check its pc5 / pc7 terms first). **The gloves** are misshapen against the
   game's (palms stretched over the rim): the arms are posed from the carbin grip anchors without the driver's
   animation (Granny / Oodle, still open).
-  ~21:45-21:52: the A-pillar is none of the cockpit's body, black, rubber_trim, plastic2, matte_colors, black_glass
-  (each hidden in turn: the pillar box stays 2.0; across it at y 300 the game reads 12-16, ours 1-2): next, an id
-  render of the in-car view. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
+  ~21:45-22:15, **the A-pillar found:** first tries were void: `FM3_HIDE_PARTS` did not hide cockpit meshes in the
+  in-car view (the in-car switching made them visible again each frame; fixed: a hidden part keeps meta fm3_hidden).
+  Then `cockpit_` hides the pillar, each material alone does not, and only `cockpit_headliner` changes the pillar box
+  (11,572 pixels): the pillar trim is part of the headliner mesh (a darker layer behind it). Offline: at the pillar's
+  vertices the headliner texture (uv0 in interior_lod0) is dark, mean 27.9 against 127.8 on the roof, the transfer's
+  ambient 0.184 vs 0.117. The game's pillar is only a little darker than its roof (13 vs 18): so either the game samples
+  that texture elsewhere (its dash / headliner shader 1074f157 scales or picks its uv: the gauge shader 417907f8 scales
+  uv by pc116.x) or lights the pillar far more. Next: draw #737's constants and its uv math. Also seen: hiding the
+  cockpit's `window` gives in-car 16.1 (16.4): the inside of the cockpit glass costs a little. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
   29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
   until the animation is in, the user's call.
 - **A stale game feed (fixed ~21:47):** the feed file (the game's own frames for stage B) outlives the game; a boot

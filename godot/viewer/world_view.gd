@@ -4212,6 +4212,7 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 	for h in OS.get_environment("FM3_HIDE_PARTS").split(",", false):
 		if nm.contains(h):
 			mi.visible = false
+			mi.set_meta("fm3_hidden", true)  # (kept hidden by the in-car switching too)
 	for s in mi.mesh.get_surface_count():
 		var m0 := mi.mesh.surface_get_material(s) as BaseMaterial3D
 		if m0 == null:
@@ -4980,7 +4981,7 @@ func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, 
 		var mine: bool = int(part[1]) == player and in_car
 		var gi := part[0] as GeometryInstance3D
 		if bool(part[5]):
-			gi.visible = mine and not (_steer_mode == "off" and part[7] != null and part[7].get("gauge") == "steering")
+			gi.visible = mine and not (_steer_mode == "off" and part[7] != null and part[7].get("gauge") == "steering") and not gi.has_meta("fm3_hidden")
 			if COCKPIT_PRT and mine:
 				gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON  # (the cockpit's own roof edge and pillars shade it)
 		else:
