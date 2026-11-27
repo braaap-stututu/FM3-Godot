@@ -48,7 +48,7 @@ void vertex() {
 	if (anim_on && INSTANCE_CUSTOM.y > 0.5) {
 		vec3 me = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 		bool cheer = false;
-		for (int k = 0; k < 16; k++) {
+		for (int k = 0; k < (cheer_r > 0.0 ? 16 : 0); k++) {
 			vec4 c = texelFetch(cars_tex, ivec2(k, 0), 0);
 			if (c.w > 0.0 && distance(c.xyz, me) < cheer_r) {
 				cheer = true;

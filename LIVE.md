@@ -1330,7 +1330,10 @@ The user's last question was whether to chase the remaining uneven steps or call
   cars' positions in one shared 16 x 1 float texture, updated ten times a second, the choice in the vertex shader.
   Live grid: forced to 1 km the standing people on the right raise their arms (crop mean diff 3.8 against no
   cheering), the photographer keeps his pose; fps unchanged (~50 both ways). On the real grid few people are within
-  60 m (the seated grandstand and the pit workers), so the default changes little there. `FM3_CROWD_ANIM=0` still people. (Earlier dead ends, kept in PLAN-NEXT 2: the skeleton
+  60 m (the seated grandstand and the pit workers), so the default changes little there. Motegi (24,299 people) live, ~21:20:
+  the last steady fps sample 52 with cheering, 49 with `FM3_CROWD_CHEER_M=0` (the loop skipped): no measurable cost
+  (these track runs give one or two steady samples; Motegi's frozen-picture difference varies 31-49 by the freeze
+  moment, the game's exposure on a black car close-up, as before). `FM3_CROWD_ANIM=0` still people. (Earlier dead ends, kept in PLAN-NEXT 2: the skeleton
   reconstructed from names and weights; not needed, the buffer holds the final transforms.)
 - **The cockpit's light (2026-11-27 ~20:40-21:00, opt-in, not finished):** the game's in-car frame captured per camera
   view (scratchpad cockpitcap.ps1; the in-car view draws 18 shader pairs no other view draws), each tinted in turn
