@@ -119,7 +119,11 @@ class Gltf:
             # (the paint's reflection sky weight per vertex, fm3_carbin.env_sh: d = top x u + bottom x v,
             # fm3_carpaint.gdshader has_env_sh)
             prim['attributes']['TEXCOORD_1'] = self.acc(U2.astype(np.float32), 'VEC2')
-        if lit is not None:
+        if lit is not None and lit.ndim == 2:
+            # (the cockpit: T2 + 0.5, T3 + 0.5, the baked brightness, 0.5 = the marker; T0 / T1 are in TEXCOORD_1's
+            # env_sh; fm3_cockpit.gdshader)
+            prim['attributes']['COLOR_0'] = self.acc(lit.astype(np.float32), 'VEC4')
+        elif lit is not None:
             lit = lit.astype(np.float32)
             prim['attributes']['COLOR_0'] = self.acc(np.stack([lit, lit, lit, np.ones_like(lit)], axis=1), 'VEC4')
         prim['indices'] = self.acc(T.astype(np.uint32).ravel(), 'SCALAR', 34963)
@@ -349,6 +353,9 @@ def build(car, cdir, wdir, db, outdir):
                     continue
                 node = f'cockpit_{car}_cockpit_{mname}' + (f'-{sec["name"]}' if needle is not None else '')
                 lit = None if mname.startswith('gauge') else lit_of(sec, mname)
+                if lit is not None and sec.get('sh4') is not None and sec.get('env_sh') is not None:
+                    t4 = sec['sh4']
+                    lit = np.stack([np.clip(t4[:, 2] + 0.5, 0, 1), np.clip(t4[:, 3] + 0.5, 0, 1), lit, np.full(len(lit), 0.5)], axis=1)
                 add(node, sec, P, sec.get('normal'), mname, material_for(mname, 0, cockpit=True, outside=outside), lit)
                 full = f'{node}_{len(g.meshes) - 1}'
                 if needle is not None:

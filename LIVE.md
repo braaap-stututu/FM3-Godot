@@ -1332,6 +1332,25 @@ The user's last question was whether to chase the remaining uneven steps or call
   cheering), the photographer keeps his pose; fps unchanged (~50 both ways). On the real grid few people are within
   60 m (the seated grandstand and the pit workers), so the default changes little there. `FM3_CROWD_ANIM=0` still people. (Earlier dead ends, kept in PLAN-NEXT 2: the skeleton
   reconstructed from names and weights; not needed, the buffer holds the final transforms.)
+- **The cockpit's light (2026-11-27 ~20:40-21:00, opt-in, not finished):** the game's in-car frame captured per camera
+  view (scratchpad cockpitcap.ps1; the in-car view draws 18 shader pairs no other view draws), each tinted in turn
+  (cockpittint.ps1): ps 3bb8846d34e89025 (vs 6190a07aa58ac0a9) draws the roof liner and the A-pillar in one untextured
+  draw; its constants with `REGPU_TRACE_VC=1` (the "(read)" marks map the packed ranks to the game's numbers). Decoded:
+  colour = 0.24 (pc116) x (max(dp4(T, A), 0) + 1.5 (pc209) x SHDir colour (pc179 0.78 / 0.76 / 0.73) x max(dp4(T, S), 0)),
+  T = the vertex's SH transfer (4 x s16 at byte 20, decompressed by the car's c126 factors: fm3_carbin.sh_transfer),
+  A (vc131-133) = the cockpit hemisphere: 5.3174 x (top + bottom) / 2 on T0 (0.798 from SHCockpitTop 0.3), -1.535 x
+  (top - bottom) on the up axis, S (vc36) = the sun: 1.18 on T0, -2.04 x its direction on the linear terms; T1 / T2 /
+  T3 = car-space +y / -z / +x (checked: world up in car space gives vc131's tilt terms 0.021 / -0.004, the sun in car
+  space (0.720, 0.666, 0.194) gives vc36's -1.36 / 0.396 / -1.47 exactly). The same transfer as the paint's env_sh.
+  Built: fm3_car_library.py writes T2 / T3 into the cockpit meshes' COLOR (alpha 0.5 marks them; the old brightness in
+  blue), fm3_cockpit.gdshader evaluates the light per vertex in car space (`FM3_COCKPIT_PRT=1`; only the CR-X si
+  rebuilt so far, in 2.5 s). Result: the light is plausible (offline: interior mean 0.46, the A-pillar parts 0.91) but the
+  in-car view gets worse (16.4 -> 20.2: roof 75 vs the game's 18, A-pillar 4.8 vs 13, the old light 17 / 2.0) because
+  the materials' colours differ: in the game the roof and pillar are one 0.24 grey draw, ours a bright headliner
+  texture and a 0.015 'black'. That draw's index list starts in the `leather` subset (13260, 21604, ...) but is 9,819
+  long (leather has 1,237): which subsets / LOD the game draws there, and where 0.24 comes from, are next. Default stays
+  the old fitted light (in-car 16.5 / 15.8 / 15.4 after the change). The old switch `FM3_COCKPIT_VCOL=0` (no baked
+  brightness) was tried too: 17.7, the pillar 4.1.
 - **The crowd's light (2026-11-27 ~20:30):** the game's crowd pixel shader b32f44c528968ecc with its constants
   captured on the frozen grid (scratchpad crowdpc.ps1: 114 crowd draws, all alike): colour = albedo x (pc2 + pc0 x
   pc4.x x saturate(n.l)), then the fog (pc3, amount from the vertex shader); pc2 = TrackSettings <Crowds> dark

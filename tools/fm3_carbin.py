@@ -193,6 +193,15 @@ def env_sh(raw40, factors):
     return np.stack([t[:, 0] * SH_DC / 2 + t[:, 1] * SH_LIN, t[:, 0] * SH_DC / 2 - t[:, 1] * SH_LIN], axis=1)
 
 
+def sh_transfer(raw40, factors):
+    """(n, 4) per-vertex SH transfer T0..T3 of the stride-40 vertices, decompressed (2026-11-27, the cockpit vertex
+    shader 6190a07aa58ac0a9): T0 the constant term, T1 / T2 / T3 the car-space +y / -z / +x linear terms (the game's
+    cockpit light = dp4(T, hemisphere SH) + dp4(T, sun SH); LIVE.md "The cockpit's light")."""
+    n = len(raw40)
+    lo, rng = factors
+    return lo + (raw40[:, 20:28].copy().view('>i2').astype(np.float64).reshape(n, 4) / 32767.0 + 1.0) * 0.5 * rng
+
+
 def vertices(part, lod0=False):
     """Decoded vertices of a part's LOD 1-5 buffer (or its LOD 0 buffer): position (car space, before the part's
     offset), uv0, and for stride 40 also uv1, normal, damage, bitangent; normal for 16 / 44."""
@@ -246,6 +255,7 @@ def sections(car, lod):
         out.append({'name': p['name'], 'offset': p['origin'], 'local': v['xyzw'][:, :3] * v['xyzw'][:, 3:4],
                     'uv0': v['uv0'], 'normal': v.get('normal'), 'light': v.get('light'), 'subs': subs,
                     'env_sh': env_sh(v['raw40'], car['sh_factors']) if 'raw40' in v else None,
+                    'sh4': sh_transfer(v['raw40'], car['sh_factors']) if 'raw40' in v else None,
                     'damage_dir': damage_dir(v['damage']) if 'damage' in v else None})
     return out
 

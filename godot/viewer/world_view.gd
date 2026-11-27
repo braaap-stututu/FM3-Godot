@@ -3133,7 +3133,12 @@ func _cockpit_material(bm: BaseMaterial3D) -> ShaderMaterial:
 	if bm.albedo_texture != null:
 		sm.set_shader_parameter("albedo_tex", bm.albedo_texture)
 	sm.set_shader_parameter("albedo_color", _vec4(bm.albedo_color))
-	sm.set_shader_parameter("use_vcol", bm.vertex_color_use_as_albedo)
+	sm.set_shader_parameter("use_vcol", bm.vertex_color_use_as_albedo and OS.get_environment("FM3_COCKPIT_VCOL") != "0")  # (=0: tests)
+	# (the game's cockpit light from the vertices' SH transfer, fm3_cockpit.gdshader: opt-in, FM3_COCKPIT_PRT=1)
+	sm.set_shader_parameter("prt_on", OS.get_environment("FM3_COCKPIT_PRT") == "1")
+	sm.set_shader_parameter("sun_world", _sun_to)
+	if OS.get_environment("FM3_COCKPIT_PRT_K") != "":
+		sm.set_shader_parameter("prt_k", float(OS.get_environment("FM3_COCKPIT_PRT_K")))
 	sm.set_shader_parameter("gain", float(OS.get_environment("FM3_COCKPIT_GAIN")) if OS.get_environment("FM3_COCKPIT_GAIN") != "" else COCKPIT_GAIN)  # (FM3_COCKPIT_GAIN: tests)
 	if bm.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
 		sm.set_shader_parameter("alpha_cut", bm.alpha_scissor_threshold)
