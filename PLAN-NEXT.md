@@ -64,6 +64,22 @@ Found: all in `Media\Spectators\` (FM3-files): `spectators.xml` (models, texture
   (827, calls `sub_82AAD690` x6, `sub_825303A0`, `sub_82A06898`). Port those to Python (`tools/fm3_anim.py`), check by
   decoding Stand_Idle_01 and comparing a bone's rotation against a live dump (the debug server's `peek` on a
   spectator's bone palette), then export glTF animations.
+**Found 2026-11-27 ~17:15 (the animation path):** at the CrownJewel grid the game's crowd is **static sprite cards**
+(36 rect-list draws, vs 4c93e5152da49ff7, the 2048 x 1024 'crowds' sheet, one 1/32 x 1/8 cell per card; two captures
+2 s apart with the world running differ only in the camera constants). The 3D people are a near LOD. The race load
+samples every animation of the loaded crowd class through the codec sub_82AABED0 (21 calls of 17-track instances at
+~12.6 s; the old log kept only 8 animations, so it missed them): on CrownJewel only the **standing** set (Stand_Idle_01..10
+without 02, _Drunk, _Photo, Stand_Cheer_01..11 without 07; spectators.xml crowd classes Sitting / Standing / Drunk /
+Photographer / Marshall / PitWorker, each with idle and cheer lists). The instance's own data is at +0x00 (A-range
+physical mirror; +0x0C is shared); FM3-ReGPU `anim_dump.cpp` (FM3_ANIM_DUMP=1) now dumps each over its full length
+(frames at record +34, durations 2.7-30.4 s) to out/run/anim_dump; copies in `Godot/work/crowd_anim` (game data, not
+committed); matched to files by (duration, frames) at record +28 / +34. **The samples are per-bone rotations relative to
+the bind pose** (quaternion, translation always 0, scale 1; t = 0 often identity): idles move 0-10 degrees (Stand_Idle_07
+up to 41), cheers up to ~70, the photographer up to ~100. **Left: the skeleton** (not in the .skinbin): parents from the
+bone names (byte-swapped words at the anim file's end: spine, head, shoulders, upper / lower arm, hand, upper / lower
+leg, foot, L / R) or from the models' shared bone weights, joint pivots from the vertices two bones share, and whether
+the rotations are in model axes (check on Stand_Idle_Photo: the camera raised to the face). Then glTF skins +
+animations in fm3_spectators.py and the standing people where the game uses them (where its 3D LOD shows them).
 Steps: (1) `tools/fm3_skinbin.py`: vertices, indices, bones -> glTF with a Skeleton (check against a frame capture of
 the crowd: the captured skinned draws' vertex shader has the bone palette); (2) the anim CAFF: tracks per bone
 (rotation quaternions, maybe compressed), frame rate; (3) Godot: the crowd's people (`.crowd` cells, already placed
