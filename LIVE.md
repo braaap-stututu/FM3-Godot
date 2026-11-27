@@ -1113,3 +1113,7 @@ The user's last question was whether to chase the remaining uneven steps or call
    custom paint (the livery layer: the car object holds only the database colour, +0x9A0 etc.,
    `FM3_LIVE_DUMP_CARS=1`), crowd sprites, the sky dome's seam line, the sea's colour.
 6. Then stage B: ReGPU skips what Godot draws.
+
+- **The HUD's own files (2026-11-27):** the race HUD is the UI scene `947_hud` (`Media/UI/scenes/ui4`), built from
+  the textures of `Media/UI/Textures/I_Map/I_HUD` (`tools/fm3_hud_textures.py`); our tach was first redrawn by eye
+  from the game's shot (grid with ours on: 14.3, ours off 14.0-14.3: no whole-frame change). PLAN-NEXT has the list.

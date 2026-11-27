@@ -111,7 +111,16 @@ clock runs through the countdown), the lap total ("/-" against "/3"), no minimap
 cars' driven path; since 2026-11-27 a whole lap's path is kept in `user://fm3_map_<track>.json` and drawn from the
 next start on; the game's own line data `.seg` / `.irt` / `.geo` would give it at once: not decoded), no opponent name tags (the game's red names over the cars ahead), and the tach's style (redrawn
 2026-11-27 to the game's shapes: segmented band, fuel arc and pump, small dark centre, short needle; the fuel level
-is not streamed: the arc is drawn full). (The old route, for reference: the HUD's own code reads them; the tach's rpm getter is called
+is not streamed: the arc is drawn full). **But the game draws it from its own textures** (found after the user asked,
+2026-11-27): the race HUD is the UI scene `Media/UI/scenes/ui4/947_hud.{bgf,bsg,fbf}` (Anark: AnarkBGF), whose .fbf
+names `I_Map/I_HUD/I_HUD_Tach_BKG` (the dial's body, 241 x 187), `I_HUD_Tach_RED` (the redline arc, 180 x 180),
+`I_HUD_Tach_Needle`, `I_HUD_ICON_Fuel`, `I_HUD_Fuel_Level`, the panels `I_HUD_LapAndPlace_bkgd` /
+`I_HUD_RaceTime_{top,mid,btm}_bkgd`, and more (`tools/fm3_hud_textures.py` exports all 81 to out/hud_tex; the needle
+decodes with alpha 0: check its format). **Next for the HUD:** draw ours from these textures, the layout read from
+947_hud (element names in the .bgf: GAUGE_ANALOG.RPM_ANALOG, FUEL_ANALOG, TEXT_GEAR_ANALOG, Elements.RPM and
+MPH.Redline, I_HUD_MiniMap with CUSTREND_MINIMAP = the map is a custom render; the format is not decoded), until
+then positions fitted on the game's shots. The fonts are named there too (helvetica63-extendedmedium,
+helvetica67-condensedmedium: `Media/UI/Fonts/*.dt`). (The old route, for reference: the HUD's own code reads them; the tach's rpm getter is called
 for the HUD from 0x821F2044 (`FM3-ReGPU recomp/src/hooks/live_camera.cpp` notes), so the HUD update function around
 that return address also fetches position / lap / lap time: read it in `out/ppc-rexenon` and follow its other getters
 to the race object, then stream them in FM3E. (Searching the image for the time format: `%02d.%03d` is at image offset
