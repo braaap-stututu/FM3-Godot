@@ -1348,7 +1348,12 @@ The user's last question was whether to chase the remaining uneven steps or call
   in-car view gets worse (16.4 -> 20.2: roof 75 vs the game's 18, A-pillar 4.8 vs 13, the old light 17 / 2.0) because
   the materials' colours differ: in the game the roof and pillar are one 0.24 grey draw, ours a bright headliner
   texture and a 0.015 'black'. That draw's index list starts in the `leather` subset (13260, 21604, ...) but is 9,819
-  long (leather has 1,237): which subsets / LOD the game draws there, and where 0.24 comes from, are next. Default stays
+  long (leather has 1,237): which subsets / LOD the game draws there, and where 0.24 comes from, are next. (~21:15: the
+  "n 9819" is not the index count: the initiator 04D50806 says 0x4D5 = 1,237 indices, 32-bit = exactly the leather
+  subset, and its index buffer lies 3,636 indices before the vertex buffer = leather through gauge_needle, the vertex
+  buffer = the interior section's 23,687 x 40 bytes. But leather's vertices reach only y 0.60, not the roof (0.98): the
+  roof / pillar magenta in the tint run probably came from another draw with the same pixel shader in that run's in-car
+  view (the TRACE_VC run's view numbering may differ: check the shot of each run before reading its capture).) Default stays
   the old fitted light (in-car 16.5 / 15.8 / 15.4 after the change). The old switch `FM3_COCKPIT_VCOL=0` (no baked
   brightness) was tried too: 17.7, the pillar 4.1.
 - **The crowd's light (2026-11-27 ~20:30):** the game's crowd pixel shader b32f44c528968ecc with its constants
