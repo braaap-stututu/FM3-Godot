@@ -2306,23 +2306,83 @@ var _dmg_groups := {}  # car -> [[the part's buffer sizes, [glTF mesh index, ...
 var _parts_hidden := {}  # car -> {glTF mesh index: true}
 
 
+# The loose parts drawn (2026-11-27, FM3P v3): a copy of each part's meshes (its own mesh, or its triangles out of a
+# merged one) at the world matrix the game drew it with; replaced at each report (they lie where they came to rest).
+var _debris := {}  # car -> [MeshInstance3D, ...]
+
+
+func _parts_debris(car, debris: Array) -> void:
+	for d in _debris.get(car, []):
+		if is_instance_valid(d):
+			(d as Node).queue_free()
+	var made := []
+	for de in debris:
+		var want := {}
+		for mi_ in de[0]:
+			want[int(mi_)] = true
+		for p in _dmg_parts.get(car, []):
+			var m := p[0] as MeshInstance3D
+			if not is_instance_valid(m) or not (m.mesh is ArrayMesh):
+				continue
+			var am := m.mesh as ArrayMesh
+			var arrays := am.surface_get_arrays(0)
+			var nm_ := String(m.name)
+			if m.has_meta("src_ranges"):
+				var rg: PackedInt32Array = m.get_meta("src_ranges")
+				var idx0: PackedInt32Array = m.get_meta("idx0") if m.has_meta("idx0") else arrays[Mesh.ARRAY_INDEX]
+				var keep := PackedInt32Array()
+				for r in range(0, rg.size(), 3):
+					if want.has(rg[r]):
+						for t in range(0, idx0.size(), 3):
+							if idx0[t] >= rg[r + 1] and idx0[t] < rg[r + 2]:
+								keep.append(idx0[t])
+								keep.append(idx0[t + 1])
+								keep.append(idx0[t + 2])
+				if keep.is_empty():
+					continue
+				arrays[Mesh.ARRAY_INDEX] = keep
+			elif not want.has(int(nm_.get_slice("_", nm_.get_slice_count("_") - 1))):
+				continue
+			var dm := MeshInstance3D.new()
+			dm.mesh = _surface_mesh(am.surface_get_primitive_type(0), arrays, am.surface_get_material(0))
+			for si in m.get_surface_override_material_count():
+				dm.set_surface_override_material(si, m.get_surface_override_material(si))
+			dm.layers = m.layers
+			root.add_child(dm)
+			dm.global_transform = de[1]
+			made.append(dm)
+	_debris[car] = made
+	if not debris.is_empty():
+		print("world_view: car %08X: %d loose parts drawn (%d meshes)" % [car, debris.size(), made.size()])
+
+
 func _parts_packet(b: PackedByteArray) -> void:
 	if OS.get_environment("FM3_PARTS") == "0":
 		return
 	var car := int(b.decode_u32(8))
 	if not _dmg_groups.has(car) and not (_damage_any(car) and _damage_ensure(car)):
 		return  # (an undamaged car: its parts are all on)
+	# (v3: header 20 bytes, 200 sizes on the car, 24 loose sizes at 820, their matrices at 916: 12 floats each)
 	var sizes := {}
-	var loose := {}
-	var n_on := mini(int(b.decode_u32(12)), 255)
-	var n_off := mini(int(b.decode_u32(16)), 255 - n_on)
+	var loose := {}  # size -> [Transform3D, ...]
+	var n_on := mini(int(b.decode_u32(12)), 200)
+	var n_off := mini(int(b.decode_u32(16)), 24)
 	for i in n_on:
 		sizes[int(b.decode_u32(20 + 4 * i))] = true
+	var axs := Vector3(_live_axes[0], _live_axes[1], _live_axes[2])
 	for i in n_off:
-		loose[int(b.decode_u32(20 + 4 * (n_on + i)))] = true
+		var o := 916 + 48 * i
+		var rows := []
+		for rr in 4:
+			rows.append(Vector3(b.decode_float(o + 12 * rr), b.decode_float(o + 12 * rr + 4), b.decode_float(o + 12 * rr + 8)) * axs)
+		var z := int(b.decode_u32(820 + 4 * i))
+		if not loose.has(z):
+			loose[z] = []
+		loose[z].append(Transform3D(Basis(rows[0], rows[1], rows[2]), rows[3]))
 	var groups: Array = _dmg_groups[car]
 	var found := 0
 	var hidden := {}
+	var debris := []  # [[glTF mesh indices], Transform3D]: the loose parts, drawn where the game draws them
 	for g in groups:
 		var on_car := false
 		var off := false
@@ -2336,6 +2396,10 @@ func _parts_packet(b: PackedByteArray) -> void:
 			# may only be culled or drawn by a shader the probe does not see, so it stays)
 			for mi_ in g[1]:
 				hidden[int(mi_)] = true
+			for z in (g[0] as PackedInt32Array):
+				if loose.has(z):
+					debris.append([g[1], loose[z][0]])
+					break
 	if groups.is_empty() or found * 10 < groups.size() * 6:
 		if OS.get_environment("FM3_PARTS_LOG") == "1":
 			var gs := []
@@ -2343,6 +2407,7 @@ func _parts_packet(b: PackedByteArray) -> void:
 				gs.append(g[0])
 			print("world_view: car %08X parts: %d of %d library parts' sizes among the %d drawn: left as they are (sizes %s; library %s)" % [car, found, groups.size(), sizes.size(), str(sizes.keys()), str(gs)])
 		return  # (not drawn at full detail: these sizes say nothing about its parts)
+	_parts_debris(car, debris)
 	var old: Dictionary = _parts_hidden.get(car, {})
 	if old.keys() == hidden.keys():
 		return
@@ -3753,7 +3818,7 @@ func _live_step() -> void:
 			for i in mini(int(b.decode_u32(8)), 16):
 				_car_brake[int(b.decode_u32(12 + 12 * i))] = [b.decode_float(16 + 12 * i), Time.get_ticks_msec()]
 			continue
-		if b.size() == 1040 and b.slice(0, 4).get_string_from_ascii() == "FM3P" and b.decode_u32(4) == 2:
+		if b.size() == 2068 and b.slice(0, 4).get_string_from_ascii() == "FM3P" and b.decode_u32(4) == 3:
 			_parts_packet(b)
 			continue
 		if b.size() == 8080 and b.slice(0, 4).get_string_from_ascii() == "FM3D" and b.decode_u32(4) == 1:

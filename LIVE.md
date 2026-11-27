@@ -1247,8 +1247,10 @@ The user's last question was whether to chase the remaining uneven steps or call
   viewer hides a part whose sizes are among the loose ones and not on the car (a mesh, or its triangles in a merged
   mesh: meta src_ranges / idx_now); a part not drawn at all stays (it may be culled or drawn by a shader the probe does
   not see: at the baseline 1-2 parts a car were not found). Crash test (pad into the pit wall): the game lost the front
-  bumper and both mirrors; the viewer hid the same three (shots: scratchpad dmg\crashcmp.png). Not drawn yet: the
-  loose parts themselves (their translation is known; their rotation would need vc8-10 too). Cost: a 0.5 s pause of
+  bumper and both mirrors; the viewer hid the same three. **The loose parts drawn (FM3P v3, ~21:00):** the probe also
+  records c8-c10 (the paint VS's world matrix: P.x c8 + P.y c9 + P.z c10 + c11, game numbering), each loose buffer's
+  size goes with its matrix, and the viewer puts a copy of that part (its mesh, or its triangles out of a merged one)
+  at it, converted as the streamed car matrices are: the crash test's bumper and mirror lie where the game has them. Cost: a 0.5 s pause of
   stage B after a crash (the game draws everything for those frames). `FM3_PARTS=0` off, `FM3_PARTS_LOG=1` why a
   report was not applied.
 - **The crowd's animations (2026-11-27 ~20:30; PLAN-NEXT 2):** the game animates its 3D people on the GPU: its crowd
