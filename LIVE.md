@@ -1458,7 +1458,15 @@ The user's last question was whether to chase the remaining uneven steps or call
   other boot's capture, the index list that our decode places low and out of view, with byte-identical vertex data.
   Unresolved; next: tint and capture in the same boot (cockpittint1 + a capture after the tint: the tinted draw's
   index list there), and check our cockpit sections' index lists against the carbin's (which list belongs to which
-  part / material). Also seen: hiding the
+  part / material). **Same boot (~22:53, cockpittint1.ps1 + a capture, cap_same.txt):** the tinted draw is again #738,
+  vs 6190a07aa58ac0a9 / ps 3bb8, 1,237 indices from 13260 (= our `leather`), and it covers the roof and the right
+  A-pillar. The in-car draws by first index (ours): 733 c57d2035 chrome, 734 3a1f68e4 cloth, 735 417907f8
+  gauge_emissive, 736 1074f157 gauge_needle, 737 1074f157 headliner, 738 3bb8846d leather (= the game's roof / pillar),
+  739 09716012 metal, 740 09716012 mirrorMiddle, 741 2d1bad31 mottled, 742 4d69c593 plastic, 743 5741ce5e reflector,
+  744 09716012 rubber, 745 09716012 solid. Open: the same index list is low, out-of-view geometry in our decode;
+  vs 6190 reads the position as (t.x, t.w, t.y) x t.z + vc180 from its half4 (fetch swizzle t.y, t.x, t.w, t.z then
+  .yzx): compare with the textured family's (618013738ec64643) and with fm3_carbin.vertices (x, y, z) x w; a part /
+  vertex-base mix-up for this subset is the other candidate. Also seen: hiding the
   cockpit's `window` gives in-car 16.1 (16.4): the inside of the cockpit glass costs a little. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
   29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
   until the animation is in, the user's call.
