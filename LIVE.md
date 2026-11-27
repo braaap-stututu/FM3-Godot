@@ -868,7 +868,11 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   viewer read 0.367, the game 0.400. Now (world_view.gd `_expo_vp`) a 128 x 72 SubViewport of the same world through a
   copy of the camera, drawn once per measurement (every 10 frames), gives the scene before the pass, as the game's
   chain reads it (`FM3_EXPO_POST=1`: the old way). RoadAtlanta's grid, one boot: game L 0.371 (W 0.661), ours 0.377
-  (W 0.670), before 0.334 (W 0.600); whole frame 22.9 -> 17.9. Also: while the world is frozen (FM3_FREEZE_TIME) the
+  (W 0.670), before 0.334 (W 0.600); whole frame 22.9 -> 17.9. Sebring (little between W 0.97 and 1): both ways L
+  0.580, frame 18.7 = 18.7 (game L 0.551, frozen before it settled); Motegi: both at the light curve's end, W 0.900 =
+  the game's, 14.3 = 14.3; CrownJewel (two boots) grid 14.0 / chase 14.5 / in-car 17.6 against 14.3 / 14.6 / 18.2.
+  The viewer is faster with it (CrownJewel offline, 900 frames x 2: 80.5 vs 77.0 fps): the old way read the whole
+  1280 x 720 picture back every 10 frames. Also: while the world is frozen (FM3_FREEZE_TIME) the
   game's L stops adapting (0.390 for 10 s with the fresh mean at 0.401), so a frozen game keeps the L of the moment it
   froze: the live tests' FM3_EXPO_INSTANT is right only once the view has been still a few seconds (RoadAtlanta's
   freeze at 8 s lands on a close-up right after a cut, the game's L still at the top of its curve: use 11 s).
