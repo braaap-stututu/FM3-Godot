@@ -1428,7 +1428,11 @@ The user's last question was whether to chase the remaining uneven steps or call
   shaders' code differs too (4d69c593 is not 1074f157 with other numbers), so each needs its own read; the defaults
   per material are presumably in the car shader file (Media\Shaders\Cars\shaders_v11.fxobj) or the cars' xds
   materials: find where 0.5 / 3 / 5 / 0.7 / 2 and 0 / 1 / 1.2 / 0.16 / 0.25 come from, then light each subset with its
-  own set. Also seen: hiding the
+  own set. (~22:50: shaders_v11.fxobj names them: CockpitHeadlinerColor, CockpitHeadlinerMinDarkness,
+  CockpitHeadlinerTextureScale, CockpitClothColor / MinDarkness / TextureScale, CockpitPlasticPaintScale,
+  CockpitSpecularAmount / Amount2 / Power / Power2, CockpitGaugeColor, CockpitBumpScale / Bias, CockpitNormalScale,
+  MinDiffuse, UseDiffuseInsteadOfSH, MinShadowValue: start from tools/fm3_trackshader.py, which already reads .fxobj
+  parameters for the track shaders, to get each cockpit material's defaults; shadersettings.xml overrides per car.) Also seen: hiding the
   cockpit's `window` gives in-car 16.1 (16.4): the inside of the cockpit glass costs a little. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
   29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
   until the animation is in, the user's call.
