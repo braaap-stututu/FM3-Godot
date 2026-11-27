@@ -1379,7 +1379,16 @@ The user's last question was whether to chase the remaining uneven steps or call
   is emissive (GAUGE_GAIN): to be lit like the dash once the cockpit light is settled (the dial numbers are bright in
   both, so the game's light there is high: check its pc5 / pc7 terms first). **The gloves** are misshapen against the
   game's (palms stretched over the rim): the arms are posed from the carbin grip anchors without the driver's
-  animation (Granny / Oodle, still open). Default stays
+  animation (Granny / Oodle, still open).
+  ~21:45-21:52: the A-pillar is none of the cockpit's body, black, rubber_trim, plastic2, matte_colors, black_glass
+  (each hidden in turn: the pillar box stays 2.0; across it at y 300 the game reads 12-16, ours 1-2): next, an id
+  render of the in-car view. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
+  29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
+  until the animation is in, the user's call.
+- **A stale game feed (fixed ~21:47):** the feed file (the game's own frames for stage B) outlives the game; a boot
+  without stage B never rewrites it, and the viewer showed the last boot's menu frame (Road Atlanta's environment
+  select, left by the round-trip test) over the whole race (live_compare 164.9). The viewer now takes the feed only
+  once its sequence has moved since its own first read (`world_view: the game feed is live` in the log). Default stays
   the old fitted light (in-car 16.5 / 15.8 / 15.4 after the change). The old switch `FM3_COCKPIT_VCOL=0` (no baked
   brightness) was tried too: 17.7, the pillar 4.1.
 - **The crowd's light (2026-11-27 ~20:30):** the game's crowd pixel shader b32f44c528968ecc with its constants

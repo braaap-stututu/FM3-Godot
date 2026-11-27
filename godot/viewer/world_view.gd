@@ -3733,6 +3733,11 @@ var _feed_layer: CanvasLayer = null
 var _feed_rect: TextureRect = null
 var _feed_tex: ImageTexture = null
 var _feed_seq := -1
+# (the feed file outlives the game: a boot without stage B never rewrites it, and the viewer showed the last boot's
+# menu frame over the race (2026-11-27 ~21:45, live_compare after the round trip). Its frames count only once the
+# sequence has moved since the viewer's first read: the running game wrote them)
+var _feed_first_seq := -2
+var _feed_live := false
 var _feed_ms := 0
 var _feed_tag := 0
 var _feed_hold_ms := -100000  # (msec of the last frame the game tagged as held, bit 9)
@@ -3790,7 +3795,12 @@ func _game_feed_read() -> void:
 			# over grey; the last overlay stays, also for 0.3 s after: the feed's copies lag a frame or two)
 			_feed_hold_ms = Time.get_ticks_msec()
 		var held := Time.get_ticks_msec() - _feed_hold_ms < 300
-		if magic == 0x46334D46 and seq % 2 == 0 and w > 0 and h > 0 and w <= 1280 and h <= 1440 and not held:
+		if magic == 0x46334D46 and _feed_first_seq == -2:
+			_feed_first_seq = seq
+		if magic == 0x46334D46 and seq != _feed_first_seq and not _feed_live:
+			_feed_live = true
+			print("world_view: the game feed is live (sequence %d -> %d)" % [_feed_first_seq, seq])
+		if magic == 0x46334D46 and _feed_live and seq % 2 == 0 and w > 0 and h > 0 and w <= 1280 and h <= 1440 and not held:
 			_feed_same = 0 if seq != _feed_seq else _feed_same + 1
 			if seq != _feed_seq:
 				f.seek(64)
