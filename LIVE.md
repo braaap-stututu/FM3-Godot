@@ -1121,7 +1121,7 @@ The user's last question was whether to chase the remaining uneven steps or call
 ## Stage B: the game leaves the race to Godot (2026-11-27, a switch)
 
 - **What the user asked:** boot the game and load into races without the game's own rendering costing the frame rate;
-  a switch for now. **How to use it:** launcher Settings "Godot renders races (stage B)" (settings.ini `stage_b=1`; it
+  a switch for now. **How to use it:** `play-godot.cmd` (frame-ir) starts both, stage B on for that run; or launcher Settings "Godot renders races (stage B)" (settings.ini `stage_b=1`; it
   turns the live stream on too), start the game, start `live.cmd` (CrownJewel's scene; another track: `live.cmd --gltf
   <abs>\out\world\<track>.gltf`). The viewer's window shows the game's own frames while the game is in its menus and
   draws the race itself once a stage B race runs. Input still goes to the game (a pad works whichever window has the
