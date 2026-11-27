@@ -29,7 +29,10 @@ The older items below are updated where done (2, 3).
    registers, or our cockpit subset names off by one); the parameter names per register are now known
    (shaders_v11.fxobj containers 65 / 66 / 71 / 78). Lead (~22:50): the flat-colour shader with CockpitHeadlinerColor 0.24
    (container 79) draws the subset we name `leather` (low geometry): probably the game's shader for leather, not a
-   naming error (LIVE.md has how to settle it).
+   naming error (LIVE.md has how to settle it). **Settled differently (~22:56):** in the game the 3870 list is the
+   cluster surround and the 13260 list the roof + pillar, the reverse of our decode with the same buffer and lists:
+   first job next time = the two cockpit vertex-shader families' position decodes (LIVE.md "The cockpit's light",
+   last paragraph).
 2. The A-pillar (ours 2, the game 13: our headliner's dark texture there), the warning-lamp panel (game 4.3, ours 90.5:
    our gauge material glows), the driver's arms (`FM3_DRIVER=0` scores 15.6 against 16.4: the animation is missing).
 3. Tyre smoke's threshold (at 26 degrees of slip the game's frame showed none yet: one sample, smokecmp.ps1),

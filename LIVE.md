@@ -1468,7 +1468,17 @@ The user's last question was whether to chase the remaining uneven steps or call
   .yzx): compare with the textured family's (618013738ec64643) and with fm3_carbin.vertices (x, y, z) x w; a part /
   vertex-base mix-up for this subset is the other candidate. (~22:55, tested: decoding the subset with 6190's component order
   instead spreads it over y -0.28 .. 1.16, no roof; the section offset (0, 0.517, 0.488) equals the draw's vc180, so
-  our decode agrees with the game's. Still open.) Also seen: hiding the
+  our decode agrees with the game's. Still open.)
+  **Decisive (~22:56, cockpittint2.ps1: 1074f157 tinted alone, long waits, same-boot capture):** the game's 3870 list
+  (our `headliner`, draw #744 here) lights up only the gauge-cluster surround (471-783 x 593-688; roof box 0.0,
+  cluster 0.575 magenta), while the 13260 list (our `leather`) is the roof and the A-pillar. Same vertex buffer for
+  both (13CA133C, 947,480 bytes), same index lists: so our decode places the two lists the other way round. The lead
+  for next time: the two vertex-shader families decode the position differently. 6190 (flat colour): fetch
+  (t.y, t.x, t.w, t.z), then position = (t.x, t.w, t.y) x t.z + vc180.yzx; 618013738ec64643 (textured): position =
+  r2.yzw x (vc20.x - vc19.x) + vc19.x, three components times one global scale (a quantized box), not x w. Read both
+  vertex shaders in full (the matrices after), work out each one's car-space position for vertex 3870 and 13260, and
+  compare with fm3_carbin.vertices' (x, y, z) x w; the cockpit may need a per-subset (per-shader) position decode,
+  which would also explain the dark A-pillar and the odd cabin pieces. Also seen: hiding the
   cockpit's `window` gives in-car 16.1 (16.4): the inside of the cockpit glass costs a little. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
   29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
   until the animation is in, the user's call.
