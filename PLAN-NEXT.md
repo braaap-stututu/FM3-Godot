@@ -8,6 +8,16 @@ details of everything done; HANDOFF.md the overall state. Updated 2026-11-27 ~01
 (c) the driver's hands (3: dump the Granny files through the recomp); (d) done 2026-11-27: RoadAtlanta's exposure;
 (e) done: lamps / lenses on the live cube; (f) slip telemetry (8); (g) the menus (6, 7). Ask the user which first.
 
+## 0. The user's list of 2026-11-27 ~14:09 (work until midnight; LIVE.md "The user's notes of 2026-11-27 evening")
+
+Status 2026-11-27 ~16:15: brake lights binary (FM3B, done), countdown vignette key (done), wheels spin in stage B
+(done), badges glossy (done, not compared against a game close-up), the live cube at 2 faces a frame and the lightmap
+atlas in the track export (done, all tracks rebuilt), **crash damage built end to end** (LIVE.md "Crash damage,
+built": per-car tables mapped through a ReGPU fetch watch, streamed as FM3D, the library cars deformed on the CPU;
+tested by writing tables, not yet with a real crash). Left on that list: a real crash to compare against the game
+(the user drives, or an AI-player race with contact), the damage textures (scuffs), the game's LOD distances as
+visibility ranges, then the older items below (crowd animation, driver, telemetry).
+
 ## 1. The cubemap (done for the paint; finish for the other shaders)
 
 Done: the AI cars' paint reflects the per-frame (live) cube (`FM3_AI_LIVE=0` = the static cube). Found by drawing the

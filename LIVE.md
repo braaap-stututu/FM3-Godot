@@ -1193,6 +1193,32 @@ The user's last question was whether to chase the remaining uneven steps or call
   and take the address there (with stage B, run that part of the draw and skip the drawing); then stream the 32 KB
   table per car when it changes ("FM3D"), and deform the library car's vertices on the CPU when it does (normals as
   the direction until the direction stream is exported).
+- **Crash damage, built (2026-11-27 afternoon):**
+  - *Which table is whose:* ReGPU got a fetch watch (`regpu::SetFetchWatch` / `TakeFetchWatch`, FM3-ReGPU patch
+    `regpu-fetch-watch.patch`): each draw reading a 32,000-byte vertex fetch 94 records the buffer's address and the
+    vertex constants 41, 42, 190, 58 and 11 (vc11 = the draw's world translation), each address once. FM3-ReGPU
+    `live_camera.cpp` DamageFrame: while known cars have no table, stage B pauses for 0.5 s (`StageBHold`, the game draws
+    its cars), every 2 s; each table goes to the car whose body is nearest vc11 (within 2 m; on the grid 0.75 m off).
+    CrownJewel grid: all 8 cars in ~15 s (the first probes see few car draws). Log: `live: car X damage table Y`.
+  - *Stream:* "FM3D" v1, 8,080 bytes: car, chunk 0-3, vc41 / vc42 / vc190 / vc58, 8,000 bytes of the table (big-endian
+    floats). Tables are hashed 4 times a second; a changed one (and every one every 2 s) is queued and sent one car (4
+    packets) a frame, through a 1 MB send buffer: 32 packets at once were mostly dropped (one car's in 15 s).
+  - *The formula (paint VS a102319a5aef757b, decoded line by line):* P = car-space position (local x w + vc190);
+    g = (P - vc41) x vc42 x 10 per axis; cell = clamp(floor(g), 0, 9), index z x 100 + y x 10 + x, 8 floats: the first
+    float4 = the corners at y + 1, the second at y; components (x0 z0), (x1 z0), (x1 z1), (x0 z1); amount =
+    lerp(lerp(c.x, c.w, fz), lerp(c.y, c.z, fz), fx) of the y-lerped corners, saturated, clamped to vc58. The vertex
+    moves by amount x 2y (x, sqrt(1 - x^2 - z^2), z), (x, y, z) = the stride-40 vertex's damage word at 28 (11:11:10,
+    `fm3_carbin.damage_dir`). On the NSX it points inward (cos with the normal -0.2 .. -0.8), 0-30 cm.
+  - *Car library:* `<car>_damage.bin` (fm3_car_library.py, `--damage-only` writes just these: 510 cars in ~20 min): per
+    body part its positions and directions and the glTF meshes using it. Godot's glTF import drops each mesh's unused
+    vertices and keeps positions 16-bit in the mesh box, so the viewer matches by position (0.5 mm grid + neighbours):
+    0 of ~70,000 vertices unmatched per car.
+  - *Viewer (`world_view.gd` _damage_packet / _damage_update):* a car's new table rebuilds its body meshes' vertices
+    (normals unchanged), at most every 0.5 s a car, ~3 ms of work a frame (first time ~0.45 s of work over ~2 s per car,
+    including the one-time cell set-up). FM3_DAMAGE=0 off, FM3_DAMAGE_LOG=1 packet counts.
+  - *Tested by writing tables* (scratchpad dmgpoke.ps1: grid test + viewer, debug-server `poke` of the cells z 0..2 to
+    1.0 on every car): 8 of 8 cars deform, the rear bumpers of the cars ahead push in (374 pixels changed in the view).
+    Not yet seen with a real crash; the damage textures (damage*.xds, the scuffs) are not used yet.
 - **Optimizing the viewer (measured, frozen CrownJewel race in stage B, 1280 x 720, vsync off, `FM3_FPS_LOG=1`):** the
   viewer is bound by Godot's draw-call submission on the CPU, not the GPU: 31-36 fps at ~5,800 draw calls; the 3D
   crowd's 36 M of the 43 M triangles, MSAA and the shadows changed nothing. Our own script is ~7 ms a frame (cars 2.7,
