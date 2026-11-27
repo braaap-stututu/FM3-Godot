@@ -2335,6 +2335,7 @@ func _damage_step() -> void:
 # parts are found (the car drawn at full detail; far away the game draws other buffers). FM3_PARTS=0 off.
 var _dmg_groups := {}  # car -> [[the part's buffer sizes, [glTF mesh index, ...]], ...]
 var _parts_hidden := {}  # car -> {glTF mesh index: true}
+var _parts_base_loose := {}  # car -> {buffer size: true} drawn at their own transforms while the car had no damage
 
 
 # The loose parts drawn (2026-11-27, FM3P v3): a copy of each part's meshes (its own mesh, or its triangles out of a
@@ -2391,6 +2392,14 @@ func _parts_packet(b: PackedByteArray) -> void:
 	if OS.get_environment("FM3_PARTS") == "0":
 		return
 	var car := int(b.decode_u32(8))
+	# (a car without damage has lost nothing: what it draws at its own transforms then (moving parts) is remembered
+	# and never taken for a part that came off; FM3_PARTS_BASE=0 off)
+	var base_on := OS.get_environment("FM3_PARTS_BASE") != "0"
+	if base_on and not _damage_any(car):
+		var bl: Dictionary = _parts_base_loose.get(car, {})
+		for i in mini(int(b.decode_u32(16)), 24):
+			bl[int(b.decode_u32(820 + 4 * i))] = true
+		_parts_base_loose[car] = bl
 	if not _dmg_groups.has(car) and not (_damage_any(car) and _damage_ensure(car)):
 		return  # (an undamaged car: its parts are all on)
 	# (v3: header 20 bytes, 200 sizes on the car, 24 loose sizes at 820, their matrices at 916: 12 floats each)
@@ -2410,6 +2419,12 @@ func _parts_packet(b: PackedByteArray) -> void:
 		if not loose.has(z):
 			loose[z] = []
 		loose[z].append(Transform3D(Basis(rows[0], rows[1], rows[2]), rows[3]))
+	if base_on:
+		if not _damage_any(car):
+			loose = {}
+		else:
+			for z in (_parts_base_loose.get(car, {}) as Dictionary):
+				loose.erase(z)
 	var groups: Array = _dmg_groups[car]
 	var found := 0
 	var hidden := {}

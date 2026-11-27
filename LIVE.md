@@ -1257,6 +1257,13 @@ The user's last question was whether to chase the remaining uneven steps or call
     its last overlay for those frames and 0.3 s after (the copies lag a frame or two). Cost: a 0.5 s pause of
   stage B after a crash (the game draws everything for those frames). `FM3_PARTS=0` off, `FM3_PARTS_LOG=1` why a
   report was not applied.
+- **Stage B round trip with the viewer (2026-11-27 ~19:55; scratchpad roundtrip.ps1: two tour stops on RoadAtlanta,
+  race, cameras, pause, photo mode, quit, post-race, back to the list, the viewer started on roadatlanta.gltf so its
+  log covers both races):** no script errors; the viewer ~49-56 fps in the races, ~165 in the menus; the probes ran in
+  both races. Two cars showed "1 loose part" at the race-start probe already: a part the game draws at its own
+  transform while undamaged (a moving part). Now a car without damage reports no loose parts, and the sizes it draws
+  at its own transforms then are remembered and never taken for parts that came off (`_parts_base_loose`;
+  FM3_PARTS_BASE=0 off); the crash test still loses its bumper and mirrors.
 - **Cars that stop being streamed (2026-11-27 ~19:45):** a new race on the same track keeps the viewer (no FM3T
   restart), and the old race's car objects may be gone: their library models and loose parts stayed where they last
   were. Now a car without "FM3K" for 4 s (while others are streamed) is hidden with its loose parts, and shown again if
