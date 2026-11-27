@@ -1117,3 +1117,26 @@ The user's last question was whether to chase the remaining uneven steps or call
 - **The HUD's own files (2026-11-27):** the race HUD is the UI scene `947_hud` (`Media/UI/scenes/ui4`), built from
   the textures of `Media/UI/Textures/I_Map/I_HUD` (`tools/fm3_hud_textures.py`); our tach was first redrawn by eye
   from the game's shot (grid with ours on: 14.3, ours off 14.0-14.3: no whole-frame change). PLAN-NEXT has the list.
+
+## Stage B: the game leaves the race to Godot (2026-11-27, a switch)
+
+- **What the user asked:** boot the game and load into races without the game's own rendering costing the frame rate;
+  a switch for now. **How to use it:** launcher Settings "Godot renders races (stage B)" (settings.ini `stage_b=1`; it
+  turns the live stream on too), start the game, start `live.cmd` (CrownJewel's scene; another track: `live.cmd --gltf
+  <abs>\out\world\<track>.gltf`). The viewer's window shows the game's own frames while the game is in its menus and
+  draws the race itself once a stage B race runs. Input still goes to the game (a pad works whichever window has the
+  focus).
+- **The game's side** (FM3-ReGPU `src/hooks/stage_b.cpp`, NOTES.md 2026-11-27 afternoon): in races it skips the scene
+  renderer's world steps, the crowd (`sub_828878C0`), each car's draw after the live stream took it, the mirror, the
+  reflection cube and the car shadows, and caps the race at `stage_b_fps` (120). Frozen CrownJewel grid, same boot:
+  2,663 -> ~300 draws, 225 -> 360 fps (cap lifted), GPU 1.6 ms a frame left (clears, post-processing, HUD at 4x MSAA).
+  The game's window keeps its HUD over a flat grey.
+- **The menus in the Godot window:** ReGPU's frame feed (FM3-ReGPU `patches/regpu-frame-feed.patch`, `REGPU_FRAME_FEED`,
+  turned on by stage B: `out/run/frame_feed.bin`, ~30 frames a second, read back without waiting for the GPU) with a tag
+  (the renderer scenario, stage B active); world_view.gd `_game_feed_update` shows it full-window unless stage B is
+  active (`FM3_GAME_FEED=<file>` / `0` off). Checked: the title screen came through; the race was drawn by the viewer.
+- **Open:** the viewer loads one track's scene (it does not yet follow the track the game loads: the game's file opens
+  name it, next); the race's own menus (pre-race, pause, results) are only in the game's window (the game's flat-grey
+  frame could be keyed and laid over the viewer's race); leaving a race back to the menus not yet tested; the game's
+  remaining fixed GPU passes in a stage B race.
+

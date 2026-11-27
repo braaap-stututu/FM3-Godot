@@ -148,7 +148,11 @@ cameras.
 
 ## 7. The game and its menus, integrated (kept separate)
 
-Not started. Options: (a) the viewer shows the game's own frame (ReGPU's final picture) as a texture while the game is
+**Started 2026-11-27 with stage B (LIVE.md "Stage B"):** option (a) below is built: ReGPU's frame feed brings the
+game's frames into the viewer's window while the game is in its menus; the viewer draws the race. Next: the viewer
+loads the track the game loads (from the game's file opens), the race's own menus over the viewer (the game's frame
+keyed on its flat grey), then the menus' 3D scenes (6).
+Before: Options: (a) the viewer shows the game's own frame (ReGPU's final picture) as a texture while the game is
 in a menu, switching to its own rendering on the track (needs a frame-sharing path from ReGPU: a shared D3D12 / Vulkan
 texture, or the existing screenshot path at lower rate); (b) rebuild the menus' 2D UI in Godot from the game's UI
 files (large). (a) first: it keeps the game's menus exactly as they are.

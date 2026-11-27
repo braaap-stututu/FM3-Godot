@@ -1,5 +1,11 @@
 # HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-27)
 
+**2026-11-27 afternoon: stage B, as a switch** (user: boot the game and race without its own rendering costing the
+frame rate). Launcher "Godot renders races (stage B)" / settings.ini `stage_b=1`: in races the game stops drawing the
+world, cars, crowd, mirror, reflections and shadows (2,663 -> ~300 draws, GPU 1.6 ms a frame left) and runs at 120 fps;
+`live.cmd` shows the game's own frames while it is in its menus (ReGPU frame feed) and draws the race. FM3-ReGPU
+8436d61 + 93bc399; LIVE.md "Stage B" has how to use it and what is open (the viewer following the game's track first).
+
 **2026-11-27 morning (09:38-11:40):** HUD race values from the game (FM3E v9: race clock, place, segment -> laps;
 FM3-ReGPU 478cd0f), the game's luminance chain decoded tap by tap, and RoadAtlanta's "exposure offset" solved: our W
 probe ignored the curve's black point, and the viewer measured L after its own exposure pass (brights clipped); it

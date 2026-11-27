@@ -2359,6 +2359,88 @@ func _root_picture() -> Image:
 	return img
 
 
+# The game's own frames in this window while the game is in its menus (2026-11-27, with the game's stage B: FM3-ReGPU
+# src/hooks/stage_b.cpp turns on ReGPU's frame feed, REGPU_FRAME_FEED, a memory-mapped file: 64-byte header 'FM3F',
+# version, sequence (odd while written), width, height, tag (bits 0-7 the game's renderer scenario, 0 = front end,
+# 1 = race; bit 8 stage B active; bit 31 set by the game), then RGBA8 rows). The game's frame is shown unless stage B is
+# active (a race: this viewer draws it); a feed that stops changing for 2 s (the game closed) is hidden.
+# FM3_GAME_FEED=<file> (default: ../FM3-ReGPU recomp/out/run/frame_feed.bin beside this folder), FM3_GAME_FEED=0: off.
+var _feed_path := ""
+var _feed_layer: CanvasLayer = null
+var _feed_rect: TextureRect = null
+var _feed_tex: ImageTexture = null
+var _feed_seq := -1
+var _feed_ms := 0
+var _feed_tag := 0
+var _feed_same := 0  # (reads in a row without a new frame: with the 2 s, a stalled viewer does not hide the feed)
+
+
+func _game_feed_update() -> void:
+	if _live_port <= 0 or _feed_path == "-":
+		return
+	if _feed_path == "":
+		var e := OS.get_environment("FM3_GAME_FEED")
+		if e == "0":
+			_live_port_feed_off()
+			return
+		_feed_path = e if e != "" else ProjectSettings.globalize_path("res://").path_join("../../../FM3-ReGPU recomp/out/run/frame_feed.bin").simplify_path()
+		print("world_view: the game's frames from ", _feed_path)
+	if _frames % 2 != 0:
+		return
+	var f := FileAccess.open(_feed_path, FileAccess.READ)
+	var show := false
+	if f != null and f.get_length() >= 64:
+		var magic := f.get_32()
+		f.get_32()
+		var seq := f.get_32()
+		var w := f.get_32()
+		var h := f.get_32()
+		var tag := f.get_32()
+		if magic == 0x46334D46 and seq % 2 == 0 and w > 0 and h > 0 and w <= 1280 and h <= 1440:
+			_feed_same = 0 if seq != _feed_seq else _feed_same + 1
+			if seq != _feed_seq:
+				f.seek(64)
+				var px := f.get_buffer(w * h * 4)
+				f.seek(8)
+				if f.get_32() == seq and px.size() == w * h * 4:
+					var img := Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, px)
+					if _feed_tex == null or _feed_tex.get_width() != w or _feed_tex.get_height() != h:
+						_feed_tex = ImageTexture.create_from_image(img)
+					else:
+						_feed_tex.update(img)
+					_feed_seq = seq
+					_feed_ms = Time.get_ticks_msec()
+					_feed_tag = tag
+			show = _feed_tex != null and (Time.get_ticks_msec() - _feed_ms < 2000 or _feed_same < 10) and (_feed_tag & 0x80000000) != 0 and (_feed_tag & 0x100) == 0
+	if show and _feed_layer == null:
+		_feed_layer = CanvasLayer.new()
+		_feed_layer.layer = 200  # (over the exposure pass and the HUD)
+		var bg := ColorRect.new()
+		bg.color = Color.BLACK
+		bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_feed_layer.add_child(bg)
+		_feed_rect = TextureRect.new()
+		_feed_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_feed_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_feed_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		_feed_layer.add_child(_feed_rect)
+		root.add_child(_feed_layer)
+	if _feed_layer != null:
+		if show:
+			_feed_rect.texture = _feed_tex
+			# (Controls under a CanvasLayer get no size from their anchors here: the window's)
+			for c in _feed_layer.get_children():
+				(c as Control).position = Vector2.ZERO
+				(c as Control).size = root.get_visible_rect().size
+		if _feed_layer.visible != show:
+			_feed_layer.visible = show
+			print("world_view: %s (game feed tag %X)" % ["the game's own frames (its menus)" if show else "drawing the race", _feed_tag])
+
+
+func _live_port_feed_off() -> void:
+	_feed_path = "-"
+
+
 func _cars_pending() -> bool:
 	if _expo_mat != null and _live_port > 0 and (_expo_live_n < 3 or _expo_dl > 0.002):
 		# (and the exposure: settled on the game's view, not the start-up camera's; the readback lags the curve by a
@@ -3455,6 +3537,7 @@ func _process(_delta: float) -> bool:
 		_crowd3d()
 	_crowd3d_update()
 	_exposure_update()
+	_game_feed_update()
 	_fog_update()
 	# the sky dome stays centred on the camera, as FM3 draws it (fm3_track_export.py: skydome_ nodes)
 	if _cam != null and _cam.is_inside_tree():
