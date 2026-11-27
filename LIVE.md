@@ -1250,7 +1250,11 @@ The user's last question was whether to chase the remaining uneven steps or call
   bumper and both mirrors; the viewer hid the same three. **The loose parts drawn (FM3P v3, ~21:00):** the probe also
   records c8-c10 (the paint VS's world matrix: P.x c8 + P.y c9 + P.z c10 + c11, game numbering), each loose buffer's
   size goes with its matrix, and the viewer puts a copy of that part (its mesh, or its triangles out of a merged one)
-  at it, converted as the streamed car matrices are: the crash test's bumper and mirror lie where the game has them. Cost: a 0.5 s pause of
+  at it, converted as the streamed car matrices are: the crash test's bumper and mirror lie where the game has them.
+  - *The probes' 0.5 s holds and the game feed:* while held the game draws its world, and those frames came to the
+    viewer still tagged "stage B" (bit 8): keyed as a HUD over grey, the game's own world would have covered the
+    viewer's for the hold. The feed's tag now has bit 9 while held (FM3-ReGPU stage_b.cpp StageBHold); the viewer keeps
+    its last overlay for those frames and 0.3 s after (the copies lag a frame or two). Cost: a 0.5 s pause of
   stage B after a crash (the game draws everything for those frames). `FM3_PARTS=0` off, `FM3_PARTS_LOG=1` why a
   report was not applied.
 - **The crowd's animations (2026-11-27 ~20:30; PLAN-NEXT 2):** the game animates its 3D people on the GPU: its crowd
