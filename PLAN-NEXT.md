@@ -27,7 +27,8 @@ The older items below are updated where done (2, 3).
    library: tools/fm3_car_library.py, 2.5 s a car, ~20 min for all). First settle the catch in LIVE.md "The cockpit's light" (~22:45):
    the headliner draw carries the gauge needle's MinDiffuse / UseDiffuseInsteadOfSH / GaugeEmissiveScale (stale
    registers, or our cockpit subset names off by one); the parameter names per register are now known
-   (shaders_v11.fxobj containers 65 / 66 / 71 / 78).
+   (shaders_v11.fxobj containers 65 / 66 / 71 / 78). Strong lead (~22:50): the game's headliner shader (container 79,
+   CockpitHeadlinerColor 0.24) draws the subset we name `leather`: our cockpit subset names are probably permuted.
 2. The A-pillar (ours 2, the game 13: our headliner's dark texture there), the warning-lamp panel (game 4.3, ours 90.5:
    our gauge material glows), the driver's arms (`FM3_DRIVER=0` scores 15.6 against 16.4: the animation is missing).
 3. Tyre smoke's threshold (at 26 degrees of slip the game's frame showed none yet: one sample, smokecmp.ps1),
