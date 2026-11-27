@@ -3477,12 +3477,16 @@ func _attach_library_car(car) -> void:
 	var doc := GLTFDocument.new()
 	var st := GLTFState.new()
 	st.handle_binary_image = 0
+	var tt_ := [Time.get_ticks_usec()]
 	if doc.append_from_file(path, st) != OK:
 		print("world_view: live car %08X is %s: its library model %s did not load" % [car, info["name"], path])
 		return
+	tt_.append(Time.get_ticks_usec())
 	_bind_textures(st, path, false)
+	tt_.append(Time.get_ticks_usec())
 	var scene_ := doc.generate_scene(st)
 	root.add_child(scene_)
+	tt_.append(Time.get_ticks_usec())
 	var base := path.get_basename()
 	_lamp_settings("", path)  # (loads <car>_lamps.json for _lamp_glow)
 	var cm = JSON.parse_string(FileAccess.get_file_as_string(base + "_carmaterials.json")) if FileAccess.file_exists(base + "_carmaterials.json") else {}
@@ -3511,9 +3515,12 @@ func _attach_library_car(car) -> void:
 	var tdir := lname + "_tex/"
 	if stem != "":
 		print("world_view: live car %08X (%s colour %s) uses base texture %s" % [car, info["name"], key, stem])
+	tt_.append(Time.get_ticks_usec())
 	_merge_car_body(scene_, car)
+	tt_.append(Time.get_ticks_usec())
 	if nd is Dictionary:
 		_attach_driver(scene_, base, nd)
+	tt_.append(Time.get_ticks_usec())
 	var n := 0
 	for mi in scene_.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D
@@ -3587,6 +3594,12 @@ func _attach_library_car(car) -> void:
 	_live_player = -2  # (re-evaluate has_live: this car's new paint / glass materials may be the player's)
 	_library_cars[car] = true
 	print("world_view: live car %08X is %s colour %s: %d meshes from the car library (%d ms; paint %s)" % [car, info["name"], key, n, Time.get_ticks_msec() - t0, paint_col])
+	if OS.get_environment("FM3_ATTACH_TIMING") == "1":
+		tt_.append(Time.get_ticks_usec())
+		var ds := []
+		for k in range(1, tt_.size()):
+			ds.append("%d" % ((int(tt_[k]) - int(tt_[k - 1])) / 1000))
+		print("world_view: car %08X attach ms: load %s, textures %s, scene %s, set-up %s, merge %s, driver %s, meshes %s" % ([car] + ds))
 
 
 # Debug (offline, the grid scene): --library-swap <car>:<colour>:<metallic 0|1> hides the scene's (captured) copy of a

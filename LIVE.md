@@ -1336,6 +1336,13 @@ The user's last question was whether to chase the remaining uneven steps or call
   ~3), the same exposure (L 0.4085 both ways) and picture (0.1); `FM3_EXPO_SYNC=1` as before. Godot's separate render
   thread (`--render-thread separate`) gave ~55 with the old read but nothing on top of the async one, and its
   RenderingDevice calls must then come from the render thread (the async read failed): left single-threaded.
+  Then (~18:25) **the 3D crowd per 96 m cell** (one MultiMesh's bounds spanned the whole track, so every person was
+  drawn in the view, each shadow cascade and the cube faces: Motegi's 24,299 people, 61-81 M primitives -> 9 M), the
+  people casting no sun shadow and left out of the reflection cube (CROWD_LAYER): CrownJewel ~55 -> ~59 fps, the stands
+  the same but for the poses. Seen on Motegi: the viewer's start is slow, each library car taking 1-2.6 s on the main
+  thread (`FM3_ATTACH_TIMING=1`: glTF load ~300 ms, textures ~180, scene 35-850, merge 90-270, set-up 80-270; ~0.45 s
+  on CrownJewel), so the live_track picture is taken before the exposure settles (Motegi 30-39 against this morning's
+  14.3 is that timing, not the picture). Next: load the library cars on a worker thread.
 - **Lightmap atlas in the track export (fm3_track_export.py atlas_lightmaps, on by default, --no-lm-atlas off):** the
   groups were split by their lightmap texture; the lightmaps whose parts keep their UVs in 0..1 (+-0.01, clamped) are
   packed into 4096-wide pages (lmpage_NN.png, 4 px of their own edge around each) and the groups that then differ only
