@@ -1348,7 +1348,7 @@ The user's last question was whether to chase the remaining uneven steps or call
   in-car view gets worse (16.4 -> 20.2: roof 75 vs the game's 18, A-pillar 4.8 vs 13, the old light 17 / 2.0) because
   the materials' colours differ: in the game the roof and pillar are one 0.24 grey draw, ours a bright headliner
   texture and a 0.015 'black'. That draw's index list starts in the `leather` subset (13260, 21604, ...) but is 9,819
-  long (leather has 1,237): which subsets / LOD the game draws there, and where 0.24 comes from, are next. (~21:15: the
+  long (leather has 1,237): which subsets / LOD the game draws there, and where 0.24 comes from, are next. (~21:00: the
   "n 9819" is not the index count: the initiator 04D50806 says 0x4D5 = 1,237 indices, 32-bit = exactly the leather
   subset, and its index buffer lies 3,636 indices before the vertex buffer = leather through gauge_needle, the vertex
   buffer = the interior section's 23,687 x 40 bytes. But leather's vertices reach only y 0.60, not the roof (0.98): the
