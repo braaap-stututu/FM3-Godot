@@ -509,6 +509,7 @@ func _init() -> void:
 			for h in OS.get_environment("FM3_HIDE_PARTS").split(",", false):
 				if String(mh.name).contains(h):
 					(mh as MeshInstance3D).visible = false
+	_visibility_ranges(scene)
 	var cams := scene.find_children("*", "Camera3D", true, false)
 	if cams.is_empty() and look_from != "" and look_at != "":
 		# (a glTF without a camera, e.g. a car library model: one is made for --look-from / --look-at)
@@ -613,7 +614,10 @@ func _init() -> void:
 	print("world_view: %d wheel rim surfaces dimmed, %d sky dome meshes (kept on the camera)" % [rim_set, _sky_nodes.size()])
 	if glass_set:
 		print("world_view: %d car glass surfaces with the game's own glass settings" % glass_set)
-	sun.directional_shadow_max_distance = 250.0
+	sun.directional_shadow_max_distance = float(OS.get_environment("FM3_SHADOW_DIST")) if OS.get_environment("FM3_SHADOW_DIST") != "" else 250.0
+	# (tests, optimizing: FM3_SUN_SPLITS=1|2|4 cascades for both suns; each cascade draws its casters again)
+	var splits_ := int(OS.get_environment("FM3_SUN_SPLITS")) if OS.get_environment("FM3_SUN_SPLITS") != "" else 4
+	sun.directional_shadow_mode = {1: DirectionalLight3D.SHADOW_ORTHOGONAL, 2: DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS}.get(splits_, DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS)
 	if OS.get_environment("FM3_SHADOW_HQ") == "1":
 		# (FM3_SHADOW_HQ=1, opt-in: sharper sun shadows than Godot's defaults (a 4096 atlas for the four cascades over 250 m,
 		# the "soft low" filter): an 8192 atlas, the "soft high" filter and blended cascades; not measured for cost)
@@ -1425,6 +1429,102 @@ func _place_live_cube(at: Vector3) -> void:
 		c.global_transform = Transform3D(Basis(), at).looking_at(at + LIVE_DIRS[k], LIVE_UPS[k])
 
 
+# A library car's body meshes merged by material (2026-11-27, optimizing: the viewer is bound by draw calls and per-part
+# updates; ~90 body meshes a car, 54 of them plain, in ~13 materials): the carbin_<car>_<material>_<n> meshes of one
+# glTF material and one vertex layout become one mesh (named after the first, so the name rules, all by material, still
+# apply; meta "dmg_src" = the glTF mesh indices merged, for the damage directions). Lamps, glass, lenses, gauges,
+# mirrors, badges / emblems and reflectors stay apart (their materials are set per node). FM3_CAR_MERGE=0 off.
+const CAR_MERGE_SKIP := "light|lamp|glass|lens|gauge|mirror|needle|steering|reflector|emblem|badge"
+
+
+func _merge_car_body(scene_: Node, car) -> void:
+	if OS.get_environment("FM3_CAR_MERGE") == "0":
+		return
+	var skip := RegEx.create_from_string(CAR_MERGE_SKIP)
+	var groups := {}  # key -> [MeshInstance3D, ...]
+	for node in scene_.find_children("carbin_*", "MeshInstance3D", true, false):
+		var m := node as MeshInstance3D
+		if m.mesh == null or m.mesh.get_surface_count() != 1 or skip.search(String(m.name)) != null:
+			continue
+		var fmt: int = m.mesh.surface_get_format(0) & (Mesh.ARRAY_FORMAT_NORMAL | Mesh.ARRAY_FORMAT_TANGENT | Mesh.ARRAY_FORMAT_COLOR | Mesh.ARRAY_FORMAT_TEX_UV | Mesh.ARRAY_FORMAT_TEX_UV2 | Mesh.ARRAY_FORMAT_INDEX)
+		var mat := m.mesh.surface_get_material(0)
+		var key := "%d/%d/%d/%s" % [mat.get_instance_id() if mat != null else 0, fmt, m.mesh.surface_get_primitive_type(0), str(m.transform)]
+		if not groups.has(key):
+			groups[key] = []
+		groups[key].append(m)
+	var before := 0
+	var after := 0
+	for key in groups:
+		var ms: Array = groups[key]
+		before += ms.size()
+		after += 1
+		if ms.size() < 2:
+			continue
+		var first := ms[0] as MeshInstance3D
+		var cat := []
+		cat.resize(Mesh.ARRAY_MAX)
+		var src := PackedInt32Array()
+		var base_ := 0
+		for mm in ms:
+			var m := mm as MeshInstance3D
+			var a := m.mesh.surface_get_arrays(0)
+			var nv := (a[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+			for t in [Mesh.ARRAY_VERTEX, Mesh.ARRAY_NORMAL, Mesh.ARRAY_TANGENT, Mesh.ARRAY_COLOR, Mesh.ARRAY_TEX_UV, Mesh.ARRAY_TEX_UV2]:
+				if a[t] == null:
+					continue
+				if cat[t] == null:
+					cat[t] = a[t].duplicate()
+				else:
+					cat[t].append_array(a[t])
+			var idx: PackedInt32Array = a[Mesh.ARRAY_INDEX] if a[Mesh.ARRAY_INDEX] != null else PackedInt32Array(range(nv))
+			var off := PackedInt32Array()
+			off.resize(idx.size())
+			for i in idx.size():
+				off[i] = idx[i] + base_
+			if cat[Mesh.ARRAY_INDEX] == null:
+				cat[Mesh.ARRAY_INDEX] = off
+			else:
+				cat[Mesh.ARRAY_INDEX].append_array(off)
+			base_ += nv
+			var nm_ := String(m.name)
+			src.append(int(nm_.get_slice("_", nm_.get_slice_count("_") - 1)))
+		var am := ArrayMesh.new()
+		am.add_surface_from_arrays(first.mesh.surface_get_primitive_type(0), cat)
+		am.surface_set_material(0, first.mesh.surface_get_material(0))
+		first.mesh = am
+		first.set_meta("dmg_src", src)
+		for k in range(1, ms.size()):
+			(ms[k] as Node).get_parent().remove_child(ms[k])
+			(ms[k] as Node).queue_free()
+	print("world_view: car %08X body meshes merged by material: %d -> %d" % [car, before, after])
+
+
+# Visibility ranges for the track's small objects (2026-11-27, optimizing: the viewer is bound by draw calls; FM3's own
+# .pvs instances carry LOD distances of 80 / 160 / 240 m for ~500 of CrownJewel's): a track mesh whose world box is at
+# most FM3_VIS_SIZE m (default 6) across is hidden beyond FM3_VIS_K x its size (default 40, at least 60 m), from every
+# camera (the live cube's faces too: they are at the car). FM3_VIS_K=0 off. Logs how many meshes got a range.
+func _visibility_ranges(scene: Node) -> void:
+	var k := float(OS.get_environment("FM3_VIS_K")) if OS.get_environment("FM3_VIS_K") != "" else 40.0
+	if k <= 0.0:
+		return
+	var max_size := float(OS.get_environment("FM3_VIS_SIZE")) if OS.get_environment("FM3_VIS_SIZE") != "" else 6.0
+	var n := 0
+	var all := 0
+	for node in scene.find_children("*", "MeshInstance3D", true, false):
+		var mi := node as MeshInstance3D
+		if mi.mesh == null or _is_car_mesh(mi) or String(mi.name).begins_with("skydome_") or mi.visibility_range_end > 0.0:
+			continue
+		all += 1
+		var bb := (mi.global_transform if mi.is_inside_tree() else mi.transform) * mi.get_aabb()
+		var size := bb.size.length()
+		if size > max_size:
+			continue
+		mi.visibility_range_end = maxf(60.0, k * size)
+		mi.visibility_range_end_margin = 5.0
+		n += 1
+	print("world_view: visibility ranges: %d of %d track meshes (at most %.1f m across, hidden beyond %.0f x their size)" % [n, all, max_size, k])
+
+
 static func _is_car_mesh(mi: Node) -> bool:
 	var n := String(mi.name) + " " + String(mi.get_parent().name if mi.get_parent() else "")
 	return n.begins_with("carbin_") or n.begins_with("cockpit_") or n.to_lower().contains("wheel") or RegEx.create_from_string("draw\\d+_[a-z]+_[a-z0-9]+_\\d\\d").search(n) != null
@@ -1827,9 +1927,18 @@ func _damage_parts_load(car, scene_: Node, path: String) -> void:
 		var m := mi as MeshInstance3D
 		var nm_ := String(m.name)
 		var idx := int(nm_.get_slice("_", nm_.get_slice_count("_") - 1))
-		if not by_mesh.has(idx) or m.mesh == null or m.mesh.get_surface_count() != 1:
+		if m.mesh == null or m.mesh.get_surface_count() != 1:
 			continue
-		var lut: Dictionary = by_mesh[idx]
+		var lut := {}
+		if m.has_meta("dmg_src"):
+			# (a merged body mesh, _merge_car_body: its parts' directions together)
+			for si in (m.get_meta("dmg_src") as PackedInt32Array):
+				if by_mesh.has(si):
+					lut.merge(by_mesh[si])
+		elif by_mesh.has(idx):
+			lut = by_mesh[idx]
+		if lut.is_empty():
+			continue
 		var verts: PackedVector3Array = m.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
 		var dirs := PackedFloat32Array()
 		dirs.resize(3 * verts.size())
@@ -2990,6 +3099,7 @@ func _attach_library_car(car) -> void:
 	var tdir := lname + "_tex/"
 	if stem != "":
 		print("world_view: live car %08X (%s colour %s) uses base texture %s" % [car, info["name"], key, stem])
+	_merge_car_body(scene_, car)
 	var n := 0
 	for mi in scene_.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D
@@ -4082,6 +4192,19 @@ func _process(_delta: float) -> bool:
 				RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
 				RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME) / 1e6,
 				Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0])
+			# (draw calls by pass: the main view's objects / its shadows, and the live cube's viewports together)
+			var vpm: Viewport = root
+			var cube_v := 0
+			var cube_s := 0
+			for cc in _live_cube_cams:
+				var cvp := (cc as Node).get_viewport() if cc is Node else null
+				if cvp != null and cvp != vpm:
+					cube_v += cvp.get_render_info(Viewport.RENDER_INFO_TYPE_VISIBLE, Viewport.RENDER_INFO_DRAW_CALLS_IN_FRAME)
+					cube_s += cvp.get_render_info(Viewport.RENDER_INFO_TYPE_SHADOW, Viewport.RENDER_INFO_DRAW_CALLS_IN_FRAME)
+			print("world_view: fps log: draw calls: main %d + shadows %d, cube %d + shadows %d; objects in view %d" % [
+				vpm.get_render_info(Viewport.RENDER_INFO_TYPE_VISIBLE, Viewport.RENDER_INFO_DRAW_CALLS_IN_FRAME),
+				vpm.get_render_info(Viewport.RENDER_INFO_TYPE_SHADOW, Viewport.RENDER_INFO_DRAW_CALLS_IN_FRAME), cube_v, cube_s,
+				vpm.get_render_info(Viewport.RENDER_INFO_TYPE_VISIBLE, Viewport.RENDER_INFO_OBJECTS_IN_FRAME)])
 			var parts := []
 			for k in _pf_sum:
 				parts.append("%s %.2f" % [k, float(_pf_sum[k]) / 1000.0 / maxi(_pf_frames, 1)])
