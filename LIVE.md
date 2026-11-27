@@ -1260,8 +1260,8 @@ The user's last question was whether to chase the remaining uneven steps or call
 - **Cars that stop being streamed (2026-11-27 ~19:45):** a new race on the same track keeps the viewer (no FM3T
   restart), and the old race's car objects may be gone: their library models and loose parts stayed where they last
   were. Now a car without "FM3K" for 4 s (while others are streamed) is hidden with its loose parts, and shown again if
-  it comes back (`_cars_gone_update`). In stage B every known car is sent each frame; in stage A the game sends only the
-  cars it draws, so a car out of its view is hidden there until it is drawn again.
+  it comes back (`_cars_gone_update`). Stage B only: there every known car is sent each frame; in stage A the game
+  sends only the cars it draws (a car behind it would vanish from the viewer's mirror).
 - **Every car's own steering (FM3B v2, 2026-11-27 ~19:40):** the AI cars' steering wheels (and now their drivers'
   hands) turned with the player's stick. FM3B now carries each car's steering from its physics object (+3416; the
   player's equals its stick: -1 / -1 at full left), and the viewer turns other cars' wheels by it (FM3_AI_STEER=0: as

@@ -2599,8 +2599,8 @@ var _gone_ms := 0
 
 func _cars_gone_update() -> void:
 	var now := Time.get_ticks_msec()
-	if now - _gone_ms < 500 or _car_seen.is_empty():
-		return
+	if now - _gone_ms < 500 or _car_seen.is_empty() or (_feed_tag & 0x100) == 0:
+		return  # (stage B only: there every known car is sent each frame; in stage A only those the game draws)
 	_gone_ms = now
 	var newest := 0
 	for c in _car_seen:
