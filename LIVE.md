@@ -1353,7 +1353,19 @@ The user's last question was whether to chase the remaining uneven steps or call
   subset, and its index buffer lies 3,636 indices before the vertex buffer = leather through gauge_needle, the vertex
   buffer = the interior section's 23,687 x 40 bytes. But leather's vertices reach only y 0.60, not the roof (0.98): the
   roof / pillar magenta in the tint run probably came from another draw with the same pixel shader in that run's in-car
-  view (the TRACE_VC run's view numbering may differ: check the shot of each run before reading its capture).) Default stays
+  view (the TRACE_VC run's view numbering may differ: check the shot of each run before reading its capture).)
+  **Then (~21:05-21:10):** matching our subsets' first indices against the capture's colour-pass draws settles it: the
+  headliner (3870 ...) is draw #737, vs 618013738ec64643 / ps 1074f157fdbf9db8 (textured; the vertex SH light plus
+  the sun as saturate(n.l) through the shadow map), the 0.24 untextured draw is `leather` (and the tint shots lag the
+  edits: don't trust a tint-run's attribution without this index check). Every interior subset's transfer reads as
+  lit from above (the downward headliner too), so the transfer's sun term is wrong for those: fm3_cockpit_prt.gdshader
+  (used with `FM3_COCKPIT_PRT=1`) is lit by Godot's sun: the transfer's ambient + SHDir x 1.5 x n.l x the sun's
+  shadow (the sun then reaches the cockpit layer, the player's cockpit casts). In-car (cam3) against the game: ambient
+  only 17.9; + the transfer's sun 20.0 (roof 72 vs 18); + n.l x shadow **16.2 / 15.6 / 14.9** (old light 16.4 / 15.8 /
+  15.3; dash middle |diff| 13.9 -> 9.9, cabin bottom 22.4 -> 20.0, roof 2.5 -> 4.3, the A-pillar 2.0 either way: it is
+  not a cockpit-shader mesh); x1.3 on the materials 16.4. Within boot noise (~0.2), so not the default yet; only the
+  CR-X si is rebuilt with the transfer (`tools/fm3_car_library.py ... out/cars <car>`, 2.5 s a car). Next: the A-pillar's
+  mesh (FM3_HIDE_PARTS), the rest of the 618 family's terms (its specular, pc5 / pc14), then rebuild the library. Default stays
   the old fitted light (in-car 16.5 / 15.8 / 15.4 after the change). The old switch `FM3_COCKPIT_VCOL=0` (no baked
   brightness) was tried too: 17.7, the pillar 4.1.
 - **The crowd's light (2026-11-27 ~20:30):** the game's crowd pixel shader b32f44c528968ecc with its constants

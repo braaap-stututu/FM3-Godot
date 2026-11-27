@@ -80,6 +80,8 @@ var _library_queue := []  # cars waiting for their library model
 # its cockpit has no directional light (TrackSettings SHCockpitDir 0) and the view a higher exposure. Cockpit meshes
 # sit on their own render layer the sun leaves out, and the exposure rises in-car by IN_CAR_EXPOSURE.
 const COCKPIT_LAYER := 8
+var COCKPIT_PRT := OS.get_environment("FM3_COCKPIT_PRT") == "1"  # (the game's cockpit light, fm3_cockpit_prt.gdshader)
+var _prt_logged := false
 const CROWD_LAYER := 64  # (the 3D crowd: left out of the live reflection cube)
 const STATIC_LAYER := 16  # (the lightmapped track: casts shadows only for the DYNLIT sun)
 const DYNLIT_LAYER := 32  # (the track's sun-lit surfaces, fm3_dynlit: lit by their own sun)
@@ -596,9 +598,11 @@ func _init() -> void:
 		root.add_child(probe)
 	var sun := DirectionalLight3D.new()
 	sun.light_cull_mask = 0xFFFFF & ~COCKPIT_LAYER & ~DYNLIT_LAYER
+	if COCKPIT_PRT:
+		sun.light_cull_mask |= COCKPIT_LAYER  # (the cockpit's sun term through the shadow map, fm3_cockpit_prt.gdshader)
 	sun.shadow_caster_mask = 0xFFFFF & ~STATIC_LAYER
 	if not DYNLIT_SHADOWS:
-		sun.light_cull_mask = 0xFFFFF & ~COCKPIT_LAYER
+		sun.light_cull_mask = 0xFFFFF & (~COCKPIT_LAYER if not COCKPIT_PRT else 0xFFFFF)
 	sun.rotation_degrees = Vector3(-sun_elev, sun_azim, 0)
 	var glights := scene.find_children("*", "DirectionalLight3D", true, false)
 	if not glights.is_empty():  # the capture's sun (fir_world.py writes FM3's sun direction)
@@ -3129,7 +3133,7 @@ func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle
 # A cockpit plain surface as fm3_cockpit.gdshader (FM3's cabin hemisphere light, no sun, no sky reflection).
 func _cockpit_material(bm: BaseMaterial3D) -> ShaderMaterial:
 	var sm := ShaderMaterial.new()
-	sm.shader = load("res://viewer/fm3_cockpit.gdshader")
+	sm.shader = load("res://viewer/fm3_cockpit_prt.gdshader" if COCKPIT_PRT else "res://viewer/fm3_cockpit.gdshader")
 	if bm.albedo_texture != null:
 		sm.set_shader_parameter("albedo_tex", bm.albedo_texture)
 	sm.set_shader_parameter("albedo_color", _vec4(bm.albedo_color))
@@ -3137,6 +3141,10 @@ func _cockpit_material(bm: BaseMaterial3D) -> ShaderMaterial:
 	# (the game's cockpit light from the vertices' SH transfer, fm3_cockpit.gdshader: opt-in, FM3_COCKPIT_PRT=1)
 	sm.set_shader_parameter("prt_on", OS.get_environment("FM3_COCKPIT_PRT") == "1")
 	sm.set_shader_parameter("sun_world", _sun_to)
+	if OS.get_environment("FM3_COCKPIT_PRT_DIR") != "":
+		sm.set_shader_parameter("dir_scale", float(OS.get_environment("FM3_COCKPIT_PRT_DIR")))
+	if OS.get_environment("FM3_COCKPIT_SUN_K") != "" and COCKPIT_PRT:
+		sm.set_shader_parameter("sun_k", float(OS.get_environment("FM3_COCKPIT_SUN_K")))
 	if OS.get_environment("FM3_COCKPIT_PRT_K") != "":
 		sm.set_shader_parameter("prt_k", float(OS.get_environment("FM3_COCKPIT_PRT_K")))
 	sm.set_shader_parameter("gain", float(OS.get_environment("FM3_COCKPIT_GAIN")) if OS.get_environment("FM3_COCKPIT_GAIN") != "" else COCKPIT_GAIN)  # (FM3_COCKPIT_GAIN: tests)
@@ -4963,6 +4971,8 @@ func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, 
 		var gi := part[0] as GeometryInstance3D
 		if bool(part[5]):
 			gi.visible = mine and not (_steer_mode == "off" and part[7] != null and part[7].get("gauge") == "steering")
+			if COCKPIT_PRT and mine:
+				gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON  # (the cockpit's own roof edge and pillars shade it)
 		else:
 			# (the body stays as a shadow caster only: its roof and doors still shade the cabin, as in the game)
 			var own: int = part[6]
@@ -4972,6 +4982,14 @@ func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, 
 				gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY if mine else own
 			elif int(part[3]) < 0:
 				gi.visible = not mine
+	if COCKPIT_PRT and in_car and not _prt_logged:
+		_prt_logged = true
+		var cnt := {}
+		for part in _car_parts:
+			if int(part[1]) == player:
+				var k_ := "%s %d vis %s" % ["cockpit" if bool(part[5]) else "body", int((part[0] as GeometryInstance3D).cast_shadow), str((part[0] as GeometryInstance3D).visible)]
+				cnt[k_] = int(cnt.get(k_, 0)) + 1
+		print("world_view: in-car shadow casters of the player's car: ", cnt)
 	_cars_gone_update()
 	_fx_update(moves, wmoves)
 	_crowd_cheer_update()
