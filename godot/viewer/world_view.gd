@@ -822,6 +822,13 @@ func _lamp_material(m: BaseMaterial3D, nm: String, gltf_path: String) -> ShaderM
 				gs.set_shader_parameter(p0_, sm.get_shader_parameter(p0_))
 		sm = gs
 		sm.set_shader_parameter("sun_dir", _sun_to)
+		# (the game's lamps read the per-frame cube: the player's from t2, the AI cars' "static" slot t3 holds a dynamic
+		# cube as their paint's t7 does; FM3_LIVE_LAMP=0: the static cube)
+		if OS.get_environment("FM3_LIVE_LAMP") != "0" and _live_cube_texs.size() == 6:  # (CrownJewel lamps 15.53 -> 10.87)
+			for k_ in 6:
+				sm.set_shader_parameter("live%d" % k_, _live_cube_texs[k_])
+			sm.set_shader_parameter("live_hdr", _live_cube_hdr())
+			sm.set_shader_parameter("has_live", true)
 		if OS.get_environment("FM3_HDR_CLAMP") != "":
 			sm.set_shader_parameter("hdr_clamp", float(OS.get_environment("FM3_HDR_CLAMP")))
 		sm.set_shader_parameter("lm_shade", float(OS.get_environment("FM3_LAMP_SHADE")) if OS.get_environment("FM3_LAMP_SHADE") != "" else LAMP_SHADE)
@@ -2526,6 +2533,7 @@ func _setup_library_mesh(mi: MeshInstance3D, cm: Dictionary, paint_col: Color, m
 				gm.set_shader_parameter("lens_light", float(OS.get_environment("FM3_LENS_LIGHT")) if OS.get_environment("FM3_LENS_LIGHT") != "" else LENS_LIGHT)
 				gm.set_shader_parameter("amber_light", float(OS.get_environment("FM3_AMBER_LIGHT")) if OS.get_environment("FM3_AMBER_LIGHT") != "" else AMBER_LIGHT)
 				gm.set_shader_parameter("lens_lift", float(OS.get_environment("FM3_LENS_LIFT")) if OS.get_environment("FM3_LENS_LIFT") != "" else LENS_LIFT)
+				gm.set_shader_parameter("live_lens", OS.get_environment("FM3_LIVE_LENS") != "0")  # (CrownJewel lenses 18.93 -> 12.25)
 				if _game_lamps():
 					gm.set_shader_parameter("game_lens", true)
 					gm.set_shader_parameter("lens_debug", OS.get_environment("FM3_LENS_DEBUG") == "1")

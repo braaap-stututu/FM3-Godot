@@ -68,6 +68,7 @@ uniform bool player_glass = false;
 // A lamp lens drawn with this formula (world_view.gd FM3_LENS=game, 2026-11-25): it faces outwards, so the player's
 // own lenses reflect the surroundings like any car's (no player_env dimming).
 uniform bool lens = false;
+uniform bool live_lens = false;  // (lenses on the per-frame cube too, as the lamps behind them: world_view.gd FM3_LIVE_LENS)
 // A lens's tint of what is behind it (gamma_blend only): the scene behind x mix(1, GlassColor, lens_filter). The game's
 // RSX tails are pink-red over bright reflectors (G / R 0.55) where the plain formula (15% red head-on) left them
 // near white (G / R 0.8). FM3_LENS_FILTER=<k> (world_view.gd).
@@ -128,7 +129,7 @@ vec3 to_linear(vec3 c) {
 void fragment() {
 	vec3 r = (INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz;
 	vec3 env = (has_env ? texture(env_cube, r * env_flip).rgb : env_fallback) * cube_scale * ((has_live || player_glass) && !lens ? player_env : env_scale) * (has_env ? static_cube_gain : 1.0);
-	if (has_live && live_glass && !lens) {
+	if (has_live && live_glass && (!lens || live_lens)) {
 		// the player's windows reflect the per-frame cube rendered at the car, as the game's do (its t6)
 		env = live_cube(r) * cube_scale * live_glass_scale;
 	}

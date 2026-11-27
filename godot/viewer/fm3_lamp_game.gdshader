@@ -33,6 +33,8 @@ uniform vec3 glow_color = vec3(1.0, 0.0, 0.0);
 uniform float alpha_cut = -1.0;
 uniform float hdr_clamp = 1.0;  // (as the paint's: highlights capped at 1 in gamma before going linear; FM3_HDR_CLAMP)
 
+#include "res://viewer/fm3_livecube.gdshaderinc"
+
 varying vec3 v_env;  // the reflection term (linear), damped in light() by the shadow
 
 vec3 to_linear(vec3 c) {
@@ -50,7 +52,7 @@ void fragment() {
 	float sp = pow(clamp(dot(normalize(r), l), 0.0, 1.0), spec_power) * spec_amount;
 	float cosv = clamp(abs(dot(n, VIEW)), 0.0, 1.0);
 	float f = min(max(fresnel_scale * pow(1.0 - cosv, fresnel_power), fresnel_min), fresnel_max);
-	vec3 env = (has_env ? texture(env_cube, r * env_flip).rgb * static_cube_gain : env_fallback) * cube_scale;
+	vec3 env = (has_live ? live_cube(r) : (has_env ? texture(env_cube, r * env_flip).rgb * static_cube_gain : env_fallback)) * cube_scale;
 	ALBEDO = to_linear(min(t.rgb * (0.4 + 0.6 * hl * hl) + vec3(sp), vec3(hdr_clamp))) * (1.0 - f) * lamp_gain;
 	v_env = to_linear(min(env * f, vec3(hdr_clamp))) * lamp_gain;
 	EMISSION = glow_color * to_linear(t.rgb) * glow;

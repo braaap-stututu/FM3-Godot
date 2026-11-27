@@ -934,6 +934,13 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
     last and best 00:50.396 / 00:50.326 (our lap starts when a packet shows the segment's drop, ~70 ms after the game's
     line), lap 00:14.175 / 00:14.172, place 8/8 both. Not yet: the lap total ("/3": `"total_laps"` in the HUD config), a lap counter
     for a viewer started mid-race (it counts from when it starts).
+- **Lamps and lenses on the per-frame cube** (2026-11-27): the game's lamp shaders (tail_light 7f4b46775654ee5b,
+  textured reflector, reverse) read t3 under bool 130 (the AI cars: the "static" slot, which on the grid holds a
+  dynamic cube, as the paint's t7) and t2 otherwise (the player's per-frame cube): `fm3_lamp_game.gdshader` now takes
+  the live cube (bound in `_lamp_material`; `FM3_LIVE_LAMP=0` = the static cube), and the lenses do too
+  (`fm3_carglass` live_lens; `FM3_LIVE_LENS=0`). CrownJewel grid, one boot each: the lamps' 4,211 pixels 15.53 ->
+  10.87 (61 / 28 / 26 against the game's 62 / 27 / 25), the lenses' 3,620 pixels 18.93 -> 12.25, whole frame 14.10 ->
+  14.08 and 14.11 -> 14.08.
 - **Road lines without a mask** (`rdline_diff_opac_2`, Motegi's white lines; disassembled 2026-11-26): texture x P[0].z
   (0.6 there) x the lightmap, opacity = the texture's alpha. We cut them out at full brightness: solid white edge
   lines where the game's are dimmed and worn. Now exported dimmed by P[0].z and alpha-blended

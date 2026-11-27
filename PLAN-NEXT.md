@@ -6,7 +6,7 @@ details of everything done; HANDOFF.md the overall state. Updated 2026-11-27 ~01
 
 **Suggested order (by value against the game and how far each is):** (a) done 2026-11-27: the HUD's race values; (b) the crowd's animations (2: the decoder is located);
 (c) the driver's hands (3: dump the Granny files through the recomp); (d) RoadAtlanta's exposure offset (4);
-(e) lamps / lenses on the live cube (1); (f) slip telemetry (8); (g) the menus (6, 7). Ask the user which first.
+(e) done: lamps / lenses on the live cube; (f) slip telemetry (8); (g) the menus (6, 7). Ask the user which first.
 
 ## 1. The cubemap (done for the paint; finish for the other shaders)
 
@@ -18,8 +18,8 @@ Left (the AI dampener is done: the game's StaticEnvLightmapDampner 0.5 for AI pa
   game binds there (a capture: t7's address against the player's t6 / the static cube's), and whether every AI car
   reflects the same cube (one shared per-frame cube from the player's position?) or its own.
 - AI windows: done (the live cube, `FM3_AI_LIVE_GLASS=0` = before; their sky blue, 27.5 -> 19.3 on the windows).
-  Left: the lamps and lenses (`fm3_lamp_game`, `fm3_lensrefl`, the lens path of `fm3_carglass` read the static cube
-  with env_flip (-1, 1, 1)): give them the live cube where the game does (check each shader's bool for t6 / t7).
+  Lamps and lenses: done 2026-11-27 (the live cube: lamps 15.53 -> 10.87, lenses 18.93 -> 12.25). Left: `fm3_lensrefl`
+  (the old lens chain, off by default) still reads the static cube.
 - Where the static cube is really used (menus? other tracks' AI?): the orientation test (mode 22 + scratch
   `cubefit.py`-style per-face matching) once a frame is found that binds it.
 
