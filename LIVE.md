@@ -1432,7 +1432,19 @@ The user's last question was whether to chase the remaining uneven steps or call
   CockpitHeadlinerTextureScale, CockpitClothColor / MinDarkness / TextureScale, CockpitPlasticPaintScale,
   CockpitSpecularAmount / Amount2 / Power / Power2, CockpitGaugeColor, CockpitBumpScale / Bias, CockpitNormalScale,
   MinDiffuse, UseDiffuseInsteadOfSH, MinShadowValue: start from tools/fm3_trackshader.py, which already reads .fxobj
-  parameters for the track shaders, to get each cockpit material's defaults; shadersettings.xml overrides per car.) Also seen: hiding the
+  parameters for the track shaders, to get each cockpit material's defaults; shadersettings.xml overrides per car.)
+  (~22:55, done: fm3_trackshader.containers over shaders_v11.fxobj, the registers that differed: containers 65 / 66 and
+  71 / 78 are the cockpit pixel shaders: c116 MinDiffuse (default 0), c117 UseDiffuseInsteadOfSH (0), c118 / c119
+  CockpitSpecularPower / Power2 (3 / 5), c180 CockpitSpecularAmount (0.3; the draws had 0.09 = TrackSettings
+  CockpitSpecularAmount), c189 CockpitSpecularAmount2 (1), c190 MinShadowValue (0.25) or CockpitPlasticPaintScale,
+  c191 GaugeEmissiveScale or MinShadowValue; 72 = CockpitGaugeColor 0.5, 77 = CockpitClothTextureScale, 79 =
+  CockpitHeadlinerColor 0.7, 74-76 / 82-84 the bump ones (CockpitNormalScale 0.5, CockpitBumpScale / Bias). **Catch:**
+  draw #737 (our headliner subset by its indices) had MinDiffuse 0.5, UseDiffuseInsteadOfSH 0.5, c191 2: exactly the
+  CR-X's shadersettings for cockpit_gauge_needle (MinDiffuse 0.5, UseDiffuseInsteadOfSH 0.5, GaugeEmissiveScale 2),
+  and the gauge-needle draw (#736) comes right before it. Either those registers carry over from the previous draw (the
+  trace logs the register file) or our subset -> material names are off by one in the cockpit: settle that first
+  (compare the carbin's material table order with the draw order; check draw #742 against the container its shader
+  matches).) Also seen: hiding the
   cockpit's `window` gives in-car 16.1 (16.4): the inside of the cockpit glass costs a little. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
   29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
   until the animation is in, the user's call.
