@@ -1387,7 +1387,10 @@ The user's last question was whether to chase the remaining uneven steps or call
   vertices the headliner texture (uv0 in interior_lod0) is dark, mean 27.9 against 127.8 on the roof, the transfer's
   ambient 0.184 vs 0.117. The game's pillar is only a little darker than its roof (13 vs 18): so either the game samples
   that texture elsewhere (its dash / headliner shader 1074f157 scales or picks its uv: the gauge shader 417907f8 scales
-  uv by pc116.x) or lights the pillar far more. Next: draw #737's constants and its uv math. Also seen: hiding the
+  uv by pc116.x) or lights the pillar far more. (~22:20: the uv is the same: vs 618013738ec64643 passes vertex
+  element 2 (half2, the one we read as uv0) to o0 unchanged. So it is the light: 1074f157's output is
+  tex x light + r1.w, an additive term after the texture (a specular / sheen), which lifts dark-textured trim the most;
+  our cockpit has none. Next: that term's constants from draw #737 with `REGPU_TRACE_VC=1`.) Also seen: hiding the
   cockpit's `window` gives in-car 16.1 (16.4): the inside of the cockpit glass costs a little. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
   29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
   until the animation is in, the user's call.
