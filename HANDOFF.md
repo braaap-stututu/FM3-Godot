@@ -4,7 +4,9 @@
 FM3-ReGPU 478cd0f), the game's luminance chain decoded tap by tap, and RoadAtlanta's "exposure offset" solved: our W
 probe ignored the curve's black point, and the viewer measured L after its own exposure pass (brights clipped); it
 now measures the scene before it through a small view of the same world (RoadAtlanta 22.9 -> 17.9, CrownJewel grid
-14.0 / chase 14.5 / in-car 17.6, viewer +4% fps). LIVE.md and PLAN-NEXT.md have the details.
+14.0 / chase 14.5 / in-car 17.6, viewer +4% fps). Our HUD on against the game's: within noise of ours off; the race
+time now holds 00:00.000 on the grid as the game's; left on the HUD: lap total, minimap check, opponent name tags,
+the tach's look (PLAN-NEXT). LIVE.md and PLAN-NEXT.md have the details.
 
 **Start the next session here (stopped 2026-11-27 ~01:05, after a full day and night of sessions).** Everything is
 committed and pushed (frame-ir `live-mirror` = master; FM3-ReGPU unchanged since 2026-11-25, `origin/main`).

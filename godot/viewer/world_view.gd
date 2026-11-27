@@ -119,6 +119,7 @@ var _clock_off := INF  # Godot clock minus game clock (smallest seen)
 var _frame_dt := 1.0 / 120.0  # the game's frame interval (smoothed)
 var _live_raw := false  # --live-raw: the newest frame, no interpolation
 var _live_last_now := 0.0
+var _race_started := false  # (the race clock has restarted at the race's start, or the car moves)
 var _race_clock := -1.0  # (FM3E v9: the race clock, s; place 1-based; segment; laps counted here)
 var _race_place := 0
 var _race_segment := -1
@@ -1193,7 +1194,7 @@ func _hud_feed(player: int, moves: Dictionary) -> void:
 	_hud.call("feed", {"speed": _player_speed, "rpm": _engine_rpm, "redline": _engine_redline, "gear": _player_gear,
 		"throttle": maxf(_player_throttle, 0.0), "brake": maxf(_player_brake, 0.0), "cars": pos, "player": player,
 		"info": "game frames every %.1f ms" % (_frame_dt * 1000.0),
-		"place": _race_place, "lap": _race_laps if _race_clock >= 0.0 else -1, "race_time": _race_clock,
+		"place": _race_place, "lap": _race_laps if _race_clock >= 0.0 else -1, "race_time": (_race_clock if _race_started else 0.0) if _race_clock >= 0.0 else -1.0,
 		"lap_time": _race_clock - _race_lap_start if _race_clock >= 0.0 and _race_laps >= 1 else -1.0,
 		"last_lap": _race_last_lap, "best_lap": _race_best_lap})
 
@@ -2816,7 +2817,13 @@ func _live_step() -> void:
 					_player_wheel_speed[i] = b.decode_float(60 + 4 * i)
 			if b.decode_u32(4) >= 9 and b.size() >= 132:
 				# v9: the race clock (s), the race position (1-based) and the track segment (laps counted from its drops)
-				_race_clock = b.decode_float(120)
+				var clk := b.decode_float(120)
+				# (the clock runs through the countdown on the grid and starts again from 0 at the start, while the game's
+				# HUD shows 00:00.000 until then: the HUD's race time is held at 0 until the clock resets or the car moves,
+				# 2026-11-27; a viewer started mid-race sees the car moving at once)
+				if not _race_started and ((_race_clock >= 0.0 and clk + 0.5 < _race_clock) or _player_speed > 1.0):
+					_race_started = true
+				_race_clock = clk
 				_race_place = int(b.decode_u32(124))
 				var seg := int(b.decode_u32(128))
 				if _race_segment >= 0 and seg + 50 < _race_segment and _race_clock > 1.0:

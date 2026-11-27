@@ -104,7 +104,12 @@ elements. The HUD is ~31% of the CrownJewel grid's remaining difference, so with
 switched on in the comparisons.
 **Done 2026-11-27:** race time, place, laps and last / best / lap times from the game (FM3E v9; LIVE.md "HUD race data"),
 checked against the game's HUD to a few ms. Left: the race's lap total, a lap counter for a viewer started mid-race,
-and switching the HUD on in the comparisons. (The old route, for reference: the HUD's own code reads them; the tach's rpm getter is called
+and switching the HUD on in the comparisons. Measured 2026-11-27 (CrownJewel, ours on against the game's own): grid
+13.9 / chase 14.6 / in-car 17.9 against 14.0 / 14.5 / 17.6 with ours off: within boot noise, so our HUD neither closes
+nor widens the gap yet. Seen side by side on the grid: the race time (fixed: held at 0 until the start, the physics
+clock runs through the countdown), the lap total ("/-" against "/3"), no minimap in that run (it showed in the
+earlier HUD tests: check), no opponent name tags (the game's red names over the cars ahead), and the tach's style (the
+game's dark disc with a red redline arc and a fuel icon; ours white ticks). (The old route, for reference: the HUD's own code reads them; the tach's rpm getter is called
 for the HUD from 0x821F2044 (`FM3-ReGPU recomp/src/hooks/live_camera.cpp` notes), so the HUD update function around
 that return address also fetches position / lap / lap time: read it in `out/ppc-rexenon` and follow its other getters
 to the race object, then stream them in FM3E. (Searching the image for the time format: `%02d.%03d` is at image offset
