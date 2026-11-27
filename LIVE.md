@@ -1251,6 +1251,17 @@ The user's last question was whether to chase the remaining uneven steps or call
   loose parts themselves (their translation is known; their rotation would need vc8-10 too). Cost: a 0.5 s pause of
   stage B after a crash (the game draws everything for those frames). `FM3_PARTS=0` off, `FM3_PARTS_LOG=1` why a
   report was not applied.
+- **Scuffs (2026-11-27 ~18:30):** the paint VS passes the clamped damage amount on as o[1].w (r3.w is not touched
+  after the lattice); the paint PS e41e183a423e6f1b blends texture 2 (the car's damage_lod0, grey scuffs and
+  scratches with alpha) as colour x (1 - D.a x a) + D.rgb x a and its highlight x (1 - a). `tools/fm3_car_damage_tex.py`
+  writes `<car>_tex/damage_lod0.png` for the library; the viewer puts each vertex's amount in CUSTOM0 when it rebuilds a
+  damaged mesh (every vertex in the lattice, also those that do not move) and `fm3_carpaint.gdshader` blends the same
+  way (damage_tex, has_damage set only once the mesh carries the amounts). **Not yet seen in a picture:** the poke
+  test at 0.6 on the rear cells showed no scuffs in the game either (the game may rewrite the table from its physics
+  state), and the chase camera after a crash shows the undamaged rear; the right stick switched to a trackside camera,
+  not a look-back. Next: a reverse crash or the in-car / bumper camera.
+  (Side finding from that trackside view: near the barrier the game draws standing 3D people, e.g. a photographer
+  with a camera, where the viewer has one dark seated figure: PLAN-NEXT 2.)
 - **Optimizing, round 2 (2026-11-27 ~16:30; frozen CrownJewel grid, stage B, the game running beside it; scratchpad
   perfab.ps1 starts one game and several viewers in turn, 50 s each; `FM3_FPS_LOG=1` now also prints draw calls by
   pass):** base ~40 fps: main view 2,192 draw calls + 1,314 for its shadows, the live cube ~1,000 + ~230 a frame (2 of

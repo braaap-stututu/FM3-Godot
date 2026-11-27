@@ -132,8 +132,17 @@ uniform float sh_transition_width = 0.3;
 uniform float min_shadow = 0.25;
 uniform int debug_out = 0;
 
+// Crash damage (2026-11-27): the vertex's damage amount (CUSTOM0.r, set by world_view.gd _damage_step from the car's
+// lattice) blends the car's damage texture in as the game's paint shader e41e183a423e6f1b does: colour x (1 - D.a x a)
+// + D.rgb x a (gamma values), and the highlight / reflection x (1 - a).
+uniform sampler2D damage_tex : filter_linear_mipmap_anisotropic, repeat_enable, hint_default_transparent;
+uniform bool has_damage = false;
+varying float dmg_amt;
+varying float dmg_light;  // (the same for light(): varyings reach it from fragment())
+
 void vertex() {
 	env_ab = UV2;
+	dmg_amt = has_damage ? clamp(CUSTOM0.r, 0.0, 1.0) : 0.0;
 }
 
 uniform bool cull_back = false;
@@ -153,6 +162,11 @@ void fragment() {
 	}
 	vec4 t = texture(albedo_tex, UV);
 	paint_gamma = livery ? mix(albedo_color.rgb, t.rgb, t.a) : t.rgb * albedo_color.rgb;
+	dmg_light = dmg_amt;
+	if (dmg_amt > 0.0) {
+		vec4 dt = texture(damage_tex, UV);
+		paint_gamma = paint_gamma * (1.0 - dt.a * dmg_amt) + dt.rgb * dmg_amt;
+	}
 	// (the texture is read raw: gamma-space values, as the game's shader works with them)
 	// (library cars: their badge layer is composited over white by tools/fm3_car_library.py, so the same product)
 	ALBEDO = gamma_sum ? vec3(1.0) : to_linear(paint_gamma);
@@ -206,6 +220,7 @@ void light() {
 			if (debug_out == 16) { dbg = vec3(env_ab * 0.5, 0.0); }  // (the baked sky pair a, b, halved)
 			if (debug_out >= 10 && debug_out <= 12) { dbg = vec3(debug_out == 10 ? 0.1 : (debug_out == 11 ? 0.25 : 0.5)); }  // (the picture's response to known values)
 		}
+		add *= 1.0 - dmg_light;  // (the game: its highlight x (1 - amount))
 		if (debug_out > 0) {
 			DIFFUSE_LIGHT += to_linear(dbg);
 		} else if (gamma_sum) {

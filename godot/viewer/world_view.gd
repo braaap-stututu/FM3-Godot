@@ -1977,7 +1977,34 @@ func _damage_parts_load(car, scene_: Node, path: String) -> void:
 		parts.append([m, verts, dirs])
 	_dmg_parts[car] = parts
 	_dmg_groups[car] = groups_
+	# the car's damage texture on its paint (tools/fm3_car_damage_tex.py)
+	var dpath := path.get_basename().trim_suffix("_damage") + "_tex/damage_lod0.png"
+	if FileAccess.file_exists(dpath):
+		var dimg := Image.load_from_file(dpath)
+		if dimg != null:
+			dimg.generate_mipmaps()
+			var dtex := ImageTexture.create_from_image(dimg)
+			var np_ := 0
+			for p in parts:
+				var m := p[0] as MeshInstance3D
+				for si in m.get_surface_override_material_count():
+					var sm := m.get_surface_override_material(si) as ShaderMaterial
+					if sm != null and sm.shader == CARPAINT_SHADER:
+						sm.set_shader_parameter("damage_tex", dtex)  # (has_damage once its mesh carries the amounts)
+						np_ += 1
+			print("world_view: car %08X damage texture on %d paint surfaces" % [car, np_])
 	print("world_view: car %08X damage directions on %d meshes (%d of %d vertices not found by position)" % [car, parts.size(), missed, total])
+
+
+# One surface from arrays (with the damage amounts in CUSTOM0 as one float when present) and its material.
+static func _surface_mesh(prim: int, arrays: Array, mat: Material) -> ArrayMesh:
+	var flags := 0
+	if arrays.size() > Mesh.ARRAY_CUSTOM0 and arrays[Mesh.ARRAY_CUSTOM0] != null:
+		flags = Mesh.ARRAY_CUSTOM_R_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(prim, arrays, [], {}, flags)
+	am.surface_set_material(0, mat)
+	return am
 
 
 func _dmg_key(v: Vector3) -> Vector3i:
@@ -2048,9 +2075,7 @@ func _damage_prepare(car, p: Array) -> Array:
 	var fr := PackedVector3Array()
 	var dv := PackedVector3Array()
 	for i in orig.size():
-		var d := Vector3(dirs[3 * i], dirs[3 * i + 1], dirs[3 * i + 2])
-		if d == Vector3.ZERO:
-			continue
+		var d := Vector3(dirs[3 * i], dirs[3 * i + 1], dirs[3 * i + 2])  # (zero for parts that do not dent: their scuffs)
 		var q := orig[i]
 		var g := Vector3((q.x - org.x) * inv.x, (q.y - org.y) * inv.y, (q.z - org.z) * inv.z)
 		var f := g.floor()
@@ -2087,6 +2112,8 @@ func _damage_step() -> void:
 	var orig: PackedVector3Array = p[1]
 	var out := orig
 	var moved := 0
+	var amts := PackedFloat32Array()
+	amts.resize(orig.size())
 	if bool(j["any"]):
 		out = orig.duplicate()
 		var tab: PackedFloat32Array = j["tab"]
@@ -2109,18 +2136,22 @@ func _damage_step() -> void:
 			var l3 := lerpf(tab[c + 7], tab[c + 3], f.y)
 			var amt := clampf(clampf(lerpf(lerpf(l0, l3, f.z), lerpf(l1, l2, f.z), f.x), 0.0, 1.0), lo, hi)
 			if amt != 0.0:
-				out[vi[k]] = orig[vi[k]] + dv[k] * amt
-				moved += 1
+				amts[vi[k]] = amt
+				if dv[k] != Vector3.ZERO:
+					out[vi[k]] = orig[vi[k]] + dv[k] * amt
+					moved += 1
 	j["moved"] = int(j["moved"]) + moved
 	j["nv"] = int(j["nv"]) + orig.size()
 	var arrays: Array = (pre[4] as Array).duplicate()
 	arrays[Mesh.ARRAY_VERTEX] = out
+	arrays[Mesh.ARRAY_CUSTOM0] = amts  # (the paint's scuffs: fm3_carpaint.gdshader damage_tex)
 	if m.has_meta("idx_now"):
 		arrays[Mesh.ARRAY_INDEX] = m.get_meta("idx_now")
-	var nm_ := ArrayMesh.new()
-	nm_.add_surface_from_arrays(int(pre[6]), arrays)
-	nm_.surface_set_material(0, pre[5])
-	m.mesh = nm_
+	m.mesh = _surface_mesh(int(pre[6]), arrays, pre[5])
+	for si in m.get_surface_override_material_count():
+		var sm := m.get_surface_override_material(si) as ShaderMaterial
+		if sm != null and sm.shader == CARPAINT_SHADER:
+			sm.set_shader_parameter("has_damage", true)  # (CUSTOM0 holds the amounts now; before, it is undefined)
 	j["us"] = int(j["us"]) + Time.get_ticks_usec() - t0
 
 
@@ -2215,11 +2246,7 @@ func _parts_packet(b: PackedByteArray) -> void:
 		m.set_meta("idx_now", idx)
 		var arrays := am.surface_get_arrays(0)
 		arrays[Mesh.ARRAY_INDEX] = idx
-		var mat := am.surface_get_material(0)
-		var nm2 := ArrayMesh.new()
-		nm2.add_surface_from_arrays(am.surface_get_primitive_type(0), arrays)
-		nm2.surface_set_material(0, mat)
-		m.mesh = nm2
+		m.mesh = _surface_mesh(am.surface_get_primitive_type(0), arrays, am.surface_get_material(0))
 		n += 1
 	print("world_view: car %08X parts: %d of %d on the car, %d meshes changed (hidden mesh parts: %s)" % [car, found, groups.size(), n, str(hidden.keys())])
 
