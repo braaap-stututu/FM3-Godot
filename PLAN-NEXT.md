@@ -11,9 +11,10 @@ details of everything done; HANDOFF.md the overall state. Updated 2026-11-27 ~01
 ## 0. The user's list of 2026-11-27 ~14:09 (work until midnight; LIVE.md "The user's notes of 2026-11-27 evening")
 
 Status 2026-11-27 ~18:15: everything on the list has been worked on (HANDOFF top: the summary). Left from it: the
-in-car driver's animations (Granny, Oodle1), the crowd's cheers as cars pass, tyre smoke / skid marks / sparks (the
-game draws them in its skipped world steps: stage B shows none), the slip telemetry, the live cube's own shadow
-draws. The older items below are updated where done (2, 3).
+in-car driver's animations (Granny, Oodle1), the live cube's own shadow draws. Done since (LIVE.md): tyre smoke,
+skid marks, dust, per-track smoke atlases, collision sparks, the crowd's cheers (~20:25). Open from those: grass /
+dirt particles by surface (the wheel's surface byte is not the surfaceTypes.xml index: CrownJewel gravel = 45),
+sparks while scraping without new damage, checking smoke / sparks against the game's own in the same moment. The older items below are updated where done (2, 3).
 
 ## 1. The cubemap (done for the paint; finish for the other shaders)
 

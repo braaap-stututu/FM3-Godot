@@ -1324,7 +1324,7 @@ The user's last question was whether to chase the remaining uneven steps or call
   `fm3_spectators.py`; per person INSTANCE_CUSTOM = first entry, frames, bones, start frame: its class's idle list,
   one picked per person, looped at 30 a second). Two viewer shots 8 s apart: the pit workers change pose (one arm
   out, as in the game's frame). Which idle the game picks per person is not known (one is picked per person here).
-  **Cheering (~20:35):** each person carries one idle and one cheer animation (its class's lists; Drunk, Photographer,
+  **Cheering (~20:25):** each person carries one idle and one cheer animation (its class's lists; Drunk, Photographer,
   Marshall and PitWorker have no cheer list and keep their idle; Sitting's idle is Sit_Cheer_01 anyway) and cheers
   while a car is within 60 m (`FM3_CROWD_CHEER_M`; the game's distance rule is in its code, not spectators.xml): the
   cars' positions in one shared 16 x 1 float texture, updated ten times a second, the choice in the vertex shader.
