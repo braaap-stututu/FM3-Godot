@@ -610,6 +610,12 @@ func _init() -> void:
 	if glass_set:
 		print("world_view: %d car glass surfaces with the game's own glass settings" % glass_set)
 	sun.directional_shadow_max_distance = 250.0
+	if OS.get_environment("FM3_SHADOW_HQ") == "1":
+		# (FM3_SHADOW_HQ=1, opt-in: sharper sun shadows than Godot's defaults (a 4096 atlas for the four cascades over 250 m,
+		# the "soft low" filter): an 8192 atlas, the "soft high" filter and blended cascades; not measured for cost)
+		RenderingServer.directional_shadow_atlas_set_size(8192, true)
+		RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH)
+		sun.directional_shadow_blend_splits = true
 	root.add_child(sun)
 	if lit:
 		_setup_exposure(gltf_path)
@@ -1383,6 +1389,8 @@ func _make_live_cube(at: Vector3) -> void:
 
 
 func _place_live_cube(at: Vector3) -> void:
+	if _feed_mode == 1:
+		return  # (the game's frames cover the window: no cube faces drawn meanwhile, _game_feed_read)
 	if _live_cube_faces < 6 and not _live_cube_vps.is_empty():
 		for j in _live_cube_faces:
 			(_live_cube_vps[_live_cube_next] as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
@@ -2412,6 +2420,9 @@ var _feed_seq := -1
 var _feed_ms := 0
 var _feed_tag := 0
 var _feed_same := 0  # (reads in a row without a new frame: with the 2 s, a stalled viewer does not hide the feed)
+var _feed_key := Color(0.36, 0.36, 0.36)  # (a stage B race: the game's undrawn grey, keyed out)
+var _feed_key_mat: ShaderMaterial = null
+var _feed_mode := 0  # 0 the viewer's race, 1 the game's frames (menus), 2 the race under the game's HUD / menus
 
 
 func _game_feed_update() -> void:
@@ -2424,10 +2435,32 @@ func _game_feed_update() -> void:
 			return
 		_feed_path = e if e != "" else ProjectSettings.globalize_path("res://").path_join("../../../FM3-ReGPU recomp/out/run/frame_feed.bin").simplify_path()
 		print("world_view: the game's frames from ", _feed_path)
-	if _frames % 2 != 0:
-		return
+	var t0 := Time.get_ticks_usec()
+	_game_feed_read()
+	var dt := Time.get_ticks_usec() - t0
+	_feed_us_sum += dt
+	_feed_us_max = maxi(_feed_us_max, dt)
+	_feed_us_n += 1
+	if Time.get_ticks_msec() - _feed_us_ms > 5000:
+		print("world_view: game feed: %.2f ms a read on average, %.2f ms at most (%d reads)" % [_feed_us_sum / 1000.0 / maxi(_feed_us_n, 1), _feed_us_max / 1000.0, _feed_us_n])
+		_feed_us_ms = Time.get_ticks_msec()
+		_feed_us_sum = 0
+		_feed_us_max = 0
+		_feed_us_n = 0
+
+
+var _feed_us_sum := 0
+var _feed_us_max := 0
+var _feed_us_n := 0
+var _feed_us_ms := 0
+
+
+func _game_feed_read() -> void:
 	var f := FileAccess.open(_feed_path, FileAccess.READ)
-	var show := false
+	# (a read that catches the game mid-write, or no file, keeps what is shown: the menus' frames flickered to the
+	# viewer's own scene on every such read)
+	var show := _feed_mode == 1
+	var overlay := _feed_mode == 2
 	if f != null and f.get_length() >= 64:
 		var magic := f.get_32()
 		f.get_32()
@@ -2450,10 +2483,17 @@ func _game_feed_update() -> void:
 					_feed_seq = seq
 					_feed_ms = Time.get_ticks_msec()
 					_feed_tag = tag
+					if (tag & 0x100) != 0:
+						_feed_key = _feed_key_colour(img)
 			# (the game's last frame stays up while it shows nothing new: loading screens hold for seconds, and the
 			# viewer's own scene behind them means nothing; only a stage B race hides it)
 			show = _feed_tex != null and (_feed_tag & 0x80000000) != 0 and (_feed_tag & 0x100) == 0
-	if show and _feed_layer == null:
+			# In a stage B race the game's frame is its HUD and menus (pre-race, pause, results) over a flat grey (its
+			# undrawn scene): laid over the viewer's race with that grey keyed out, and the viewer's own HUD set aside
+			# (FM3_GAME_HUD=0: the viewer's HUD, no game overlay).
+			overlay = _feed_tex != null and (_feed_tag & 0x80000000) != 0 and (_feed_tag & 0x100) != 0 \
+				and OS.get_environment("FM3_GAME_HUD") != "0" and Time.get_ticks_msec() - _feed_ms < 1000
+	if (show or overlay) and _feed_layer == null:
 		_feed_layer = CanvasLayer.new()
 		_feed_layer.layer = 200  # (over the exposure pass and the HUD)
 		var bg := ColorRect.new()
@@ -2467,15 +2507,62 @@ func _game_feed_update() -> void:
 		_feed_layer.add_child(_feed_rect)
 		root.add_child(_feed_layer)
 	if _feed_layer != null:
-		if show:
+		var on := show or overlay
+		if on:
 			_feed_rect.texture = _feed_tex
 			# (Controls under a CanvasLayer get no size from their anchors here: the window's)
 			for c in _feed_layer.get_children():
 				(c as Control).position = Vector2.ZERO
 				(c as Control).size = root.get_visible_rect().size
-		if _feed_layer.visible != show:
-			_feed_layer.visible = show
-			print("world_view: %s (game feed tag %X)" % ["the game's own frames (its menus)" if show else "drawing the race", _feed_tag])
+			(_feed_layer.get_child(0) as Control).visible = show  # (the black behind: menus only)
+			if overlay:
+				if _feed_key_mat == null:
+					_feed_key_mat = ShaderMaterial.new()
+					var sh := Shader.new()
+					sh.code = """shader_type canvas_item;
+uniform vec3 key = vec3(0.36);
+void fragment() {
+	vec4 c = texture(TEXTURE, UV);
+	float d = distance(c.rgb, key);
+	COLOR = vec4(c.rgb, smoothstep(0.025, 0.07, d));
+}"""
+					_feed_key_mat.shader = sh
+				_feed_key_mat.set_shader_parameter("key", Vector3(_feed_key.r, _feed_key.g, _feed_key.b))
+				_feed_rect.material = _feed_key_mat
+			else:
+				_feed_rect.material = null
+		if _hud != null:
+			_hud.visible = not overlay
+		var mode := 2 if overlay else (1 if show else 0)
+		if _feed_layer.visible != on or mode != _feed_mode:
+			_feed_layer.visible = on
+			_feed_mode = mode
+			# (the game's frames cover the window: the viewer's 3D scene is not drawn meanwhile; it took the viewer down to
+			# ~20 frames a second behind the menus and the pre-race orbit)
+			root.disable_3d = mode == 1
+			# (and the live reflection cube's six views of the scene, which drew on behind it: the viewer stayed at ~30
+			# frames a second while showing the game's menus)
+			var cube_mode := SubViewport.UPDATE_ALWAYS if _live_cube_faces >= 6 else SubViewport.UPDATE_ONCE
+			for vp_ in _live_cube_vps:
+				(vp_ as SubViewport).render_target_update_mode = SubViewport.UPDATE_DISABLED if mode == 1 else cube_mode
+			print("world_view: %s (game feed tag %X)" % [["drawing the race", "the game's own frames (its menus)", "drawing the race under the game's HUD and menus (key %s)" % _feed_key][mode], _feed_tag])
+
+
+# The colour of the game's undrawn scene in a stage B race (the most common one on a sparse grid: the HUD covers little;
+# a pause menu's darkening moves it, and the key with it).
+func _feed_key_colour(img: Image) -> Color:
+	var counts := {}
+	var best := 0
+	var key := _feed_key
+	for y in range(img.get_height() / 20, img.get_height(), img.get_height() / 10):
+		for x in range(img.get_width() / 32, img.get_width(), img.get_width() / 16):
+			var c := img.get_pixel(x, y)
+			var q := (int(c.r * 63.0) << 12) | (int(c.g * 63.0) << 6) | int(c.b * 63.0)
+			counts[q] = int(counts.get(q, 0)) + 1
+			if counts[q] > best:
+				best = counts[q]
+				key = c
+	return key
 
 
 func _live_port_feed_off() -> void:
@@ -3383,8 +3470,10 @@ func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, 
 	# player car (the one nearest the camera) shows its cockpit model instead of its body and wheels.
 	var player := -1
 	var pdist := INF
+	_drawn_car_pos.clear()
 	for car in moves:
 		var o: Vector3 = (moves[car] as Transform3D) * ((_car_inv[car] as Transform3D).affine_inverse().origin)
+		_drawn_car_pos[car] = o
 		if o.distance_to(cam.origin) < pdist:
 			pdist = o.distance_to(cam.origin)
 			player = car
@@ -3549,6 +3638,7 @@ func _car_in_frame(car: int, k: int):
 # within CAR_SHADOW_R metres (full, then faded to zero) of a car, as the game projects each car's shadow near it only.
 # FM3_CAR_SHADOW_R=<full>,<zero> (0 = Godot's shadows everywhere, as before).
 const CAR_SHADOW_R := Vector2(2.0, 3.0)  # RoadAtlanta (2026-11-26): 2 / 3 m: the changed pixels 38.9 -> 28.9, lower half 17.76 -> 17.42, whole 19.98 -> 19.82 (3 / 4.5 and 5 / 7: hardly cut)
+var _drawn_car_pos := {}  # car -> where it is drawn this frame (body origin, interpolated: _update_live_cars)
 var _car_shadow_img: Image = null
 var _car_shadow_tex: ImageTexture = null
 func _update_car_shadow_tex() -> void:
@@ -3565,10 +3655,17 @@ func _update_car_shadow_tex() -> void:
 		_car_shadow_tex = ImageTexture.create_from_image(_car_shadow_img)
 		RenderingServer.global_shader_parameter_set("fm3_cars", _car_shadow_tex)
 	var n := 0
-	for car in _cars:
+	# (where the cars are drawn this frame, interpolated: until 2026-11-27 each car's newest packet, ahead of the drawn car
+	# by the interpolation delay (about a metre at racing speed, more with stage B's 120 game frames a second), so a moving
+	# car's shadow window ran ahead of it and its shadow popped in and out (user report))
+	var pos := _drawn_car_pos
+	if pos.is_empty():
+		for car in _cars:
+			pos[car] = car_transform(_cars[car], _live_axes).origin
+	for car in pos:
 		if n >= 32:
 			break
-		var o := car_transform(_cars[car], _live_axes).origin
+		var o: Vector3 = pos[car]
 		_car_shadow_img.set_pixel(n, 0, Color(o.x, o.z, 0.0, 1.0))
 		n += 1
 	_car_shadow_tex.update(_car_shadow_img)

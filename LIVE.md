@@ -1139,6 +1139,14 @@ The user's last question was whether to chase the remaining uneven steps or call
   in): another track than its scene, with `out/world/<track>.gltf` built, and it starts again on that scene (checked:
   CrownJewel -> RoadAtlanta from Free Play). A track not built is logged with its build command. The game's last frame
   stays up while the game shows nothing new (loading screens).
+- **After the user's first drive (2026-11-27):** the game's own HUD and its race menus (pre-race, pause, results) are
+  laid over the viewer's race: the game's frame with its flat grey keyed out (the key = the most common colour on a
+  sparse grid of the frame; our HUD set aside; `FM3_GAME_HUD=0`: ours instead). The cockpit view shows the player's car
+  (the game now streams cars it does not draw). The car shadows' window (2-3 m around each car) follows the cars as
+  drawn (interpolated), not their newest packet, which ran a metre ahead at speed: the user's popping shadows under
+  moving cars (not checked in motion yet). Behind the game's frames (menus, the pre-race orbit) the viewer draws no 3D
+  and no reflection cube (~20 -> 130-290 frames a second, every feed frame shown); a feed read caught mid-write keeps
+  what is shown (it flickered to the viewer's own scene). `FM3_SHADOW_HQ=1`: sharper sun shadows (opt-in).
 - **Open:** the layout (Ribbon_NN) is not matched (a scene is built for one layout); the race's own menus (pre-race, pause, results) are only in the game's window (the game's flat-grey
   frame could be keyed and laid over the viewer's race); leaving a race back to the menus not yet tested; the game's
   remaining fixed GPU passes in a stage B race.
