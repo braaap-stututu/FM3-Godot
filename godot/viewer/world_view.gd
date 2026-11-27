@@ -3070,6 +3070,36 @@ static func _untoe(v: float) -> float:
 	return v
 
 
+var _expo_pending := false
+
+
+func _expo_read(data: PackedByteArray, w: int, h: int, fmt: int, n: int) -> void:
+	_expo_pending = false
+	var ifmt := -1
+	match fmt:
+		RenderingDevice.DATA_FORMAT_R8G8B8A8_UNORM, RenderingDevice.DATA_FORMAT_R8G8B8A8_SRGB:
+			ifmt = Image.FORMAT_RGBA8
+		RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT:
+			ifmt = Image.FORMAT_RGBAH
+		RenderingDevice.DATA_FORMAT_R32G32B32A32_SFLOAT:
+			ifmt = Image.FORMAT_RGBAF
+	if ifmt < 0 or data.size() == 0:
+		return
+	_expo_sum(Image.create_from_data(w, h, false, ifmt, data), n)
+
+
+func _expo_sum(im: Image, n: int) -> void:
+	if im == null or im.is_empty():
+		return
+	var sum := 0.0
+	var ss := float(_expo_mat.get_shader_parameter("s_scale"))
+	for y in im.get_height():
+		for x in im.get_width():
+			var c := im.get_pixel(x, y)
+			sum += c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722
+	_expo_adapt(sum * ss / float(im.get_width() * im.get_height()), n)
+
+
 func _exposure_update() -> void:
 	if _expo_mat == null or _frames < 3 or _frames == _expo_last:
 		return
@@ -3084,13 +3114,19 @@ func _exposure_update() -> void:
 		# (the scene before the exposure pass, from the measuring view drawn at the last update; then the next one asked
 		# for, through the camera as it is now. The game's units: the pass's s_scale)
 		if _expo_vp_drawn:
-			var im := _expo_vp.get_texture().get_image()
-			var ss := float(_expo_mat.get_shader_parameter("s_scale"))
-			for y in im.get_height():
-				for x in im.get_width():
-					var c := im.get_pixel(x, y)
-					sum += c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722
-			_expo_adapt(sum * ss / float(im.get_width() * im.get_height()), n)
+			var rd := RenderingServer.get_rendering_device()
+			var rid := RenderingServer.texture_get_rd_texture(_expo_vp.get_texture().get_rid()) if rd != null else RID()
+			if OS.get_environment("FM3_EXPO_SYNC") != "1" and rd != null and rid.is_valid():
+				# (asynchronous: get_image() waited for the render thread every measurement, a stall with Godot's
+				# separate render thread; the data arrives a frame or two later, _expo_read)
+				if _expo_pending:
+					return
+				var tf := rd.texture_get_format(rid)
+				_expo_pending = true
+				rd.texture_get_data_async(rid, 0, _expo_read.bind(tf.width, tf.height, tf.format, n))
+			else:
+				var im := _expo_vp.get_texture().get_image()
+				_expo_sum(im, n)
 		var cam := root.get_camera_3d()
 		if cam != null:
 			_expo_cam.global_transform = cam.global_transform

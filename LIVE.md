@@ -1329,6 +1329,11 @@ The user's last question was whether to chase the remaining uneven steps or call
   `FM3_CAR_SMALL_SHADOWS=1` as before. The in-car driver costs nothing measurable. Left: the live cube's faces draw
   their own sun shadows (~110 calls a face; Godot has no per-viewport switch for directional shadows); 1 face a frame
   would give ~53 (each face then renewed ~8 times a second).
+  Then (~22:00): **the exposure's measurement read back asynchronously** (`RenderingDevice.texture_get_data_async`;
+  `get_image()` waited for the GPU every 10 frames): live grid ~48 -> ~57 fps (the visibility ranges now off, which cost
+  ~3), the same exposure (L 0.4085 both ways) and picture (0.1); `FM3_EXPO_SYNC=1` as before. Godot's separate render
+  thread (`--render-thread separate`) gave ~55 with the old read but nothing on top of the async one, and its
+  RenderingDevice calls must then come from the render thread (the async read failed): left single-threaded.
 - **Lightmap atlas in the track export (fm3_track_export.py atlas_lightmaps, on by default, --no-lm-atlas off):** the
   groups were split by their lightmap texture; the lightmaps whose parts keep their UVs in 0..1 (+-0.01, clamped) are
   packed into 4096-wide pages (lmpage_NN.png, 4 px of their own edge around each) and the groups that then differ only
