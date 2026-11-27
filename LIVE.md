@@ -1418,7 +1418,17 @@ The user's last question was whether to chase the remaining uneven steps or call
   game's fetch, unknown): k 0.25 roof 20.0 (game 18.2) but dash 8.6 / 10.3 (game 21.9 / 25.7), pillar 3.0 (13.0),
   in-car 17.4; k 0.4 18.1 (roof 40.9). The dash subsets are other shaders of that family (e.g. plastic = 4d69c593)
   with their own constants: one formula for all cockpit materials does not hold. Mode 1 stays the better opt-in
-  (16.2); the default the old fitted light. (The cockpit glass no longer casts in these modes: no change.) Also seen: hiding the
+  (16.2); the default the old fitted light. (The cockpit glass no longer casts in these modes: no change.)
+  **The key for next time (~22:50):** the cockpit shaders of that family share one constant layout of *material
+  parameters*; the headliner (draw #737) and the plastic (draw #742) differ only there: pc116 0.5 / 0, pc117 0.5 / 0,
+  pc118 3 / 1, pc119 5 / 1.2, pc180 0.09 / 0.042, pc189 0.7 / 0.16, pc190 0.25 / 0.35, pc191 2 / 0.25 (the rest equal:
+  sun pc136, SHDir pc179, camera pc206, pc207 0.301 / 0.501, pc209 1.5). pc116 / pc117 look like the shadersettings
+  names MinDiffuse / UseDiffuseInsteadOfSH (the CR-X's gauge needle sets both to 0.5); pc118 / 119 / 180 / 189 two
+  specular powers and amounts; pc190 the shadow floor; pc191 the diffuse scale (2 headliner, 0.25 plastic). The two
+  shaders' code differs too (4d69c593 is not 1074f157 with other numbers), so each needs its own read; the defaults
+  per material are presumably in the car shader file (Media\Shaders\Cars\shaders_v11.fxobj) or the cars' xds
+  materials: find where 0.5 / 3 / 5 / 0.7 / 2 and 0 / 1 / 1.2 / 0.16 / 0.25 come from, then light each subset with its
+  own set. Also seen: hiding the
   cockpit's `window` gives in-car 16.1 (16.4): the inside of the cockpit glass costs a little. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
   29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
   until the animation is in, the user's call.
