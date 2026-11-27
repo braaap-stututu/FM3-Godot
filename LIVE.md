@@ -1332,7 +1332,7 @@ The user's last question was whether to chase the remaining uneven steps or call
   cheering), the photographer keeps his pose; fps unchanged (~50 both ways). On the real grid few people are within
   60 m (the seated grandstand and the pit workers), so the default changes little there. `FM3_CROWD_ANIM=0` still people. (Earlier dead ends, kept in PLAN-NEXT 2: the skeleton
   reconstructed from names and weights; not needed, the buffer holds the final transforms.)
-- **The crowd's light (2026-11-27 ~20:45):** the game's crowd pixel shader b32f44c528968ecc with its constants
+- **The crowd's light (2026-11-27 ~20:30):** the game's crowd pixel shader b32f44c528968ecc with its constants
   captured on the frozen grid (scratchpad crowdpc.ps1: 114 crowd draws, all alike): colour = albedo x (pc2 + pc0 x
   pc4.x x saturate(n.l)), then the fog (pc3, amount from the vertex shader); pc2 = TrackSettings <Crowds> dark
   (0.492 / 0.512 / 0.541), pc0 = light - dark (1.194 - 0.492 = 0.702 ...), pc1 = the sun direction, pc4.x = 1; no

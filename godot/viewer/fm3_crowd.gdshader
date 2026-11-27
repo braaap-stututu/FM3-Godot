@@ -9,7 +9,7 @@
 // frames: the class's idle and cheer lists in spectators.xml, one of each picked per person), the bones per draw in
 // `bones`; a person cheers while a car is within cheer_r of them (car positions in cars_tex, 16 x 1, w > 0 = a car;
 // the game's own distance rule is in its code, not its files). Each person starts at a frame of its own (INSTANCE_ID).
-// Light (2026-11-27 ~20:45): the game's crowd pixel shader b32f44c528968ecc, its constants captured on the grid:
+// Light (2026-11-27 ~20:30): the game's crowd pixel shader b32f44c528968ecc, its constants captured on the grid:
 // colour = albedo x (dark + (light - dark) x saturate(n.l)) in gamma space, dark / light = TrackSettings <Crowds>
 // (CrownJewel 0.49 / 0.51 / 0.54 and 1.19 / 1.15 / 1.08), l = the sun direction; no shadow term (then the track fog).
 shader_type spatial;
