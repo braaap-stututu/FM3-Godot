@@ -1300,6 +1300,11 @@ The user's last question was whether to chase the remaining uneven steps or call
   driver model: no head or torso), so the viewer now adds an outside copy (driver_*, lit as the car's parts, back faces
   culled) to every library car, hidden in the player's own in-car view as the rest of its outside. CrownJewel grid /
   chase / in-car unchanged (14.3 / 15.0 / 16.5).
+  The driver's pose (for the arms to follow the wheel): the draw's bone palette is constants vc60 on, 4 rows a bone
+  (bone 0 identity with the driver's place in the car, (0.778, -0.150, 0.060)); that value is nowhere in the game's
+  readable memory (FM3-ReGPU `tools/analysis/floatscan.py`, the frozen grid): the palette is built in the car's draw and
+  written straight into the command ring, so with stage B skipping that draw there is nothing to stream. Left: the
+  Granny route (the SteerLock2Lock animations), or running only the driver's part of the car draw.
 - **Scuffs (2026-11-27 ~17:00):** the paint VS passes the clamped damage amount on as o[1].w (r3.w is not touched
   after the lattice); the paint PS e41e183a423e6f1b blends texture 2 (the car's damage_lod0, grey scuffs and
   scratches with alpha) as colour x (1 - D.a x a) + D.rgb x a and its highlight x (1 - a). `tools/fm3_car_damage_tex.py`
