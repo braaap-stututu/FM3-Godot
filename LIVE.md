@@ -1237,6 +1237,20 @@ The user's last question was whether to chase the remaining uneven steps or call
   on CrownJewel with 842 lightmap textures; packing the lightmaps into atlases in fm3_track_export.py would let the
   groups merge (per material and spatial cell, to keep culling), then rebuild the tracks. The game's per-instance LOD
   distances (.pvs instances, e.g. 80 / 160 / 240 m on ~500 of CrownJewel's 2,635) could then become visibility ranges.
+- **Parts knocked off ("FM3P", 2026-11-27 ~17:00-18:00):** after a damage change (1.5 s after it settles) and once when
+  all tables are mapped, stage B pauses 0.5 s while ReGPU's fetch watch records, per frame, each vertex buffer read as
+  fetch 95 (a car part's vertices) with its size, the draw's translation vc11 and its damage table (fetch 94 = which
+  car). In the frame with the most hits, a car's attached parts share its translation exactly (its largest group);
+  the rest are loose (hanging / lying; the wheels too). FM3P v2 sends both lists of sizes. The cars at the grid are
+  drawn from the main file's LOD 1-5 buffers (24 of 25 / 31 of 32 sizes matched those by part name), so
+  `<car>_damage.bin` v3 lists every body part (also those that do not dent: mirrors) with all its buffer sizes. The
+  viewer hides a part whose sizes are among the loose ones and not on the car (a mesh, or its triangles in a merged
+  mesh: meta src_ranges / idx_now); a part not drawn at all stays (it may be culled or drawn by a shader the probe does
+  not see: at the baseline 1-2 parts a car were not found). Crash test (pad into the pit wall): the game lost the front
+  bumper and both mirrors; the viewer hid the same three (shots: scratchpad dmg\crashcmp.png). Not drawn yet: the
+  loose parts themselves (their translation is known; their rotation would need vc8-10 too). Cost: a 0.5 s pause of
+  stage B after a crash (the game draws everything for those frames). `FM3_PARTS=0` off, `FM3_PARTS_LOG=1` why a
+  report was not applied.
 - **Optimizing, round 2 (2026-11-27 ~16:30; frozen CrownJewel grid, stage B, the game running beside it; scratchpad
   perfab.ps1 starts one game and several viewers in turn, 50 s each; `FM3_FPS_LOG=1` now also prints draw calls by
   pass):** base ~40 fps: main view 2,192 draw calls + 1,314 for its shadows, the live cube ~1,000 + ~230 a frame (2 of
