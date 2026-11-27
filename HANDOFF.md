@@ -1,6 +1,6 @@
 # HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-27)
 
-**2026-11-27 evening session (14:09 -> midnight; the user's notes, PLAN-NEXT section 0; status ~22:15):**
+**2026-11-27 evening session (14:09 -> midnight; the user's notes, PLAN-NEXT section 0; status ~18:15):**
 - From the user's list: brake lights binary per car (FM3B), the countdown vignette key, wheels spinning in stage B,
   glossy badges. **Crash damage, end to end:** each car's damage lattice mapped through a ReGPU fetch watch and
   streamed (FM3D), the library cars bent on the CPU (loaded when a car is first damaged); parts the game knocks off

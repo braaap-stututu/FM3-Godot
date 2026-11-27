@@ -10,7 +10,7 @@ details of everything done; HANDOFF.md the overall state. Updated 2026-11-27 ~01
 
 ## 0. The user's list of 2026-11-27 ~14:09 (work until midnight; LIVE.md "The user's notes of 2026-11-27 evening")
 
-Status 2026-11-27 ~22:15: everything on the list has been worked on (HANDOFF top: the summary). Left from it: the
+Status 2026-11-27 ~18:15: everything on the list has been worked on (HANDOFF top: the summary). Left from it: the
 in-car driver's animations (Granny, Oodle1), the crowd's cheers as cars pass, tyre smoke / skid marks / sparks (the
 game draws them in its skipped world steps: stage B shows none), the slip telemetry, the live cube's own shadow
 draws. The older items below are updated where done (2, 3).
@@ -77,7 +77,7 @@ physical mirror; +0x0C is shared); FM3-ReGPU `anim_dump.cpp` (FM3_ANIM_DUMP=1) n
 (frames at record +34, durations 2.7-30.4 s) to out/run/anim_dump; copies in `Godot/work/crowd_anim` (game data, not
 committed); matched to files by (duration, frames) at record +28 / +34. **The samples are per-bone rotations relative to
 the bind pose** (quaternion, translation always 0, scale 1; t = 0 often identity): idles move 0-10 degrees (Stand_Idle_07
-up to 41), cheers up to ~70, the photographer up to ~100 (corrected ~19:00: the codec's time is normalized 0..1, the first dumps sampled past 1 and
+up to 41), cheers up to ~70, the photographer up to ~100 (corrected ~17:10: the codec's time is normalized 0..1, the first dumps sampled past 1 and
 extrapolated; re-dumped: idles 0-5 degrees, cheers 10-22, the photographer's arms 73 / 93, each loops). **Left: the skeleton** (not in the .skinbin): parents from the
 bone names (byte-swapped words at the anim file's end: spine, head, shoulders, upper / lower arm, hand, upper / lower
 leg, foot, L / R) or from the models' shared bone weights, joint pivots from the vertices two bones share, and whether

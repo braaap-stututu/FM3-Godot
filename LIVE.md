@@ -1237,7 +1237,7 @@ The user's last question was whether to chase the remaining uneven steps or call
   on CrownJewel with 842 lightmap textures; packing the lightmaps into atlases in fm3_track_export.py would let the
   groups merge (per material and spatial cell, to keep culling), then rebuild the tracks. The game's per-instance LOD
   distances (.pvs instances, e.g. 80 / 160 / 240 m on ~500 of CrownJewel's 2,635) could then become visibility ranges.
-- **Parts knocked off ("FM3P", 2026-11-27 ~17:00-18:00):** after a damage change (1.5 s after it settles) and once when
+- **Parts knocked off ("FM3P", 2026-11-27 ~16:30-17:00):** after a damage change (1.5 s after it settles) and once when
   all tables are mapped, stage B pauses 0.5 s while ReGPU's fetch watch records, per frame, each vertex buffer read as
   fetch 95 (a car part's vertices) with its size, the draw's translation vc11 and its damage table (fetch 94 = which
   car). In the frame with the most hits, a car's attached parts share its translation exactly (its largest group);
@@ -1247,7 +1247,7 @@ The user's last question was whether to chase the remaining uneven steps or call
   viewer hides a part whose sizes are among the loose ones and not on the car (a mesh, or its triangles in a merged
   mesh: meta src_ranges / idx_now); a part not drawn at all stays (it may be culled or drawn by a shader the probe does
   not see: at the baseline 1-2 parts a car were not found). Crash test (pad into the pit wall): the game lost the front
-  bumper and both mirrors; the viewer hid the same three. **The loose parts drawn (FM3P v3, ~21:00):** the probe also
+  bumper and both mirrors; the viewer hid the same three. **The loose parts drawn (FM3P v3, ~17:50):** the probe also
   records c8-c10 (the paint VS's world matrix: P.x c8 + P.y c9 + P.z c10 + c11, game numbering), each loose buffer's
   size goes with its matrix, and the viewer puts a copy of that part (its mesh, or its triangles out of a merged one)
   at it, converted as the streamed car matrices are: the crash test's bumper and mirror lie where the game has them.
@@ -1257,7 +1257,7 @@ The user's last question was whether to chase the remaining uneven steps or call
     its last overlay for those frames and 0.3 s after (the copies lag a frame or two). Cost: a 0.5 s pause of
   stage B after a crash (the game draws everything for those frames). `FM3_PARTS=0` off, `FM3_PARTS_LOG=1` why a
   report was not applied.
-- **The crowd's animations (2026-11-27 ~20:30; PLAN-NEXT 2):** the game animates its 3D people on the GPU: its crowd
+- **The crowd's animations (2026-11-27 ~17:45; PLAN-NEXT 2):** the game animates its 3D people on the GPU: its crowd
   vertex shader 6ee601730a7f9f87 (114 draws on the grid: the near people) skins each person from one 1,201,992-byte
   buffer (fetch 94) that the race load builds by sampling every crowd animation through the codec (sub_82AABED0, at
   normalized times). Decoded (`tools/fm3_crowd_anim.py`): the skeletons in spectators.xml order (Sitting 12 bones:
@@ -1274,14 +1274,14 @@ The user's last question was whether to chase the remaining uneven steps or call
   out, as in the game's frame). Not yet: cheering when cars pass (the classes' cheer lists), which idle the game
   picks per person. `FM3_CROWD_ANIM=0` still people. (Earlier dead ends, kept in PLAN-NEXT 2: the skeleton
   reconstructed from names and weights; not needed, the buffer holds the final transforms.)
-- **The crowd's classes (2026-11-27 ~20:00):** the .crowd record's second index (0-5, the open question of
+- **The crowd's classes (2026-11-27 ~17:35):** the .crowd record's second index (0-5, the open question of
   2026-11-26) is the person's crowd class in spectators.xml's crowdclass order: Sitting, Standing, Drunk, Photographer,
   Marshall, PitWorker (CrownJewel Ribbon_04: 1,347 / 1,168 / 0 / 79 / 9 / 24). The viewer draws each class with its
   models (the figure's _Sit / _Stand, Photographer_Stand, Marshall_Stand, Pitworker_Stand); the texture of the figure's
   two is picked per person (not in the record). Before, everyone sat and the class picked the texture. CrownJewel grid:
   the pit wall now shows the game's pit workers and photographer at the same spots; the stands' region against the
   game 15.5 -> 14.8, whole frame the same within noise. `FM3_CROWD3D_CLASS=0` as before.
-- **The in-car driver (2026-11-27 ~19:30; PLAN-NEXT 3):** Media\Cars\Driver\Driver.skinbin is the first-person
+- **The in-car driver (2026-11-27 ~17:25; PLAN-NEXT 3):** Media\Cars\Driver\Driver.skinbin is the first-person
   driver (arms, hands, legs; 1,156 vertices, 13 bones: the 13-track animations the game samples on the grid; the crowd's
   vertex layout behind a one-level header). `tools/fm3_driver.py` writes it (x mirrored to the library's space,
   triangles reversed, the texture's v flipped: unflipped the hands wore the suit's striped sleeves) as three meshes,
@@ -1293,7 +1293,7 @@ The user's last question was whether to chase the remaining uneven steps or call
   sits inside the shoulders, double-sided they filled the view). CrownJewel grid in-car against the game: 18.0 (the
   same view without them ~17-19 in earlier runs). Not yet: the arms' steering animation (the Granny SteerLock2Lock
   files, Oodle1), the gloves' lighting (they read darker than the game's, as the whole cockpit). FM3_DRIVER=0 off.
-- **Scuffs (2026-11-27 ~18:30):** the paint VS passes the clamped damage amount on as o[1].w (r3.w is not touched
+- **Scuffs (2026-11-27 ~17:00):** the paint VS passes the clamped damage amount on as o[1].w (r3.w is not touched
   after the lattice); the paint PS e41e183a423e6f1b blends texture 2 (the car's damage_lod0, grey scuffs and
   scratches with alpha) as colour x (1 - D.a x a) + D.rgb x a and its highlight x (1 - a). `tools/fm3_car_damage_tex.py`
   writes `<car>_tex/damage_lod0.png` for the library; the viewer puts each vertex's amount in CUSTOM0 when it rebuilds a
@@ -1301,7 +1301,7 @@ The user's last question was whether to chase the remaining uneven steps or call
   way (damage_tex, has_damage set only once the mesh carries the amounts). **Not yet seen in a picture:** the poke
   test at 0.6 on the rear cells showed no scuffs in the game either (the game may rewrite the table from its physics
   state), and the chase camera after a crash shows the undamaged rear; the right stick switched to a trackside camera,
-  not a look-back. Checked instead with a forced amount on every car (`FM3_SCUFF_TEST=0.6`, ~21:15): the scratches
+  not a look-back. Checked instead with a forced amount on every car (`FM3_SCUFF_TEST=0.6`, ~17:55): the scratches
   and scraped patches sit on the panels where they belong (the texture's UVs are the paint's), paint lightened and
   greyed where scuffed; real crashes apply them only where the lattice has damage.
   (Side finding from that trackside view: near the barrier the game draws standing 3D people, e.g. a photographer
@@ -1318,18 +1318,18 @@ The user's last question was whether to chase the remaining uneven steps or call
   shadows 1,314 -> 898; the picture the same (mean 0.1 between two runs). `FM3_CAR_MERGE=0` off. Visibility ranges
   for small track meshes (`_visibility_ranges`, <= 6 m across, hidden beyond 40 x size; FM3_VIS_K=0 off) hit only 64
   of CrownJewel's 1,928 meshes (the track is already merged into big groups): no measurable change; **off by default
-  since ~21:40**: on Sebring they hid 737 of 3,217 meshes, visible scenery among them (live_track against the game
+  since ~18:00**: on Sebring they hid 737 of 3,217 meshes, visible scenery among them (live_track against the game
   19.4 / 20.3 / 21.8 without, 22.5 / 23.9 / 25.8 with; FM3_VIS_K=40 to try). Seen in the same Sebring runs: the
   viewer's exposure settles at W ~0.75 (L ~0.38-0.40), the picture brighter than the game's (the 2026-11-26 note had
   W 0.953 matching the game). Most likely the freeze moment, not a fault: this run's frozen view is a close-up with
   the black RSX over half the frame (low L), and a frozen game keeps the L it had adapted to before (the morning's
   note; there L 0.580 both ways). To confirm: `-FreezeAfter 11` or wtrack.ps1 in the same boot.
-  Then (~19:40): the cars' lamps, glass, lenses, gauges, mirrors, badges and reflectors cast no sun shadow (each caster
+  Then (~17:30): the cars' lamps, glass, lenses, gauges, mirrors, badges and reflectors cast no sun shadow (each caster
   is drawn again per cascade): shadow draws 898 -> 694, ~50 -> ~52.5 fps, the cars' area identical (0.0);
   `FM3_CAR_SMALL_SHADOWS=1` as before. The in-car driver costs nothing measurable. Left: the live cube's faces draw
   their own sun shadows (~110 calls a face; Godot has no per-viewport switch for directional shadows); 1 face a frame
   would give ~53 (each face then renewed ~8 times a second).
-  Then (~22:00): **the exposure's measurement read back asynchronously** (`RenderingDevice.texture_get_data_async`;
+  Then (~18:10): **the exposure's measurement read back asynchronously** (`RenderingDevice.texture_get_data_async`;
   `get_image()` waited for the GPU every 10 frames): live grid ~48 -> ~57 fps (the visibility ranges now off, which cost
   ~3), the same exposure (L 0.4085 both ways) and picture (0.1); `FM3_EXPO_SYNC=1` as before. Godot's separate render
   thread (`--render-thread separate`) gave ~55 with the old read but nothing on top of the async one, and its
