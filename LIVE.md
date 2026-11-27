@@ -1283,8 +1283,12 @@ The user's last question was whether to chase the remaining uneven steps or call
   skid marks from ~10 degrees, quads of Media\Treadmark.dds laid along the wheel's path (6,000 kept, the oldest
   replaced). `tools/fm3_effects.py` exports the two textures to out\effects. `FM3_FX=0` off, `FM3_FX_TEST=1` every
   wheel smoking (looks: thin wisps at each wheel), `FM3_SHOT_NOW=1` takes a live picture without waiting for the
-  exposure. Not yet compared with the game's own smoke in the same moment (its stage-B frame has none; with stage B
-  switched off for a shot the slide was over). **Dust (~20:15):** the wheel blocks hold the surface: dumps of the
+  exposure. **Compared with the game at the same moment (~22:20, scratchpad smokecmp.ps1: stage B off, the game
+  frozen mid-slide, then both pictures):** handbrake turn on asphalt at 63 km/h, our player's slip up to 26.4 degrees
+  in the last second (two emitters smoking, 34 skid pieces): ours shows a faint grey wisp and a skid mark behind the
+  rear-left wheel, the game's frame none. One sample: the game's threshold may be higher, its smoke slower to build,
+  or locked rear wheels (handbrake) treated otherwise; not retuned on one run. (A first try froze too late: the car
+  stopped in the gravel at 2 km/h, the game's terrace crowd cheering with arms up beside it.) **Dust (~20:15):** the wheel blocks hold the surface: dumps of the
   player's (scratchpad surfdump.ps1: the grid, driving on asphalt, stopped on CrownJewel's gravel trap) differ only at
   +352 (a float, 0 on asphalt, 1.0 on the gravel), +620 (a byte at +621: 0 / 0x2D, a surface id) and +416 (one wheel);
   FM3B v3 streams +352 and +621 per wheel for every car, and the viewer kicks up dust (particles.xml tire_dust: the
