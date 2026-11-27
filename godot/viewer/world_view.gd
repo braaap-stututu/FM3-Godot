@@ -2482,6 +2482,187 @@ var _spin_prev := {}  # car -> [origin, msec]
 var _spin_angle := {}  # car -> radians turned so far
 
 
+# Tyre smoke and skid marks (2026-11-27): the game draws them in the world steps stage B skips, so the viewer makes its
+# own from each wheel's lateral slip: the angle between the wheel's ground velocity (its centre between viewer frames)
+# and its rolling direction (its axle from the streamed wheel matrix, steering included), for every car. The smoke
+# follows the game's Media\Effects\particles.xml tire_smoke (lifetimes 0.3-4 s, growing ~0.1-4 m/s, velocity damping
+# 0.6, alpha at most 90 / 255, the top-left quarter of Effects\smoke.dds: tools/fm3_effects.py -> out/effects); the
+# marks use Media\Treadmark.dds. The game's slip threshold is in its code, not its files: here smoke from 8 degrees,
+# full at 23, above 5 m/s (FM3_FX_SLIP=<from>,<full>). FM3_FX=0 off.
+var _fx_emit := {}  # car * 4 + wheel -> GPUParticles3D
+var _fx_prev := {}  # car * 4 + wheel -> [wheel centre, msec]
+var _fx_last_mark := {}  # car * 4 + wheel -> the last skid mark point
+var _fx_ready := false
+var _fx_proc: ParticleProcessMaterial = null
+var _fx_quad: QuadMesh = null
+var _skid_mm: MultiMesh = null
+var _skid_next := 0
+const SKID_MAX := 6000
+
+
+func _fx_setup() -> bool:
+	if _fx_ready:
+		return _fx_proc != null
+	_fx_ready = true
+	var base := _gltf_path.get_base_dir().path_join("../effects").simplify_path()
+	if not FileAccess.file_exists(base + "/smoke.png"):
+		print("world_view: no tyre smoke textures (%s: tools/fm3_effects.py)" % base)
+		return false
+	var smoke := ImageTexture.create_from_image(Image.load_from_file(base + "/smoke.png"))
+	_fx_proc = ParticleProcessMaterial.new()
+	_fx_proc.direction = Vector3(0, 1, 0)
+	_fx_proc.spread = 60.0
+	_fx_proc.initial_velocity_min = 0.05
+	_fx_proc.initial_velocity_max = 0.35
+	_fx_proc.gravity = Vector3(0, 0.12, 0)
+	_fx_proc.damping_min = 0.6
+	_fx_proc.damping_max = 0.6
+	_fx_proc.scale_min = 0.5
+	_fx_proc.scale_max = 1.0
+	var sc := Curve.new()
+	sc.max_value = 8.0
+	sc.add_point(Vector2(0.0, 0.3))
+	sc.add_point(Vector2(0.25, 2.0))
+	sc.add_point(Vector2(1.0, 6.0))
+	var sct := CurveTexture.new()
+	sct.curve = sc
+	_fx_proc.scale_curve = sct
+	var gr := Gradient.new()
+	gr.set_color(0, Color(1, 1, 1, 0.0))
+	gr.set_color(1, Color(1, 1, 1, 0.0))
+	gr.add_point(0.06, Color(1, 1, 1, 90.0 / 255.0))
+	gr.add_point(0.5, Color(1, 1, 1, 0.22))
+	var grt := GradientTexture1D.new()
+	grt.gradient = gr
+	_fx_proc.color_ramp = grt
+	_fx_quad = QuadMesh.new()
+	_fx_quad.size = Vector2(1.0, 1.0)
+	var qm := StandardMaterial3D.new()
+	qm.albedo_texture = smoke
+	qm.albedo_color = Color(0.85, 0.85, 0.86)
+	qm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	qm.vertex_color_use_as_albedo = true
+	qm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	qm.uv1_scale = Vector3(0.5, 0.5, 1.0)  # (the tyre smoke's quarter of the atlas, particles.xml textureuwidth 0.5)
+	qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	qm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	qm.disable_receive_shadows = true
+	_fx_quad.material = qm
+	if FileAccess.file_exists(base + "/treadmark.png"):
+		var pm := PlaneMesh.new()
+		pm.size = Vector2(1.0, 1.0)
+		var sm := StandardMaterial3D.new()
+		sm.albedo_texture = ImageTexture.create_from_image(Image.load_from_file(base + "/treadmark.png"))
+		sm.albedo_color = Color(0.08, 0.08, 0.08, 1.0)
+		sm.vertex_color_use_as_albedo = true
+		sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		sm.cull_mode = BaseMaterial3D.CULL_DISABLED
+		sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		sm.disable_receive_shadows = true
+		pm.material = sm
+		_skid_mm = MultiMesh.new()
+		_skid_mm.transform_format = MultiMesh.TRANSFORM_3D
+		_skid_mm.use_colors = true
+		_skid_mm.mesh = pm
+		_skid_mm.instance_count = SKID_MAX
+		_skid_mm.visible_instance_count = 0
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = _skid_mm
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mmi.custom_aabb = AABB(Vector3(-1e5, -1e4, -1e5), Vector3(2e5, 2e4, 2e5))
+		root.add_child(mmi)
+	print("world_view: tyre smoke and skid marks on (%s)" % base)
+	return true
+
+
+var _fx_logmax := {}
+var _fx_log_ms := 0
+
+
+func _fx_update(moves: Dictionary, wmoves: Dictionary) -> void:
+	if OS.get_environment("FM3_FX") == "0" or not _fx_setup():
+		return
+	if OS.get_environment("FM3_FX_LOG") == "1" and Time.get_ticks_msec() - _fx_log_ms > 1000:
+		_fx_log_ms = Time.get_ticks_msec()
+		var parts_ := []
+		for c_ in _fx_logmax:
+			parts_.append("%08X %.1f" % [c_, float(_fx_logmax[c_])])
+		if not parts_.is_empty():
+			var em_n := 0
+			for e_ in _fx_emit.values():
+				em_n += int((e_ as GPUParticles3D).emitting)
+			print("world_view: fx: max slip angle in the last second (degrees): %s; %d emitters smoking, %d skid mark pieces" % [", ".join(parts_), em_n, _skid_mm.visible_instance_count if _skid_mm != null else 0])
+		_fx_logmax.clear()
+	var lim := OS.get_environment("FM3_FX_SLIP").split_floats(",") if OS.get_environment("FM3_FX_SLIP") != "" else PackedFloat64Array([8.0, 23.0])
+	var now := Time.get_ticks_msec()
+	for car in wmoves:
+		if not moves.has(car) or not _wheel_inv.has(car):
+			continue
+		var body := moves[car] as Transform3D
+		var up := body.basis.y.normalized()
+		var ws: Array = wmoves[car]
+		for k in mini(ws.size(), 4):
+			var key: int = int(car) * 4 + k
+			var wt := (ws[k] as Transform3D) * ((_wheel_inv[car][k] as Transform3D).affine_inverse())
+			var c := wt.origin
+			var slip := 0.0
+			var speed := 0.0
+			if _fx_prev.has(key):
+				var dt := float(now - int(_fx_prev[key][1])) / 1000.0
+				if dt > 0.001 and dt < 0.25:
+					var v: Vector3 = (c - (_fx_prev[key][0] as Vector3)) / dt
+					v -= up * v.dot(up)
+					speed = v.length()
+					var ax := wt.basis.x
+					ax -= up * ax.dot(up)
+					if speed > 5.0 and ax.length() > 1e-4:
+						slip = rad_to_deg(asin(clampf(absf(v.dot(ax.normalized())) / speed, 0.0, 1.0)))
+			_fx_prev[key] = [c, now]
+			if OS.get_environment("FM3_FX_LOG") == "1" and slip > float(_fx_logmax.get(car, -1.0)):
+				_fx_logmax[car] = slip
+			var a := clampf((slip - lim[0]) / maxf(lim[1] - lim[0], 0.1), 0.0, 1.0)
+			if OS.get_environment("FM3_FX_TEST") == "1":
+				a = 1.0  # (tests: every wheel smoking)
+			var contact := c - up * WHEEL_RADIUS
+			var em: GPUParticles3D = _fx_emit.get(key)
+			if a > 0.02 and em == null:
+				em = GPUParticles3D.new()
+				em.amount = 48
+				em.lifetime = 3.0
+				em.local_coords = false
+				em.process_material = _fx_proc
+				em.draw_pass_1 = _fx_quad
+				em.visibility_aabb = AABB(Vector3(-20, -5, -20), Vector3(40, 30, 40))
+				em.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				root.add_child(em)
+				_fx_emit[key] = em
+			if em != null:
+				em.global_position = contact + up * 0.15
+				em.emitting = a > 0.02
+				em.amount_ratio = maxf(a, 0.05)
+			# skid marks: a strip of quads on the road while the wheel slides
+			if _skid_mm != null and a > 0.15:
+				if _fx_last_mark.has(key):
+					var p0: Vector3 = _fx_last_mark[key]
+					var d := contact - p0
+					var ln := d.length()
+					if ln > 0.25 and ln < 4.0:
+						var dirv := d / ln
+						var side := up.cross(dirv).normalized()
+						var xf := Transform3D(Basis(dirv * ln, up, side * 0.22), (p0 + contact) * 0.5 + up * 0.02)
+						_skid_mm.set_instance_transform(_skid_next, xf)
+						_skid_mm.set_instance_color(_skid_next, Color(1, 1, 1, 0.35 + 0.4 * a))
+						_skid_next = (_skid_next + 1) % SKID_MAX
+						_skid_mm.visible_instance_count = mini(_skid_mm.visible_instance_count + 1, SKID_MAX)
+						_fx_last_mark[key] = contact
+					elif ln >= 4.0:
+						_fx_last_mark[key] = contact
+				else:
+					_fx_last_mark[key] = contact
+			else:
+				_fx_last_mark.erase(key)
+
+
 func _spin_wheels(moves: Dictionary, wmoves: Dictionary) -> void:
 	var now := Time.get_ticks_msec()
 	for car in wmoves:
@@ -3446,7 +3627,7 @@ func _live_port_feed_off() -> void:
 
 
 func _cars_pending() -> bool:
-	if _expo_mat != null and _live_port > 0 and (_expo_live_n < 3 or _expo_dl > 0.002):
+	if _expo_mat != null and _live_port > 0 and (_expo_live_n < 3 or _expo_dl > 0.002) and OS.get_environment("FM3_SHOT_NOW") != "1":
 		# (and the exposure: settled on the game's view, not the start-up camera's; the readback lags the curve by a
 		# frame or two, so L converges over several updates: RoadAtlanta 0.41 -> 0.395 -> .. 0.362)
 		return true
@@ -4490,6 +4671,7 @@ func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, 
 				gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY if mine else own
 			elif int(part[3]) < 0:
 				gi.visible = not mine
+	_fx_update(moves, wmoves)
 	if (_feed_tag & 0x100) != 0 and OS.get_environment("FM3_WHEEL_SPIN") != "0":
 		_spin_wheels(moves, wmoves)
 	if OS.get_environment("FM3_WHEEL_LOG") == "1" and wmoves.has(player) and moves.has(player):

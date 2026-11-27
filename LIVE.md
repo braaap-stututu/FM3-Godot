@@ -1257,6 +1257,19 @@ The user's last question was whether to chase the remaining uneven steps or call
     its last overlay for those frames and 0.3 s after (the copies lag a frame or two). Cost: a 0.5 s pause of
   stage B after a crash (the game draws everything for those frames). `FM3_PARTS=0` off, `FM3_PARTS_LOG=1` why a
   report was not applied.
+- **Tyre smoke and skid marks (2026-11-27 ~19:30):** the game draws them in the world steps stage B skips (its stage-B
+  frame is plain grey: no particles there). The viewer makes its own from each wheel's lateral slip: the angle between
+  the wheel's ground velocity (its centre between viewer frames) and its rolling direction (the axle of its streamed
+  matrix, steering included), for every car. Driving checks (`FM3_FX_LOG=1`): AI cars cornering 1-7 degrees, the
+  player's handbrake spin 18-90. Smoke from 8 degrees, full at 23, above 5 m/s (the game's threshold is in its code;
+  `FM3_FX_SLIP=<from>,<full>`), with the game's tire_smoke parameters (Media\Effects\particles.xml: lifetimes up to
+  ~3-4 s, growing, damping 0.6, alpha at most 90 / 255) and texture (the top-left quarter of Effects\smoke.dds);
+  skid marks from ~10 degrees, quads of Media\Treadmark.dds laid along the wheel's path (6,000 kept, the oldest
+  replaced). `tools/fm3_effects.py` exports the two textures to out\effects. `FM3_FX=0` off, `FM3_FX_TEST=1` every
+  wheel smoking (looks: thin wisps at each wheel), `FM3_SHOT_NOW=1` takes a live picture without waiting for the
+  exposure. Not yet compared with the game's own smoke in the same moment (its stage-B frame has none; with stage B
+  switched off for a shot the slide was over). Not yet: dust / grass / dirt off the track (the atlas's other quarters,
+  the surface under the wheel), sparks, the smoke's colour per track (Tracks\<track>\smoke.dds).
 - **The crowd's animations (2026-11-27 ~17:45; PLAN-NEXT 2):** the game animates its 3D people on the GPU: its crowd
   vertex shader 6ee601730a7f9f87 (114 draws on the grid: the near people) skins each person from one 1,201,992-byte
   buffer (fetch 94) that the race load builds by sampling every crowd animation through the codec (sub_82AABED0, at
