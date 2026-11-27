@@ -2724,6 +2724,8 @@ func _fx_update(moves: Dictionary, wmoves: Dictionary) -> void:
 			var dust := 0.0
 			if dl.size() == 4 and dl[k] > 0.5 and speed > 3.0:
 				dust = clampf(speed / 25.0, 0.15, 1.0)
+			if OS.get_environment("FM3_FX_TEST") == "2":
+				dust = 1.0  # (tests: every wheel in dust)
 			var de: GPUParticles3D = _fx_dust.get(key)
 			if dust > 0.0 and de == null:
 				de = GPUParticles3D.new()

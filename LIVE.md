@@ -1289,8 +1289,9 @@ The user's last question was whether to chase the remaining uneven steps or call
   +352 (a float, 0 on asphalt, 1.0 on the gravel), +620 (a byte at +621: 0 / 0x2D, a surface id) and +416 (one wheel);
   FM3B v3 streams +352 and +621 per wheel for every car, and the viewer kicks up dust (particles.xml tire_dust: the
   atlas's top-right quarter, alpha up to 120 / 255, lifetimes ~1-2.9 s, growing) from a wheel on a loose surface,
-  more with speed (from 3 m/s; skid marks not laid there). Not checked in a picture yet (the run's car stops in the
-  gravel within a second). Not yet: grass / dirt by surface id, sparks, the smoke's colour per track
+  more with speed (from 3 m/s; skid marks not laid there). Forced on every wheel (`FM3_FX_TEST=2`) it renders as
+  brown clouds at the wheels; not yet seen from a real excursion in a picture (the run's car stops in the gravel
+  within a second). Not yet: grass / dirt by surface id, sparks, the smoke's colour per track
   (Tracks\<track>\smoke.dds).
 - **The crowd's animations (2026-11-27 ~17:45; PLAN-NEXT 2):** the game animates its 3D people on the GPU: its crowd
   vertex shader 6ee601730a7f9f87 (114 draws on the grid: the near people) skins each person from one 1,201,992-byte
