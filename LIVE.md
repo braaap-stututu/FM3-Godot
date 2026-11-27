@@ -1452,7 +1452,13 @@ The user's last question was whether to chase the remaining uneven steps or call
   23,687 vertices), so the 13260 subset really is the low geometry (y <= 0.6): most likely our names are right and
   the game draws `leather` with that flat-colour shader (its parameter merely named CockpitHeadlinerColor), the
   roof + pillar tint being a lagged edit; the alternative (our names permuted) is not excluded. To settle: tint 3bb8
-  again with a long wait and look, or render our 13260 subset alone. Also seen: hiding the
+  again with a long wait and look, or render our 13260 subset alone. **Both done (~22:50):** the tint alone with 10-15 s
+  waits (scratchpad cockpittint1.ps1): 3bb8 is the roof liner and the right A-pillar in the game, no lag; and our
+  `leather` subset hidden changes nothing visible in our in-car view. So the game's roof / pillar shader drew, in the
+  other boot's capture, the index list that our decode places low and out of view, with byte-identical vertex data.
+  Unresolved; next: tint and capture in the same boot (cockpittint1 + a capture after the tint: the tinted draw's
+  index list there), and check our cockpit sections' index lists against the carbin's (which list belongs to which
+  part / material). Also seen: hiding the
   cockpit's `window` gives in-car 16.1 (16.4): the inside of the cockpit glass costs a little. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
   29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
   until the animation is in, the user's call.
