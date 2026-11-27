@@ -22,7 +22,12 @@ vec3 to_linear(vec3 c) {
 	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
 }
 
+uniform int cull = 0;  // (0 both faces, as the cockpit; 1 front faces only: the driver, world_view.gd _attach_driver; 2 back only)
+
 void fragment() {
+	if ((cull == 1 && !FRONT_FACING) || (cull == 2 && FRONT_FACING)) {
+		discard;  // (the driver's arms: the in-car camera sits inside its shoulders)
+	}
 	vec4 t = texture(albedo_tex, UV);
 	if (alpha_cut >= 0.0 && t.a * albedo_color.a < alpha_cut) {
 		discard;

@@ -1429,6 +1429,66 @@ func _place_live_cube(at: Vector3) -> void:
 		c.global_transform = Transform3D(Basis(), at).looking_at(at + LIVE_DIRS[k], LIVE_UPS[k])
 
 
+# The in-car driver's arms and hands (2026-11-27, PLAN-NEXT 3; tools/fm3_driver.py, Media\Cars\Driver\Driver.skinbin
+# in its bind pose): added to each library car as cockpit parts (shown in the in-car view only), moved so its hands'
+# midpoint meets the midpoint of the car's own grips (<car>_anchors.json, tools/fm3_car_anchors.py); the two hands turn
+# with the steering wheel (the car's steering needle), the arms stay. FM3_DRIVER=0 off. (The game also animates the arms
+# by the steering lock and sways the body: Granny files, Oodle1, not decoded.)
+var _driver_meshes := {}  # node name -> ArrayMesh (driver.gltf, loaded once)
+var _driver_mid := Vector3.ZERO
+
+
+func _attach_driver(scene_: Node, base: String, nd: Dictionary) -> void:
+	if OS.get_environment("FM3_DRIVER") == "0":
+		return
+	var an_path := base + "_anchors.json"
+	var dpath := _gltf_path.get_base_dir().path_join("../cars/%s/driver.gltf" % (OS.get_environment("FM3_DRIVER_DIR") if OS.get_environment("FM3_DRIVER_DIR") != "" else "driver")).simplify_path()
+	if not FileAccess.file_exists(an_path) or not FileAccess.file_exists(dpath):
+		return
+	if _driver_meshes.is_empty():
+		var doc := GLTFDocument.new()
+		var st := GLTFState.new()
+		if doc.append_from_file(dpath, st) != OK:
+			return
+		var sc := doc.generate_scene(st)
+		for mi in sc.find_children("driver_*", "MeshInstance3D", true, false):
+			_driver_meshes[String(mi.name)] = (mi as MeshInstance3D).mesh
+		sc.free()
+		var info = JSON.parse_string(FileAccess.get_file_as_string(dpath.get_base_dir().path_join("driver.json")))
+		if info is Dictionary:
+			var md: Array = info["mid"]
+			_driver_mid = Vector3(md[0], md[1], md[2])
+	var an = JSON.parse_string(FileAccess.get_file_as_string(an_path))
+	if not an is Dictionary:
+		return
+	var gl: Array = an["grip_l"]
+	var gr: Array = an["grip_r"]
+	var t := (Vector3(gl[0], gl[1], gl[2]) + Vector3(gr[0], gr[1], gr[2])) * 0.5 - _driver_mid
+	var steer_key := ""
+	for k in nd:
+		if String(k).contains("steering_wheel"):
+			steer_key = String(k)
+			break
+	for part in _driver_meshes:
+		var src: ArrayMesh = _driver_meshes[part]
+		if src == null or src.get_surface_count() == 0:
+			continue
+		var arrays := src.surface_get_arrays(0)
+		var pv: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		for i in pv.size():
+			pv[i] += t
+		arrays[Mesh.ARRAY_VERTEX] = pv
+		var am := ArrayMesh.new()
+		am.add_surface_from_arrays(src.surface_get_primitive_type(0), arrays)
+		am.surface_set_material(0, src.surface_get_material(0))
+		var mi := MeshInstance3D.new()
+		mi.mesh = am
+		mi.name = "cockpit_driver_%s" % part.trim_prefix("driver_")
+		scene_.add_child(mi)
+		if part.begins_with("driver_hand") and steer_key != "":
+			nd[String(mi.name)] = (nd[steer_key] as Dictionary).duplicate()  # (turns with the wheel)
+
+
 # A library car's body meshes merged by material (2026-11-27, optimizing: the viewer is bound by draw calls and per-part
 # updates; ~90 body meshes a car, 54 of them plain, in ~13 materials): the carbin_<car>_<material>_<n> meshes of one
 # glTF material and one vertex layout become one mesh (named after the first, so the name rules, all by material, still
@@ -2416,7 +2476,10 @@ func _register_part(m: MeshInstance3D, car, offset: Transform3D, wk: int, needle
 		for s_ in m.get_surface_override_material_count():
 			var bm_ := m.get_surface_override_material(s_) as BaseMaterial3D
 			if bm_ != null and bm_.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA:
-				m.set_surface_override_material(s_, _cockpit_material(bm_))
+				var cm_ := _cockpit_material(bm_)
+				if String(m.name).begins_with("cockpit_driver"):
+					cm_.set_shader_parameter("cull", int(OS.get_environment("FM3_DRIVER_CULL")) if OS.get_environment("FM3_DRIVER_CULL") != "" else 1)
+				m.set_surface_override_material(s_, cm_)
 	_car_parts.append([m, car, offset, wk, _wheel_blur_kind(m) if wk >= 0 else -1,
 		String(m.name).begins_with("cockpit_"), m.cast_shadow, needle if needle != null else _needles.get(String(m.name))])
 	_cars_with_parts[car] = true
@@ -3272,6 +3335,8 @@ func _attach_library_car(car) -> void:
 	if stem != "":
 		print("world_view: live car %08X (%s colour %s) uses base texture %s" % [car, info["name"], key, stem])
 	_merge_car_body(scene_, car)
+	if nd is Dictionary:
+		_attach_driver(scene_, base, nd)
 	var n := 0
 	for mi in scene_.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D
