@@ -1117,10 +1117,23 @@ func _crowd3d() -> void:
 		else:
 			(n as MeshInstance3D).visible = false
 		hidden += 1
+	# The person's second index is its crowd class (2026-11-27): spectators.xml's crowdclass order Sitting, Standing,
+	# Drunk, Photographer, Marshall, PitWorker; CrownJewel Ribbon_04: 1,347 / 1,168 / 0 / 79 / 9 / 24. The classes'
+	# models: the figure's own _Sit / _Stand, Photographer_Stand, Marshall_Stand, Pitworker_Stand (spectators.json
+	# figures 14 / 16 / 15). Which of a figure's two textures is not in the record: picked per person for variety.
+	# FM3_CROWD3D_CLASS=0: as before (all seated, the second index as the texture).
+	var by_class := OS.get_environment("FM3_CROWD3D_CLASS") != "0"
+	var special := {3: 14, 4: 16, 5: 15}
 	var groups := {}
+	var pi_ := 0
 	for p in people:
+		pi_ += 1
 		var key := "%d_%d" % [int(p[0]) % sit.size(), int(p[1]) % 2]
-		if pose_mode:
+		if by_class:
+			var cl := int(p[1])
+			var fig := int(special.get(cl, int(p[0]) % 14))
+			key = "%d_%s_%d" % [fig, "sit" if cl == 0 else "stand", (pi_ * 7 + int(p[0])) % 2]
+		elif pose_mode:
 			key = "%d_%s_%d" % [int(p[0]), "sit" if int(p[1]) == 0 else "stand", groups.size() % 2]
 		if not groups.has(key):
 			groups[key] = []

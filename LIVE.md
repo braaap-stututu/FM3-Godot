@@ -1251,6 +1251,13 @@ The user's last question was whether to chase the remaining uneven steps or call
   loose parts themselves (their translation is known; their rotation would need vc8-10 too). Cost: a 0.5 s pause of
   stage B after a crash (the game draws everything for those frames). `FM3_PARTS=0` off, `FM3_PARTS_LOG=1` why a
   report was not applied.
+- **The crowd's classes (2026-11-27 ~20:00):** the .crowd record's second index (0-5, the open question of
+  2026-11-26) is the person's crowd class in spectators.xml's crowdclass order: Sitting, Standing, Drunk, Photographer,
+  Marshall, PitWorker (CrownJewel Ribbon_04: 1,347 / 1,168 / 0 / 79 / 9 / 24). The viewer draws each class with its
+  models (the figure's _Sit / _Stand, Photographer_Stand, Marshall_Stand, Pitworker_Stand); the texture of the figure's
+  two is picked per person (not in the record). Before, everyone sat and the class picked the texture. CrownJewel grid:
+  the pit wall now shows the game's pit workers and photographer at the same spots; the stands' region against the
+  game 15.5 -> 14.8, whole frame the same within noise. `FM3_CROWD3D_CLASS=0` as before.
 - **The in-car driver (2026-11-27 ~19:30; PLAN-NEXT 3):** Media\Cars\Driver\Driver.skinbin is the first-person
   driver (arms, hands, legs; 1,156 vertices, 13 bones: the 13-track animations the game samples on the grid; the crowd's
   vertex layout behind a one-level header). `tools/fm3_driver.py` writes it (x mirrored to the library's space,
