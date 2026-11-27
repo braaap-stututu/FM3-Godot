@@ -2359,11 +2359,50 @@ func _root_picture() -> Image:
 	return img
 
 
+# The track the game loads ("FM3T", 2026-11-27, FM3-ReGPU live_camera.cpp: the last Media/Tracks folder it opened a file
+# in, about once a second): when it is another track than this scene's and <track>.gltf is built beside this scene
+# (tools/build_track.ps1 names scenes by the track folder, lower case), the viewer starts again on that scene (the same
+# arguments, that --gltf) and quits. Seen twice in a row first (a stray file open does not move it). The layout
+# (Ribbon_NN) is not used yet: a scene is built for one layout. FM3_FOLLOW_TRACK=0: off.
+var _track_seen := ""
+var _track_count := 0
+var _track_logged := {}
+
+
+func _live_track(track: String, ribbon: String) -> void:
+	if track == "" or _gltf_path == "" or OS.get_environment("FM3_FOLLOW_TRACK") == "0":
+		return
+	var want := _gltf_path.get_base_dir().path_join(track.to_lower() + ".gltf")
+	if want.get_file() == _gltf_path.get_file():
+		_track_count = 0
+		return
+	_track_count = _track_count + 1 if track == _track_seen else 1
+	_track_seen = track
+	if not FileAccess.file_exists(want):
+		if not _track_logged.has(track):
+			_track_logged[track] = true
+			print("world_view: the game loads %s (ribbon %s): no %s built (tools/build_track.ps1 -Track %s)" % [track, ribbon, want, track])
+		return
+	if _track_count < 2:
+		return
+	var user := Array(OS.get_cmdline_user_args())
+	var gi := user.find("--gltf")
+	while gi >= 0:
+		user.remove_at(gi)
+		user.remove_at(gi)
+		gi = user.find("--gltf")
+	user = ["--gltf", want] + user
+	var args := Array(OS.get_cmdline_args()) + ["--"] + user
+	print("world_view: the game loads %s (ribbon %s): starting again on %s" % [track, ribbon, want])
+	OS.create_process(OS.get_executable_path(), PackedStringArray(args))
+	quit(0)
+
+
 # The game's own frames in this window while the game is in its menus (2026-11-27, with the game's stage B: FM3-ReGPU
 # src/hooks/stage_b.cpp turns on ReGPU's frame feed, REGPU_FRAME_FEED, a memory-mapped file: 64-byte header 'FM3F',
 # version, sequence (odd while written), width, height, tag (bits 0-7 the game's renderer scenario, 0 = front end,
 # 1 = race; bit 8 stage B active; bit 31 set by the game), then RGBA8 rows). The game's frame is shown unless stage B is
-# active (a race: this viewer draws it); a feed that stops changing for 2 s (the game closed) is hidden.
+# active (a race: this viewer draws it); a feed that stops changing keeps its last frame up (loading screens).
 # FM3_GAME_FEED=<file> (default: ../FM3-ReGPU recomp/out/run/frame_feed.bin beside this folder), FM3_GAME_FEED=0: off.
 var _feed_path := ""
 var _feed_layer: CanvasLayer = null
@@ -2411,7 +2450,9 @@ func _game_feed_update() -> void:
 					_feed_seq = seq
 					_feed_ms = Time.get_ticks_msec()
 					_feed_tag = tag
-			show = _feed_tex != null and (Time.get_ticks_msec() - _feed_ms < 2000 or _feed_same < 10) and (_feed_tag & 0x80000000) != 0 and (_feed_tag & 0x100) == 0
+			# (the game's last frame stays up while it shows nothing new: loading screens hold for seconds, and the
+			# viewer's own scene behind them means nothing; only a stage B race hides it)
+			show = _feed_tex != null and (_feed_tag & 0x80000000) != 0 and (_feed_tag & 0x100) == 0
 	if show and _feed_layer == null:
 		_feed_layer = CanvasLayer.new()
 		_feed_layer.layer = 200  # (over the exposure pass and the HUD)
@@ -2861,6 +2902,9 @@ func _live_step() -> void:
 	while _udp.get_available_packet_count() > 0 and budget > 0:
 		budget -= 1
 		var b := _udp.get_packet()
+		if b.size() == 56 and b.slice(0, 4).get_string_from_ascii() == "FM3T":
+			_live_track(b.slice(8, 40).get_string_from_ascii(), b.slice(40, 48).get_string_from_ascii())
+			continue
 		if b.size() == 72 and b.slice(0, 4).get_string_from_ascii() == "FM3N":
 			# which car (media name, Combo_Colors colour, paint type): cars the glTF lacks come from the car library
 			var ncar := int(b.decode_u32(8))

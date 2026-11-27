@@ -1135,8 +1135,11 @@ The user's last question was whether to chase the remaining uneven steps or call
   turned on by stage B: `out/run/frame_feed.bin`, ~30 frames a second, read back without waiting for the GPU) with a tag
   (the renderer scenario, stage B active); world_view.gd `_game_feed_update` shows it full-window unless stage B is
   active (`FM3_GAME_FEED=<file>` / `0` off). Checked: the title screen came through; the race was drawn by the viewer.
-- **Open:** the viewer loads one track's scene (it does not yet follow the track the game loads: the game's file opens
-  name it, next); the race's own menus (pre-race, pause, results) are only in the game's window (the game's flat-grey
+- **The viewer follows the game's track** ("FM3T", once a second: the last Media/Tracks folder the game opened a file
+  in): another track than its scene, with `out/world/<track>.gltf` built, and it starts again on that scene (checked:
+  CrownJewel -> RoadAtlanta from Free Play). A track not built is logged with its build command. The game's last frame
+  stays up while the game shows nothing new (loading screens).
+- **Open:** the layout (Ribbon_NN) is not matched (a scene is built for one layout); the race's own menus (pre-race, pause, results) are only in the game's window (the game's flat-grey
   frame could be keyed and laid over the viewer's race); leaving a race back to the menus not yet tested; the game's
   remaining fixed GPU passes in a stage B race.
 
