@@ -4,7 +4,8 @@ rem Start FM3 with the camera stream on, e.g. in PowerShell from the FM3 repo:  
 rem (or switch it on in a running game: Fm3 "env FM3_LIVE 1"). Tab = next camera (player view, mirror), Esc quits.
 rem Stage B (2026-11-27): with the launcher's "Godot renders races (stage B)" on (settings.ini stage_b=1), the game
 rem stops drawing races itself and this window shows the game's own frames while it is in its menus, then draws the
-rem race. The scene is CrownJewel's (out\world\crownjewel.gltf, built by tools\build_track.ps1); another track:
+rem race. It starts on CrownJewel's scene (out\world\crownjewel.gltf) and follows the track the game loads
+rem (out\world\<track>.gltf, built by tools\build_track.ps1); to start on another track:
 rem   live.cmd --gltf <abs path>\out\world\<track>.gltf   (the last --gltf wins)
 rem Extra arguments go to world_view.gd (e.g. --triple godot\bench\g1\layout_auto.json, --size 2560x1440).
 set ROOT=%~dp0
