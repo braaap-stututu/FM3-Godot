@@ -1292,12 +1292,12 @@ The user's last question was whether to chase the remaining uneven steps or call
   more with speed (from 3 m/s; skid marks not laid there). Forced on every wheel (`FM3_FX_TEST=2`) it renders as
   brown clouds at the wheels; not yet seen from a real excursion in a picture (the run's car stops in the gravel
   within a second). Not yet: the smoke's colour per track (Tracks\<track>\smoke.dds).
-  **Grass / dirt by surface (~20:30, not done):** Physics\surfaceTypes.xml gives each surface type its particles
+  **Grass / dirt by surface (~20:10, not done):** Physics\surfaceTypes.xml gives each surface type its particles
   (`SmokeType Smoke/Dust/Grass/Dirt`: Asphalt smoke, Gravel and Dirt dirt, Grass grass + dirt, Sand and Shoulder dust)
   and skid colours, but the wheel's byte is not an index into that list: CrownJewel's gravel trap reads 45 (=
   ConcreteHighFriction in file order, SafetyPlastic sorted), asphalt 0. Probably the track's own material list (the
   rmb collision data: not decoded); a grass dump would tell more. The viewer keeps one dust for every loose surface.
-  **Sparks (~20:40):** the game draws its collision sparks in the skipped world steps too. The viewer bursts them
+  **Sparks (~20:20):** the game draws its collision sparks in the skipped world steps too. The viewer bursts them
   where a car's damage table grows: the lattice cell with the largest increase over the car's previous table (its
   centre through the car's body mesh to the world), thrown outward from the car's centre and a little up, 25 streaks
   (particles.xml `<spark><collision>`: lifetimes 0.7-1.0 s, ~0.2 m random offset, drag; Sparks1.xml's additive orange
