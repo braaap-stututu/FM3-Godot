@@ -1390,7 +1390,15 @@ The user's last question was whether to chase the remaining uneven steps or call
   uv by pc116.x) or lights the pillar far more. (~22:15: the uv is the same: vs 618013738ec64643 passes vertex
   element 2 (half2, the one we read as uv0) to o0 unchanged. So it is the light: 1074f157's output is
   tex x light + r1.w, an additive term after the texture (a specular / sheen), which lifts dark-textured trim the most;
-  our cockpit has none. Next: that term's constants from draw #737 with `REGPU_TRACE_VC=1`.) Also seen: hiding the
+  our cockpit has none. Next: that term's constants from draw #737 with `REGPU_TRACE_VC=1`.)
+  (~22:20, draw #737's pixel constants from the same capture; ps 1074f157 reads 17, ranks -> numbers: 0 pc116 0.5,
+  1 pc117 0.5, 2 pc118 3, 3 pc119 5, 4 pc136 the sun direction, 5 pc179 SHDir colour, 6 pc180 0.09 (TrackSettings
+  CockpitSpecularAmount), 7 pc189 0.7, 8 pc190 0.25, 9 pc191 2, 10 pc197 1, 11 pc206 the camera?, 12 pc207 (0.301,
+  0.501), 13 pc208 0, 14 pc209 1.5, 15 pc254, 16 pc255. Read so: colour = 2 x tex x lerp(light, max(X, 0.5), 0.5) +
+  1.5 x shadow x (0.09 (r.l)^3 + 0.7 (r.l)^5), light = the vertex SH ambient (o4) + 1.5 x SHDir x the sun term, X a
+  second light term; the max(.., 0.5) acts as a floor (like the needle's MinDiffuse 0.5) and would bring the dark-
+  textured pillar to about the game's 13, but the same reading gives the roof ~79 where the game has 18: one term is
+  still misread (X, or the texture's scale). Not built.) Also seen: hiding the
   cockpit's `window` gives in-car 16.1 (16.4): the inside of the cockpit glass costs a little. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
   29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
   until the animation is in, the user's call.
