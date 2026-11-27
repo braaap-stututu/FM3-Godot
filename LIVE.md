@@ -1332,6 +1332,17 @@ The user's last question was whether to chase the remaining uneven steps or call
   cheering), the photographer keeps his pose; fps unchanged (~50 both ways). On the real grid few people are within
   60 m (the seated grandstand and the pit workers), so the default changes little there. `FM3_CROWD_ANIM=0` still people. (Earlier dead ends, kept in PLAN-NEXT 2: the skeleton
   reconstructed from names and weights; not needed, the buffer holds the final transforms.)
+- **The crowd's light (2026-11-27 ~20:45):** the game's crowd pixel shader b32f44c528968ecc with its constants
+  captured on the frozen grid (scratchpad crowdpc.ps1: 114 crowd draws, all alike): colour = albedo x (pc2 + pc0 x
+  pc4.x x saturate(n.l)), then the fog (pc3, amount from the vertex shader); pc2 = TrackSettings <Crowds> dark
+  (0.492 / 0.512 / 0.541), pc0 = light - dark (1.194 - 0.492 = 0.702 ...), pc1 = the sun direction, pc4.x = 1; no
+  shadow term. fm3_crowd.gdshader now does exactly that (unshaded, in gamma like fm3_dynlit), with each track's own
+  colours (fm3_track_export.py writes `Crowds` into <track>_track.json; the existing ones were updated in place) and the
+  viewer's sun; the fitted x0.7 under Godot's light is gone (`FM3_CROWD3D_K` stays as a factor for tests). Live grid
+  against the game: the whole frame 14.3 / 14.0 / 13.5 (before 14.2 / 13.9 / 13.5); mean colour of crowd crops (game /
+  now / before): grandstand 89.2 / 90.5 / 89.8, right terrace 26.5 / 30.5 / 27.9, pit wall 117.8 / 123.2 / 121.6: the
+  formula is 1-4 levels brighter than the game here, the fit was 0.6-3 (it was fitted on this grid); the gain is the
+  other tracks' own crowd colours (Sebring 0.90 / 2.0, Catalunya 0.40 / 1.3), not checked against their games yet.
 - **The crowd's classes (2026-11-27 ~17:35):** the .crowd record's second index (0-5, the open question of
   2026-11-26) is the person's crowd class in spectators.xml's crowdclass order: Sitting, Standing, Drunk, Photographer,
   Marshall, PitWorker (CrownJewel Ribbon_04: 1,347 / 1,168 / 0 / 79 / 9 / 24). The viewer draws each class with its

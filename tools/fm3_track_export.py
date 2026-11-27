@@ -682,6 +682,18 @@ def car_attrib(path, name):
     return float(e.get('value')) if e is not None and e.get('value') else None
 
 
+def track_crowds(ts_text):
+    """TrackSettings <Crowds> dark / light colours ({'dark': [r, g, b], 'light': [r, g, b]}), or None."""
+    mo = re.search(r'<Crowds ([^>]*)/>', ts_text)
+    if not mo:
+        return None
+    at = dict(re.findall(r'(\w+)="([-0-9.e]+)"', mo.group(1)))
+    try:
+        return {k: [float(at['%s_%s' % (k, c)]) for c in 'xyz'] for k in ('dark', 'light')}
+    except KeyError:
+        return None
+
+
 def track_fog(ts_text):
     """TrackSettings.xml <Fog>: the enabled settings [{angle, color, near, near_d, far, far_d}] (+ 'curve'), or None.
 
@@ -1199,6 +1211,11 @@ def main():
             fog_ = track_fog(ts_text)
             if fog_:
                 light_['Fog'] = fog_
+            # the 3D people's light (2026-11-27): the game's crowd pixel shader b32f44c528968ecc is
+            # albedo x (dark + (light - dark) x saturate(n.l)) with TrackSettings <Crowds> dark / light
+            cr_ = track_crowds(ts_text)
+            if cr_:
+                light_['Crowds'] = cr_
             if light_:
                 with open(os.path.splitext(out)[0] + '_track.json', 'w', newline='') as f_:
                     json.dump(light_, f_)

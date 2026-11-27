@@ -35,7 +35,7 @@ Left (the AI dampener is done: the game's StaticEnvLightmapDampner 0.5 for AI pa
 
 **Done 2026-11-27 evening:** the people are animated with the game's own baked animations (decoded from its crowd
 buffer; LIVE.md "The crowd's animations") and drawn by crowd class (seated / standing / photographer / marshal / pit
-worker; LIVE.md "The crowd's classes"). Left: cheers when cars pass, the game's idle choice per person, the crowd's
+worker; LIVE.md "The crowd's classes"); cheers when cars pass done ~20:25. Left: the game's idle choice per person, the crowd's
 shading. The notes below are the research that led there.
 
 **Done that night, static:** the crowd is drawn with the game's own 3D people (seated pose, real textures; LIVE.md

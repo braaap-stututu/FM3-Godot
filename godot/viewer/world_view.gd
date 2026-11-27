@@ -1165,6 +1165,7 @@ func _crowd3d() -> void:
 			anims = ad["anims"]
 			anim_classes = ad["classes"]
 			print("world_view: 3D crowd animated: %d animations (%d x %d texels)" % [anims.size(), _crowd_anim_w, int(ad["height"])])
+	var crowd_light := _track_crowds(_gltf_path)
 	for key in groups:
 		var parts: PackedStringArray = (key as String).get_slice("@", 0).split("_")
 		var files: Array = sit[int(parts[0])] if parts.size() == 2 else []
@@ -1240,8 +1241,14 @@ func _crowd3d() -> void:
 			var cs := ShaderMaterial.new()
 			cs.shader = CROWD_SHADER
 			cs.set_shader_parameter("albedo_tex", (mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture)
-			var kk2 := float(OS.get_environment("FM3_CROWD3D_K")) if OS.get_environment("FM3_CROWD3D_K") != "" else 0.7
+			# (lit as the game lights its people: the track's Crowds dark / light by n.l to the sun, fm3_crowd.gdshader;
+			# FM3_CROWD3D_K=<k> a factor for tests)
+			var kk2 := float(OS.get_environment("FM3_CROWD3D_K")) if OS.get_environment("FM3_CROWD3D_K") != "" else 1.0
 			cs.set_shader_parameter("albedo_color", Vector4(kk2, kk2, kk2, 1.0))
+			cs.set_shader_parameter("sun_dir", _sun_to)
+			if not crowd_light.is_empty():
+				cs.set_shader_parameter("crowd_dark", crowd_light[0])
+				cs.set_shader_parameter("crowd_light", crowd_light[1])
 			cs.set_shader_parameter("anim_tex", _crowd_anim_tex)
 			cs.set_shader_parameter("anim_on", true)
 			cs.set_shader_parameter("tex_width", _crowd_anim_w)
@@ -1351,6 +1358,18 @@ func _ai_live(sm: ShaderMaterial) -> bool:
 	# (the AI windows too: their sky blue, 27.5 -> 19.3 on the windows, 38/42/41 -> 51/61/67 against the game's 45/55/63;
 	# FM3_AI_LIVE_GLASS=0: the static cube)
 	return sm.shader == CARPAINT_SHADER or (sm.shader == CARGLASS_SHADER and OS.get_environment("FM3_AI_LIVE_GLASS") != "0") 		or (sm.shader == CARSOLID_SHADER and bool(sm.get_shader_parameter("refl_on")))
+
+
+# The track's TrackSettings <Crowds> dark / light colours (<track>_track.json 'Crowds'): [dark, light], or [] (the
+# shader's CrownJewel values then).
+func _track_crowds(gltf_path: String) -> Array:
+	var f := gltf_path.get_basename() + "_track.json"
+	var t = JSON.parse_string(FileAccess.get_file_as_string(f)) if FileAccess.file_exists(f) else null
+	if not (t is Dictionary and t.has("Crowds") and t["Crowds"] is Dictionary):
+		return []
+	var d: Array = t["Crowds"].get("dark", [0.492, 0.512, 0.541])
+	var l: Array = t["Crowds"].get("light", [1.194, 1.154, 1.084])
+	return [Vector3(d[0], d[1], d[2]), Vector3(l[0], l[1], l[2])]
 
 
 # The track's SHLighting top / bottom / dir colours (<track>_track.json 'SH'), or {} when it has none.
