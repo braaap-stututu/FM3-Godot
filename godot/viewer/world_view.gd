@@ -39,6 +39,8 @@ var _live_axes := PackedFloat32Array([1, 1, -1, 1, 1])
 # mesh lying wholly inside a car's box is attached to that car, keeping its offset; from then on it moves with the car.
 # So the game must be where the glTF was made (the capture's grid) when the viewer starts following.
 var _cars := {}  # car object address -> latest datagram
+var _car_seen := {}  # car -> msec of its last "FM3K"
+var _car_scene := {}  # car -> its library model's root (hidden while the car is gone, _cars_gone_update)
 var _car_first_ms := 0
 var _car_attached := false
 var _car_parts := []  # [node, car, offset]
@@ -2589,6 +2591,33 @@ var _fx_logmax := {}
 var _fx_log_ms := 0
 
 
+# A library car no longer streamed (2026-11-27: a new race on the same track keeps the viewer, and the old race's car
+# objects may be gone): after 4 s without its "FM3K" its model, loose parts and smoke are hidden; shown again if it comes
+# back. Checked twice a second while others are still streamed.
+var _gone_ms := 0
+
+
+func _cars_gone_update() -> void:
+	var now := Time.get_ticks_msec()
+	if now - _gone_ms < 500 or _car_seen.is_empty():
+		return
+	_gone_ms = now
+	var newest := 0
+	for c in _car_seen:
+		newest = maxi(newest, int(_car_seen[c]))
+	if now - newest > 2000:
+		return  # (nothing streamed now: the game paused or loading, keep everything as it is)
+	for c in _car_scene:
+		var gone: bool = now - int(_car_seen.get(c, 0)) > 4000
+		var sc_ = _car_scene[c]
+		if is_instance_valid(sc_) and (sc_ as Node3D).visible == gone:
+			(sc_ as Node3D).visible = not gone
+			for d in _debris.get(c, []):
+				if is_instance_valid(d):
+					(d as Node3D).visible = not gone
+			print("world_view: car %08X %s" % [c, "gone (no stream for 4 s): hidden" if gone else "back: shown"])
+
+
 func _fx_update(moves: Dictionary, wmoves: Dictionary) -> void:
 	if OS.get_environment("FM3_FX") == "0" or not _fx_setup():
 		return
@@ -3832,6 +3861,7 @@ func _attach_library_car(car, loaded: Node = null) -> void:
 	if _drop_shadows():
 		_add_drop_shadow(scene_, car, a_att, w_att)
 	_dmg_pending[car] = [scene_, base + "_damage.bin"]  # (loaded once the car is damaged: ~0.27 s a car, _damage_ensure)
+	_car_scene[car] = scene_
 	if OS.get_environment("FM3_SCUFF_TEST") != "":
 		# (tests: the damage texture on every paint surface at one amount, to look at the scuffs without a crash)
 		_damage_ensure(car)
@@ -4271,6 +4301,7 @@ func _live_step() -> void:
 			continue
 		if magic == "FM3K":
 			var car := int(b.decode_u32(12))
+			_car_seen[car] = Time.get_ticks_msec()
 			# The car's speed (m/s, smoothed) from its positions and the game's timestamps: the wheels' motion blur.
 			var pos := Vector3(b.decode_float(64), b.decode_float(68), b.decode_float(72))
 			var tk := b.decode_double(88)
@@ -4689,6 +4720,7 @@ func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, 
 				gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY if mine else own
 			elif int(part[3]) < 0:
 				gi.visible = not mine
+	_cars_gone_update()
 	_fx_update(moves, wmoves)
 	if (_feed_tag & 0x100) != 0 and OS.get_environment("FM3_WHEEL_SPIN") != "0":
 		_spin_wheels(moves, wmoves)
