@@ -1050,6 +1050,23 @@ func _car_solid_material(m: BaseMaterial3D, nm: String, mesh: Mesh, s: int) -> S
 	sm.set_shader_parameter("sh_dir", shs["dir"])
 	if m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
 		sm.set_shader_parameter("alpha_cut", m.alpha_scissor_threshold)
+	# (badges and emblems: polished, with the game's reflection and highlight (Normal.xml); FM3_BADGE_REFL=0: matte as before)
+	var bset = null
+	if nm.begins_with("badge"):
+		bset = [4.0, 128.0, 0.15, 1.0, 1.5]
+	elif nm.begins_with("emblem"):
+		bset = [1.0, 75.0, 0.15, 1.0, 1.0]
+	if bset != null and OS.get_environment("FM3_BADGE_REFL") != "0":
+		sm.set_shader_parameter("spec_amount", bset[0])
+		sm.set_shader_parameter("spec_power", bset[1])
+		sm.set_shader_parameter("refl_on", true)
+		sm.set_shader_parameter("fresnel_min", bset[2])
+		sm.set_shader_parameter("fresnel_max", bset[3])
+		sm.set_shader_parameter("fresnel_power", bset[4])
+		for k_ in _live_cube_texs.size():
+			sm.set_shader_parameter("live%d" % k_, _live_cube_texs[k_])
+		sm.set_shader_parameter("live_hdr", _live_cube_hdr())
+		_car_mats.append(sm)  # (the live cube's faces and has_live follow, as the paint's)
 	return sm
 
 
@@ -1216,7 +1233,7 @@ func _ai_live(sm: ShaderMaterial) -> bool:
 		return false
 	# (the AI windows too: their sky blue, 27.5 -> 19.3 on the windows, 38/42/41 -> 51/61/67 against the game's 45/55/63;
 	# FM3_AI_LIVE_GLASS=0: the static cube)
-	return sm.shader == CARPAINT_SHADER or (sm.shader == CARGLASS_SHADER and OS.get_environment("FM3_AI_LIVE_GLASS") != "0")
+	return sm.shader == CARPAINT_SHADER or (sm.shader == CARGLASS_SHADER and OS.get_environment("FM3_AI_LIVE_GLASS") != "0") 		or (sm.shader == CARSOLID_SHADER and bool(sm.get_shader_parameter("refl_on")))
 
 
 # The track's SHLighting top / bottom / dir colours (<track>_track.json 'SH'), or {} when it has none.
@@ -2621,17 +2638,27 @@ void fragment() {
 # The colour of the game's undrawn scene in a stage B race (the most common one on a sparse grid: the HUD covers little;
 # a pause menu's darkening moves it, and the key with it).
 func _feed_key_colour(img: Image) -> Color:
+	# (the lightest neutral grey seen at least 3 times on a 16 x 10 grid: the game's overlays only darken its undrawn
+	# scene (the HUD's panels, the pre-race menu's and the countdown's vignettes), so the undrawn grey is the lightest
+	# common one; until 2026-11-27 the most common one, which in the countdown was the vignette's darkened edge: the
+	# undrawn centre then covered the race as a grey ellipse, the user's "countdown vignettes off")
 	var counts := {}
-	var best := 0
-	var key := _feed_key
+	var colours := {}
 	for y in range(img.get_height() / 20, img.get_height(), img.get_height() / 10):
 		for x in range(img.get_width() / 32, img.get_width(), img.get_width() / 16):
 			var c := img.get_pixel(x, y)
-			var q := (int(c.r * 63.0) << 12) | (int(c.g * 63.0) << 6) | int(c.b * 63.0)
+			var l := (c.r + c.g + c.b) / 3.0
+			if l < 0.15 or l > 0.7 or absf(c.r - l) + absf(c.g - l) + absf(c.b - l) > 0.06:
+				continue
+			var q := int(l * 63.0)
 			counts[q] = int(counts.get(q, 0)) + 1
-			if counts[q] > best:
-				best = counts[q]
-				key = c
+			colours[q] = c
+	var key := _feed_key
+	var best := -1
+	for q in counts:
+		if int(counts[q]) >= 3 and int(q) > best:
+			best = int(q)
+			key = colours[q]
 	return key
 
 

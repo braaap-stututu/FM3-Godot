@@ -1165,4 +1165,19 @@ The user's last question was whether to chase the remaining uneven steps or call
   viewer's followed the pedal and faded over 0.25 s, and lit the AI cars' from their deceleration (also when they only
   lifted off): now on / off with no fade, from each car's own brake ("FM3B", FM3-ReGPU live_camera.cpp: every race
   participant's physics object matched to its car).
+- **Countdown vignettes:** the overlay's key was the frame's most common grey, which in the countdown is the vignette's
+  darkened edge; the undrawn centre then covered the race as a grey ellipse. The key is now the lightest neutral grey
+  seen at least 3 times (the game's overlays only darken its undrawn scene): on the game's countdown frame it picks
+  the centre grey (0.392, the old rule 0.376); live, the countdown shows the race under the vignette.
+- **Badges "sunken":** the game draws them polished (Normal.xml badge: SpecularAmount 4, power 128, Fresnel 0.15 .. 1
+  x (1 - cos)^1.5, CubeScale 1; emblem 1 / 75 / power 1); ours were matte (the library's roughness 0.6, no
+  reflection) beside the glossy paint. `fm3_carsolid.gdshader` now has the game's Fresnel reflection of the live cube
+  (refl_on) with those values for badge* and emblem* (FM3_BADGE_REFL=0: as before). Not yet compared against a game
+  close-up.
+- **Crash damage (research, next):** the car vertex shaders deform by a 3D damage lattice around the car: the vertex
+  position scaled into grid cells (vc4 / vc5 / vc8-10), clamped to the grid (vc7 / vc11), the lattice table at vertex
+  fetch 94 (two float4 per entry, interpolated across the cell into one amount), the vertex moved along its own
+  direction by it, clamped by vc6 (damageClamps); e.g. vs_0b663c87079d33bf (shadow pass). The damage textures:
+  `damage*.xds` / `damagelights*.xds` per car folder. Next: the table's address in the car object (stage B skips the
+  draws that bind it), its dims from a capture, the per-vertex use in a Godot vertex shader.
 
