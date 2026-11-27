@@ -107,8 +107,9 @@ checked against the game's HUD to a few ms. Left: the race's lap total, a lap co
 and switching the HUD on in the comparisons. Measured 2026-11-27 (CrownJewel, ours on against the game's own): grid
 13.9 / chase 14.6 / in-car 17.9 against 14.0 / 14.5 / 17.6 with ours off: within boot noise, so our HUD neither closes
 nor widens the gap yet. Seen side by side on the grid: the race time (fixed: held at 0 until the start, the physics
-clock runs through the countdown), the lap total ("/-" against "/3"), no minimap in that run (it showed in the
-earlier HUD tests: check), no opponent name tags (the game's red names over the cars ahead), and the tach's style (the
+clock runs through the countdown), the lap total ("/-" against "/3"), no minimap on a fresh start (ours is drawn from the
+cars' driven path; since 2026-11-27 a whole lap's path is kept in `user://fm3_map_<track>.json` and drawn from the
+next start on; the game's own line data `.seg` / `.irt` / `.geo` would give it at once: not decoded), no opponent name tags (the game's red names over the cars ahead), and the tach's style (the
 game's dark disc with a red redline arc and a fuel icon; ours white ticks). (The old route, for reference: the HUD's own code reads them; the tach's rpm getter is called
 for the HUD from 0x821F2044 (`FM3-ReGPU recomp/src/hooks/live_camera.cpp` notes), so the HUD update function around
 that return address also fetches position / lap / lap time: read it in `out/ppc-rexenon` and follow its other getters

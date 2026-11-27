@@ -1196,7 +1196,7 @@ func _hud_feed(player: int, moves: Dictionary) -> void:
 		"info": "game frames every %.1f ms" % (_frame_dt * 1000.0),
 		"place": _race_place, "lap": _race_laps if _race_clock >= 0.0 else -1, "race_time": (_race_clock if _race_started else 0.0) if _race_clock >= 0.0 else -1.0,
 		"lap_time": _race_clock - _race_lap_start if _race_clock >= 0.0 and _race_laps >= 1 else -1.0,
-		"last_lap": _race_last_lap, "best_lap": _race_best_lap})
+		"last_lap": _race_last_lap, "best_lap": _race_best_lap, "track": _gltf_path.get_file().get_basename()})
 
 
 # The AI cars' paint reflecting the per-frame cube too (2026-11-26 late: the game's AI paint reads a near-field dynamic

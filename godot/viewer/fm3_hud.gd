@@ -32,6 +32,13 @@ var last_lap := -1.0
 var best_lap := -1.0
 var _trail := []  # the player's path (Vector2), the map's outline
 var _bounds := Rect2()
+# The map's outline from a whole lap driven before (user://fm3_map_<track>.json, written when a lap completes), so
+# the map is there from the grid on, as the game's; the game's own line data (.seg / .irt / .geo) is not decoded yet.
+var _outline := []
+var _outline_bounds := Rect2()
+var _track := ""
+var _lap_seen := -1
+var _lap_from := 0  # (the trail's index where the current lap began)
 var _font: Font
 
 
@@ -78,12 +85,31 @@ func feed(d: Dictionary) -> void:
 	lap_time = d.get("lap_time", lap_time)
 	last_lap = d.get("last_lap", last_lap)
 	best_lap = d.get("best_lap", best_lap)
+	if String(d.get("track", "")) != "" and _track == "":
+		_track = d["track"]
+		var o := _load("user://fm3_map_%s.json" % _track)
+		for q in o.get("points", []):
+			var v := Vector2(float(q[0]), float(q[1]))
+			_outline_bounds = Rect2(v, Vector2.ZERO) if _outline.is_empty() else _outline_bounds.expand(v)
+			_outline.append(v)
+	if lap != _lap_seen:
+		if _lap_seen >= 1 and lap == _lap_seen + 1 and _track != "" and _trail.size() - _lap_from > 20:
+			# (a whole lap: its path becomes the track's outline for later starts)
+			var pts := []
+			for i in range(_lap_from, _trail.size()):
+				pts.append([snappedf((_trail[i] as Vector2).x, 0.1), snappedf((_trail[i] as Vector2).y, 0.1)])
+			var f := FileAccess.open("user://fm3_map_%s.json" % _track, FileAccess.WRITE)
+			if f != null:
+				f.store_string(JSON.stringify({"points": pts}))
+		_lap_seen = lap
+		_lap_from = _trail.size()
 	if cars.has(player):
 		var p: Vector2 = cars[player]
 		if _trail.is_empty() or (_trail[-1] as Vector2).distance_to(p) > 4.0:
 			_trail.append(p)
 			if _trail.size() > 4000:
 				_trail.remove_at(0)
+				_lap_from = maxi(_lap_from - 1, 0)
 			_bounds = Rect2(p, Vector2.ZERO) if _trail.size() == 1 else _bounds.expand(p)
 	queue_redraw()
 
@@ -261,16 +287,20 @@ func _draw_game() -> void:
 		draw_string(_font, P.call(1006, 650), "MPH" if mph else "KM/H", HORIZONTAL_ALIGNMENT_LEFT, -1, int(13 * u), Color(1, 1, 1, 0.8))
 		draw_string(_font, P.call(1012, 683), _speed_text(e), HORIZONTAL_ALIGNMENT_LEFT, -1, int(26 * u), white)
 	e = _el("map")
-	if not e.is_empty() and _trail.size() > 1:
+	var from_outline := _outline.size() > 1
+	var line: Array = _outline if from_outline else _trail
+	if not e.is_empty() and line.size() > 1:
 		var o: Vector2 = P.call(140, 560)
 		var sz := Vector2(120, 100) * u
-		var b := _bounds.grow(10.0)
+		var b := (_outline_bounds if from_outline else _bounds).grow(10.0)
 		var f := minf(sz.x / maxf(b.size.x, 1.0), sz.y / maxf(b.size.y, 1.0))
 		var mid := o + sz * 0.5
 		var to := func(p: Vector2) -> Vector2: return mid + (p - b.get_center()) * f
 		var pts := PackedVector2Array()
-		for p in _trail:
+		for p in line:
 			pts.append(to.call(p))
+		if from_outline:
+			pts.append(pts[0])
 		draw_polyline(pts, Color(0.55, 0.57, 0.6, 0.9), 5.0 * u)
 		draw_polyline(pts, Color(0.75, 0.77, 0.8, 0.9), 2.0 * u)
 		for car in cars:
