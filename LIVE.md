@@ -1342,7 +1342,13 @@ The user's last question was whether to chase the remaining uneven steps or call
   the same but for the poses. Seen on Motegi: the viewer's start is slow, each library car taking 1-2.6 s on the main
   thread (`FM3_ATTACH_TIMING=1`: glTF load ~300 ms, textures ~180, scene 35-850, merge 90-270, set-up 80-270; ~0.45 s
   on CrownJewel), so the live_track picture is taken before the exposure settles (Motegi 30-39 against this morning's
-  14.3 is that timing, not the picture). Next: load the library cars on a worker thread.
+  14.3 is that timing, not the picture). **Library cars now load on a worker thread** (glTF, textures, nodes;
+  `_lib_load` / `_library_step`, two at a time; FM3_LIB_THREAD=0 as before): the main thread's share per car ~470 ->
+  ~150 ms. And the Motegi live view was 3 fps steady: the 96 m crowd cells made 1,945 MultiMeshes (offline Motegi:
+  96 m 161 fps, 256 m 206, **512 m 225 (now the default)**, one cell 245); live Motegi 3 -> 49-59 fps, CrownJewel ~60.
+  (This morning's setup, one cell with shadows, gave Motegi 8 fps at 45 M primitives.) Motegi's and Sebring's frozen
+  pictures stay brighter than the game's: the frozen close-up of the black RSX, the game's exposure still lagging from
+  the shot before (the test's freeze timing), not today's changes.
 - **Lightmap atlas in the track export (fm3_track_export.py atlas_lightmaps, on by default, --no-lm-atlas off):** the
   groups were split by their lightmap texture; the lightmaps whose parts keep their UVs in 0..1 (+-0.01, clamped) are
   packed into 4096-wide pages (lmpage_NN.png, 4 px of their own edge around each) and the groups that then differ only

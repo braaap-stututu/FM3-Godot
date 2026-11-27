@@ -1130,7 +1130,7 @@ func _crowd3d() -> void:
 	var special := {3: 14, 4: 16, 5: 15}
 	var groups := {}
 	var pi_ := 0
-	var crowd_cell := float(OS.get_environment("FM3_CROWD_CELL")) if OS.get_environment("FM3_CROWD_CELL") != "" else 96.0
+	var crowd_cell := float(OS.get_environment("FM3_CROWD_CELL")) if OS.get_environment("FM3_CROWD_CELL") != "" else 512.0  # (Motegi offline: 96 m cells 161 fps, 256 m 206, 512 m 225, one 245)
 	for p in people:
 		pi_ += 1
 		var key := "%d_%d" % [int(p[0]) % sit.size(), int(p[1]) % 2]
@@ -3463,13 +3463,62 @@ func _cars_pending() -> bool:
 	return false
 
 
-func _attach_library_car(car) -> void:
+# Library cars loaded on worker threads (2026-11-27): the glTF parse, its textures and the scene's nodes (~0.5-1.3 s a
+# car on Motegi, all on the main thread before: the viewer's start stuttered for seconds); the main thread then does
+# the rest (_attach_library_car with the loaded scene). FM3_LIB_THREAD=0: as before.
+var _lib_tasks := {}  # car -> WorkerThreadPool task id
+var _lib_done := {}  # car -> [scene Node, GLTFState] (set by the worker)
+var _lib_mutex := Mutex.new()
+
+
+func _lib_load(car, path: String) -> void:
+	var doc := GLTFDocument.new()
+	var st := GLTFState.new()
+	st.handle_binary_image = 0
+	var scene_: Node = null
+	if doc.append_from_file(path, st) == OK:
+		_bind_textures(st, path, false)
+		scene_ = doc.generate_scene(st)
+	_lib_mutex.lock()
+	_lib_done[car] = [scene_, st]
+	_lib_mutex.unlock()
+
+
+func _library_step() -> void:
+	# finished loads: attached on this thread (one a frame)
+	var ready_ = null
+	_lib_mutex.lock()
+	for c in _lib_done:
+		ready_ = c
+		break
+	var res: Array = _lib_done.get(ready_, []) if ready_ != null else []
+	if ready_ != null:
+		_lib_done.erase(ready_)
+	_lib_mutex.unlock()
+	if ready_ != null:
+		WorkerThreadPool.wait_for_task_completion(int(_lib_tasks[ready_]))
+		_lib_tasks.erase(ready_)
+		_attach_library_car(ready_, res[0])
+	# new loads: up to two at a time
+	while not _library_queue.is_empty() and _lib_tasks.size() < 2:
+		var car = _library_queue.pop_front()
+		var info: Dictionary = _car_names.get(car, {})
+		var path := _gltf_path.get_base_dir().path_join("../cars/%s.gltf" % String(info.get("name", "")).to_lower()).simplify_path()
+		if info.is_empty() or not FileAccess.file_exists(path):
+			_attach_library_car(car)  # (it reports why not)
+			continue
+		_lib_tasks[car] = WorkerThreadPool.add_task(_lib_load.bind(car, path), false, "library car")
+
+
+func _attach_library_car(car, loaded: Node = null) -> void:
 	_library_tried[car] = true
 	var info: Dictionary = _car_names[car]
 	var lname := String(info["name"]).to_lower()
 	var path := _gltf_path.get_base_dir().path_join("../cars/%s.gltf" % lname).simplify_path()
 	if not FileAccess.file_exists(path) or not _cars.has(car) or not _wheels.has(car):
 		print("world_view: live car %08X is %s: no library model (%s) or no matrices yet" % [car, info["name"], path])
+		if loaded != null:
+			loaded.free()
 		return
 	# (textures with mipmaps but not compressed: compressing a car's 2048 px textures stalled the live view for seconds
 	# a car; Godot's own glTF texture loading gives none, and a far car's paint then sampled black)
@@ -3478,13 +3527,18 @@ func _attach_library_car(car) -> void:
 	var st := GLTFState.new()
 	st.handle_binary_image = 0
 	var tt_ := [Time.get_ticks_usec()]
-	if doc.append_from_file(path, st) != OK:
-		print("world_view: live car %08X is %s: its library model %s did not load" % [car, info["name"], path])
-		return
-	tt_.append(Time.get_ticks_usec())
-	_bind_textures(st, path, false)
-	tt_.append(Time.get_ticks_usec())
-	var scene_ := doc.generate_scene(st)
+	var scene_: Node = loaded
+	if scene_ == null:
+		if doc.append_from_file(path, st) != OK:
+			print("world_view: live car %08X is %s: its library model %s did not load" % [car, info["name"], path])
+			return
+		tt_.append(Time.get_ticks_usec())
+		_bind_textures(st, path, false)
+		tt_.append(Time.get_ticks_usec())
+		scene_ = doc.generate_scene(st)
+	else:
+		tt_.append(Time.get_ticks_usec())
+		tt_.append(Time.get_ticks_usec())
 	root.add_child(scene_)
 	tt_.append(Time.get_ticks_usec())
 	var base := path.get_basename()
@@ -3824,7 +3878,7 @@ func _attach_cars() -> void:
 		var o := car_transform(_cars[car], _live_axes).origin
 		print("world_view: live car %08X at (%.2f, %.2f, %.2f): %d meshes attached (%d on its wheels)" % [car, o.x, o.y, o.z,
 			per_car.get(car, 0), per_wheel.get(car, 0)])
-		if per_car.get(car, 0) == 0 and _car_names.has(car) and not _library_tried.has(car) and not _library_queue.has(car):
+		if per_car.get(car, 0) == 0 and _car_names.has(car) and not _library_tried.has(car) and not _library_queue.has(car) and not _lib_tasks.has(car):
 			_library_queue.append(car)  # (its name came before this first attach)
 	if per_car.size() < _cars.size():
 		print("world_view: (a car with no meshes: the game was not at the glTF's grid when the viewer started, or its model is missing)")
@@ -3910,7 +3964,7 @@ func _live_step() -> void:
 			var ncar := int(b.decode_u32(8))
 			_car_names[ncar] = {"name": b.slice(20, 64).get_string_from_ascii(), "color": int(b.decode_u32(12)),
 				"metallic": b.decode_u32(16) == 1}
-			if _car_attached and not _cars_with_parts.has(ncar) and not _library_tried.has(ncar) and not _library_queue.has(ncar):
+			if _car_attached and not _cars_with_parts.has(ncar) and not _library_tried.has(ncar) and not _library_queue.has(ncar) and not _lib_tasks.has(ncar):
 				_library_queue.append(ncar)  # (loaded after the packets, one a frame: a load takes ~0.3 s)
 			continue
 		if b.slice(0, 4).get_string_from_ascii() == "FM3E" and b.size() >= 32:
@@ -4049,7 +4103,9 @@ func _live_step() -> void:
 	_pf("packets", tpk_)
 	if _fps_log_on:
 		_pf_sum["packets_n"] = int(_pf_sum.get("packets_n", 0)) + (4000 - budget) * 1000
-	if not _library_queue.is_empty() and _car_attached:
+	if _car_attached and OS.get_environment("FM3_LIB_THREAD") != "0":
+		_library_step()
+	elif not _library_queue.is_empty() and _car_attached:
 		_attach_library_car(_library_queue.pop_front())
 	_poll_liveries()
 	if not _car_attached and _car_first_ms > 0 and Time.get_ticks_msec() - _car_first_ms > 500:
