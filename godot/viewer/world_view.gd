@@ -76,6 +76,7 @@ var _library_queue := []  # cars waiting for their library model
 # its cockpit has no directional light (TrackSettings SHCockpitDir 0) and the view a higher exposure. Cockpit meshes
 # sit on their own render layer the sun leaves out, and the exposure rises in-car by IN_CAR_EXPOSURE.
 const COCKPIT_LAYER := 8
+const CROWD_LAYER := 64  # (the 3D crowd: left out of the live reflection cube)
 const STATIC_LAYER := 16  # (the lightmapped track: casts shadows only for the DYNLIT sun)
 const DYNLIT_LAYER := 32  # (the track's sun-lit surfaces, fm3_dynlit: lit by their own sun)
 # fm3_dynlit for the track's unlightmapped surfaces with static shadows from a second sun: opt-in (FM3_DYNLIT=1). Measured
@@ -1129,6 +1130,7 @@ func _crowd3d() -> void:
 	var special := {3: 14, 4: 16, 5: 15}
 	var groups := {}
 	var pi_ := 0
+	var crowd_cell := float(OS.get_environment("FM3_CROWD_CELL")) if OS.get_environment("FM3_CROWD_CELL") != "" else 96.0
 	for p in people:
 		pi_ += 1
 		var key := "%d_%d" % [int(p[0]) % sit.size(), int(p[1]) % 2]
@@ -1138,6 +1140,9 @@ func _crowd3d() -> void:
 			key = "%d_%s_%d" % [fig, "sit" if cl == 0 else "stand", (pi_ * 7 + int(p[0])) % 2]
 		elif pose_mode:
 			key = "%d_%s_%d" % [int(p[0]), "sit" if int(p[1]) == 0 else "stand", groups.size() % 2]
+		# (and by cell of the ground: one MultiMesh's bounds spanning the whole track are never culled, so every person
+		# was drawn in the view, each shadow cascade and the cube faces: Motegi's 24,299 people, 60-80 M primitives)
+		key += "@%d_%d" % [int(floor(float(p[2]) / crowd_cell)), int(floor(float(p[4]) / crowd_cell))]
 		if not groups.has(key):
 			groups[key] = []
 		groups[key].append(p)
@@ -1157,7 +1162,7 @@ func _crowd3d() -> void:
 			anim_classes = ad["classes"]
 			print("world_view: 3D crowd animated: %d animations (%d x %d texels)" % [anims.size(), _crowd_anim_w, int(ad["height"])])
 	for key in groups:
-		var parts: PackedStringArray = (key as String).split("_")
+		var parts: PackedStringArray = (key as String).get_slice("@", 0).split("_")
 		var files: Array = sit[int(parts[0])] if parts.size() == 2 else []
 		var tex_i := int(parts[1]) if parts.size() == 2 else int(parts[2])
 		if parts.size() == 3:
@@ -1206,6 +1211,11 @@ func _crowd3d() -> void:
 		_crowd_sets.append([mm, xfs])
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
+		# (no sun shadows from the people: each caster is drawn again per cascade; and not in the cars' reflection cube.
+		# FM3_CROWD_SHADOWS=1 as before)
+		if OS.get_environment("FM3_CROWD_SHADOWS") != "1":
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mmi.layers = CROWD_LAYER
 		if OS.get_environment("FM3_CROWD3D_SHADE") == "dark" and mesh.get_surface_count() > 0:
 			# (tests: unshaded, the texture x the track's crowd dark colour, as the cards)
 			var m0s := mesh.surface_get_material(0) as BaseMaterial3D
@@ -1460,7 +1470,7 @@ func _make_live_cube(at: Vector3) -> void:
 		c.keep_aspect = Camera3D.KEEP_HEIGHT
 		c.near = 0.05
 		c.far = float(OS.get_environment("FM3_LIVE_CUBE_FAR")) if OS.get_environment("FM3_LIVE_CUBE_FAR") != "" else 3000.0  # (tests: the cube cameras' far plane)
-		c.cull_mask = 0xFFFFF & ~2 & ~COCKPIT_LAYER  # (not layer 2: the cars; nor the cockpits)
+		c.cull_mask = 0xFFFFF & ~2 & ~COCKPIT_LAYER & ~CROWD_LAYER  # (not layer 2: the cars; nor the cockpits, nor the crowd)
 		vp.add_child(c)
 		root.add_child(vp)
 		_live_cube_cams.append(c)
