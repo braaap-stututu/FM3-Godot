@@ -1,6 +1,6 @@
 # HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-27)
 
-**2026-11-27 evening session (14:09 -> midnight; the user's notes, PLAN-NEXT section 0; status ~22:00):**
+**2026-11-27 evening session (14:09 -> midnight; the user's notes, PLAN-NEXT section 0; status ~22:30):**
 - From the user's list: brake lights binary per car (FM3B), the countdown vignette key, wheels spinning in stage B,
   glossy badges. **Crash damage, end to end:** each car's damage lattice mapped through a ReGPU fetch watch and
   streamed (FM3D), the library cars bent on the CPU (loaded when a car is first damaged); parts the game knocks off
@@ -42,6 +42,12 @@
   on, the user's call). **Fixed: a stale game feed** (the viewer showed an earlier boot's menu frame over the race when
   the game ran without stage B); round trip re-run: passes. Performance re-checked: live grid ~60 fps steady, the
   crowd's cheering and light cost nothing measurable (Motegi too).
+- ~22:00-22:30: **fixed: the crowd's cheering used the cars' scene roots** (they stay at the origin; cheering only
+  happened near it): now the cars' drawn positions; checked against the game in its own frozen moment (both terraces
+  cheer). `FM3_HIDE_PARTS` now works in the in-car view; the in-car A-pillar is part of the headliner mesh (dark
+  texture there; the game's dash / headliner shader constants decoded, one term still misread). Smoke against the
+  game at the same moment: at 26 degrees of slip ours smokes, the game's frame does not yet (one sample). In-car open
+  list: the pillar, the warning-lamp panel (game 4.3, ours 90.5), the driver's arms (cost 0.8 of the in-car score).
 
 **2026-11-27 afternoon: stage B, as a switch** (user: boot the game and race without its own rendering costing the
 frame rate). Launcher "Godot renders races (stage B)" / settings.ini `stage_b=1`: in races the game stops drawing the

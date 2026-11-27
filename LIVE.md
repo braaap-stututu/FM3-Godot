@@ -1388,7 +1388,10 @@ The user's last question was whether to chase the remaining uneven steps or call
   vs fa88eae10194de84 / ps 417907f8a8ea8a43) as texture x light (the same vertex SH + shadowed sun as the dash, its uv
   scaled by pc116.x = 1), not as an emissive; the icons are in interior_lod0 at full alpha (no mask). Our gauge material
   is emissive (GAUGE_GAIN): to be lit like the dash once the cockpit light is settled (the dial numbers are bright in
-  both, so the game's light there is high: check its pc5 / pc7 terms first). **The gloves** are misshapen against the
+  both, so the game's light there is high: check its pc5 / pc7 terms first). Measured (~22:30): lamp panel game 4.3,
+  ours 90.5; the dial faces match (speedo 19.0 / 23.7, tach 17.8 / 17.6, fuel 28.6 / 23.4). Our exported texture's
+  alpha is 255 over the panel and the dials alike, so it does not single out the markings; why the game's panel is so
+  dark is open (its 102 indices match ours: the game draws that quad). **The gloves** are misshapen against the
   game's (palms stretched over the rim): the arms are posed from the carbin grip anchors without the driver's
   animation (Granny / Oodle, still open).
   ~21:45-22:15, **the A-pillar found:** first tries were void: `FM3_HIDE_PARTS` did not hide cockpit meshes in the
