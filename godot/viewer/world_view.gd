@@ -2649,7 +2649,9 @@ func _fx_setup() -> bool:
 	if not FileAccess.file_exists(base + "/smoke.png"):
 		print("world_view: no tyre smoke textures (%s: tools/fm3_effects.py)" % base)
 		return false
-	var smoke := ImageTexture.create_from_image(Image.load_from_file(base + "/smoke.png"))
+	# (a track's own atlas when it has one: the same layout, its dust / grass / dirt in the track's colours)
+	var own := base + "/smoke_" + _gltf_path.get_file().get_basename().to_lower() + ".png"
+	var smoke := ImageTexture.create_from_image(Image.load_from_file(own if FileAccess.file_exists(own) else base + "/smoke.png"))
 	_fx_proc = ParticleProcessMaterial.new()
 	_fx_proc.direction = Vector3(0, 1, 0)
 	_fx_proc.spread = 60.0
@@ -2733,7 +2735,7 @@ func _fx_setup() -> bool:
 		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mmi.custom_aabb = AABB(Vector3(-1e5, -1e4, -1e5), Vector3(2e5, 2e4, 2e5))
 		root.add_child(mmi)
-	print("world_view: tyre smoke and skid marks on (%s)" % base)
+	print("world_view: tyre smoke and skid marks on (%s)" % (own if FileAccess.file_exists(own) else base + "/smoke.png"))
 	return true
 
 

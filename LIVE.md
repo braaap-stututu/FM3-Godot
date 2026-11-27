@@ -1291,7 +1291,10 @@ The user's last question was whether to chase the remaining uneven steps or call
   atlas's top-right quarter, alpha up to 120 / 255, lifetimes ~1-2.9 s, growing) from a wheel on a loose surface,
   more with speed (from 3 m/s; skid marks not laid there). Forced on every wheel (`FM3_FX_TEST=2`) it renders as
   brown clouds at the wheels; not yet seen from a real excursion in a picture (the run's car stops in the gravel
-  within a second). Not yet: the smoke's colour per track (Tracks\<track>\smoke.dds).
+  within a second). **Per track (~20:25):** 13 tracks have their own atlas (Tracks\<track>\smoke.dds, the same
+  layout: the smoke alike, the dust / grass / dirt quarters in the track's colours, e.g. one dust 179 / 134 / 89 against
+  the default 168 / 157 / 129); fm3_effects.py writes them as out/effects/smoke_<track>.png and the viewer takes the one
+  named like its glTF (CrownJewel has none: the default). Not seen live on such a track yet.
   **Grass / dirt by surface (~20:10, not done):** Physics\surfaceTypes.xml gives each surface type its particles
   (`SmokeType Smoke/Dust/Grass/Dirt`: Asphalt smoke, Gravel and Dirt dirt, Grass grass + dirt, Sand and Shoulder dust)
   and skid colours, but the wheel's byte is not an index into that list: CrownJewel's gravel trap reads 45 (=

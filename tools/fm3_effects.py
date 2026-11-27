@@ -4,7 +4,8 @@ r"""fm3_effects.py: the game's tyre smoke and tread mark textures for the viewer
 
 Writes smoke.png (Effects\smoke.dds: a 256 x 256 atlas, the tyre smoke in its top-left quarter as particles.xml's
 tire_smoke uses it, dust / grass / dirt in the others) and treadmark.png (Treadmark.dds, 128 x 512), both plain DXT5
-DDS files (little-endian, untiled), decoded by fm3_tex.
+DDS files (little-endian, untiled), decoded by fm3_tex. Tracks with their own atlas (Tracks\<track>\smoke.dds: the same
+layout, their dust / grass / dirt coloured for the track) get smoke_<track>.png (lower case), which the viewer prefers.
 """
 import os
 import struct
@@ -36,6 +37,13 @@ def main():
         img = dds_rgba(src)
         fr.write_png(os.path.join(out, name), img.shape[1], img.shape[0], np.ascontiguousarray(img).tobytes())
         print(name, img.shape)
+    tracks = os.path.join(media, 'Tracks')
+    for t in sorted(os.listdir(tracks)) if os.path.isdir(tracks) else []:
+        src = os.path.join(tracks, t, 'smoke.dds')
+        if os.path.isfile(src):
+            img = dds_rgba(src)
+            fr.write_png(os.path.join(out, 'smoke_%s.png' % t.lower()), img.shape[1], img.shape[0], np.ascontiguousarray(img).tobytes())
+            print('smoke_%s.png' % t.lower())
     return 0
 
 
