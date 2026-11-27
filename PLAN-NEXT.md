@@ -75,10 +75,15 @@ physical mirror; +0x0C is shared); FM3-ReGPU `anim_dump.cpp` (FM3_ANIM_DUMP=1) n
 (frames at record +34, durations 2.7-30.4 s) to out/run/anim_dump; copies in `Godot/work/crowd_anim` (game data, not
 committed); matched to files by (duration, frames) at record +28 / +34. **The samples are per-bone rotations relative to
 the bind pose** (quaternion, translation always 0, scale 1; t = 0 often identity): idles move 0-10 degrees (Stand_Idle_07
-up to 41), cheers up to ~70, the photographer up to ~100. **Left: the skeleton** (not in the .skinbin): parents from the
+up to 41), cheers up to ~70, the photographer up to ~100 (corrected ~19:00: the codec's time is normalized 0..1, the first dumps sampled past 1 and
+extrapolated; re-dumped: idles 0-5 degrees, cheers 10-22, the photographer's arms 73 / 93, each loops). **Left: the skeleton** (not in the .skinbin): parents from the
 bone names (byte-swapped words at the anim file's end: spine, head, shoulders, upper / lower arm, hand, upper / lower
 leg, foot, L / R) or from the models' shared bone weights, joint pivots from the vertices two bones share, and whether
-the rotations are in model axes (check on Stand_Idle_Photo: the camera raised to the face). Then glTF skins +
+the rotations are in model axes (check on Stand_Idle_Photo: the camera raised to the face). Done since: the hierarchy
+from the names and pivots from shared weights (`tools/research/crowd_skeleton.py`: hips 0.93 m, knees 0.54, shoulders
+~1.45, wrists 0.94 on Photographer_Stand); posing on CPU (`crowd_pose.py`) with rotations about those pivots in model
+axes did not bring the camera to the face with either quaternion convention: the bones' bind frames are still unknown
+(next: the skinned crowd draw's bone palette in a capture near a photographer, i.e. the game's final matrices). Then glTF skins +
 animations in fm3_spectators.py and the standing people where the game uses them (where its 3D LOD shows them).
 Steps: (1) `tools/fm3_skinbin.py`: vertices, indices, bones -> glTF with a Skeleton (check against a frame capture of
 the crowd: the captured skinned draws' vertex shader has the bone palette); (2) the anim CAFF: tracks per bone
