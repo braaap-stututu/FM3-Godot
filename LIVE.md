@@ -844,6 +844,16 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   80-160); next, the luminance pass's input buffer itself (which pass writes the 32x32 it averages, from a capture).
   Our scene matches the game's on three tracks, so the remaining picture differences there are exposure, HUD and
   content, not the lighting.
+  **The luminance chain, from a RoadAtlanta capture (2026-11-27, `tools/research/expo.ps1 -Index 16`):** the scene
+  (1280 x 720 at the final pass's t0 address) -> `c244a21ac3a9be63` (four bilinear taps at +-1 texel, summed, x pc0.x
+  = 1) -> 320 x 192 -> `c244` again -> 64 x 32 (four taps per 5 x 6 block: a regular subsample) -> `98c51b1e094205eb`
+  (a loop of taps summed, x 1) -> 32 x 32 -> the luminance pass `4a17014edfabf5f0` (pc0 = 0.2126 / 0.7152 / 0.0722, the
+  Rec. 709 weights; pc1.x = **0.023 = RoadAtlanta's ToneMapeDelay**, confirming the adaptation rate), then the bloom's
+  bright pass (vc0 = LumMin / 255 0.3137, 255 / (LumMax - LumMin) 3.1875; vc1 = the dark curve's white 145 / 255). Every
+  pass scales by 1: the sums are brought back by the resolves' exponent bias (RB_COLOR_INFO). So the game's L is a
+  plain average of the scene, as decoded; RoadAtlanta's L ~0.13 above our measured scene mean stays open. Next: the
+  intermediate formats (2_10_10_10: a clamp of bright areas?), the subsample's coverage, and reading the 32 x 32 result
+  directly (a ps edit of the bright pass, which reads it as vs:t17).
   The same-boot probe: scratch `lensiter.ps1 -Probe` (t0 / W / 0.5 shots after the variants); `wtrack.ps1` numbers
   repeated modes (w1, w1-1).
 - **The AI cars' static-cube reflection is looked up wrongly** (2026-11-26 late; the user: the game's Eclipse shows

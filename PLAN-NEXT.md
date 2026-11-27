@@ -82,7 +82,9 @@ CrownJewel grid whole frame 13.92-14.12 (boots vary ~0.2), in-car (live_compare 
 - In-car: our dash a little darker than the game's (`FM3_COCKPIT_GAIN` for tests: the cockpit shader's light was
   fitted with the old x1.5 in-car exposure, now 1.0), the driver's hands (3), the HUD.
 - RoadAtlanta's exposure: the game's adapted L sits ~0.13 above its scene mean there (Sebring, Motegi, CrownJewel:
-  no offset); our scene matches the game's within 2%. Next: which buffer the luminance pass averages (capture).
+  no offset); our scene matches the game's within 2%. The chain is captured (2026-11-27, LIVE.md): the scene,
+  downsampled by plain sums with exponent-bias resolves, Rec. 709 weights, ToneMapeDelay. Next: the intermediate
+  formats' clamp, the subsample's coverage, and the 32 x 32 result read directly.
 - The HUD (top corners, speedometer) in every game picture: ~31% of the grid's remaining difference; ours, in the
   game's layout, could be switched on in the comparisons once it shows the real race values (see 5).
 - The crowd: static now (2); its animation, the game's dark / light crowd shading (x0.7 fitted), pose / second index.
