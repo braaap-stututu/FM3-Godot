@@ -61,6 +61,7 @@ var _car_back := {}  # car -> true while it moves backwards
 var _car_lit := {}  # car -> brake light amount shown (0..1)
 var _player_brake := -1.0  # the player's brake input ("FM3E" v3; -1 = none)
 var _car_steer := {}  # car -> its own steering, -1..1 ("FM3B" v2)
+var _car_loose := {}  # car -> per wheel (FL FR RR RL) 0 on asphalt .. 1 on gravel ("FM3B" v3: dust)
 var _car_brake := {}  # car -> [brake 0..1, msec received] ("FM3B": every car's, from its physics object)
 var _light_mats := {}  # car -> [[material, "brake" | "reverse"], ...]
 # The live reflection cube is the player's car's only (the game's paint shader picks t6 / t7: the player car's cube,
@@ -2522,6 +2523,9 @@ var _fx_last_mark := {}  # car * 4 + wheel -> the last skid mark point
 var _fx_ready := false
 var _fx_proc: ParticleProcessMaterial = null
 var _fx_quad: QuadMesh = null
+var _fx_dust_proc: ParticleProcessMaterial = null
+var _fx_dust_quad: QuadMesh = null
+var _fx_dust := {}  # car * 4 + wheel -> GPUParticles3D (dust)
 var _skid_mm: MultiMesh = null
 var _skid_next := 0
 const SKID_MAX := 6000
@@ -2575,6 +2579,27 @@ func _fx_setup() -> bool:
 	qm.cull_mode = BaseMaterial3D.CULL_DISABLED
 	qm.disable_receive_shadows = true
 	_fx_quad.material = qm
+	# dust off the track (particles.xml tire_dust: lifetimes 1-2.9 s, sizes 0.2-1.2 m growing 0.75-3.5 m/s, random
+	# velocities up to 0.35 / 0.45 / 0.25, alpha at most 120 / 255; the atlas's top-right quarter)
+	_fx_dust_proc = _fx_proc.duplicate() as ParticleProcessMaterial
+	_fx_dust_proc.spread = 80.0
+	_fx_dust_proc.initial_velocity_min = 0.2
+	_fx_dust_proc.initial_velocity_max = 0.6
+	_fx_dust_proc.damping_min = 0.0
+	_fx_dust_proc.damping_max = 0.0
+	var gd := Gradient.new()
+	gd.set_color(0, Color(1, 1, 1, 0.0))
+	gd.set_color(1, Color(1, 1, 1, 0.0))
+	gd.add_point(0.08, Color(1, 1, 1, 120.0 / 255.0))
+	gd.add_point(0.6, Color(1, 1, 1, 0.25))
+	var gdt := GradientTexture1D.new()
+	gdt.gradient = gd
+	_fx_dust_proc.color_ramp = gdt
+	_fx_dust_quad = _fx_quad.duplicate() as QuadMesh
+	var dm := qm.duplicate() as StandardMaterial3D
+	dm.albedo_color = Color(1, 1, 1)
+	dm.uv1_offset = Vector3(0.5, 0.0, 0.0)
+	_fx_dust_quad.material = dm
 	if FileAccess.file_exists(base + "/treadmark.png"):
 		var pm := PlaneMesh.new()
 		pm.size = Vector2(1.0, 1.0)
@@ -2694,8 +2719,29 @@ func _fx_update(moves: Dictionary, wmoves: Dictionary) -> void:
 				em.global_position = contact + up * 0.15
 				em.emitting = a > 0.02
 				em.amount_ratio = maxf(a, 0.05)
+			# dust: the wheel on a loose surface ("FM3B" v3), more with speed
+			var dl: PackedFloat32Array = _car_loose.get(car, PackedFloat32Array())
+			var dust := 0.0
+			if dl.size() == 4 and dl[k] > 0.5 and speed > 3.0:
+				dust = clampf(speed / 25.0, 0.15, 1.0)
+			var de: GPUParticles3D = _fx_dust.get(key)
+			if dust > 0.0 and de == null:
+				de = GPUParticles3D.new()
+				de.amount = 40
+				de.lifetime = 2.8
+				de.local_coords = false
+				de.process_material = _fx_dust_proc
+				de.draw_pass_1 = _fx_dust_quad
+				de.visibility_aabb = AABB(Vector3(-20, -5, -20), Vector3(40, 30, 40))
+				de.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				root.add_child(de)
+				_fx_dust[key] = de
+			if de != null:
+				de.global_position = contact + up * 0.1
+				de.emitting = dust > 0.0
+				de.amount_ratio = maxf(dust, 0.05)
 			# skid marks: a strip of quads on the road while the wheel slides
-			if _skid_mm != null and a > 0.15:
+			if _skid_mm != null and a > 0.15 and dust == 0.0:
 				if _fx_last_mark.has(key):
 					var p0: Vector3 = _fx_last_mark[key]
 					var d := contact - p0
@@ -4189,6 +4235,15 @@ func _live_step() -> void:
 			# every car's brake (and throttle) from its own physics object (2026-11-27): the brake lights
 			for i in mini(int(b.decode_u32(8)), 16):
 				_car_brake[int(b.decode_u32(12 + 12 * i))] = [b.decode_float(16 + 12 * i), Time.get_ticks_msec()]
+			continue
+		if b.size() == 596 and b.slice(0, 4).get_string_from_ascii() == "FM3B" and b.decode_u32(4) == 3:
+			# v3: + each wheel's loose-surface value (+352 of its block: 1 on the gravel trap) and surface byte
+			for i in mini(int(b.decode_u32(8)), 16):
+				var o3 := 12 + 36 * i
+				var c3 := int(b.decode_u32(o3))
+				_car_brake[c3] = [b.decode_float(o3 + 4), Time.get_ticks_msec()]
+				_car_steer[c3] = b.decode_float(o3 + 12)
+				_car_loose[c3] = PackedFloat32Array([b.decode_float(o3 + 16), b.decode_float(o3 + 20), b.decode_float(o3 + 24), b.decode_float(o3 + 28)])
 			continue
 		if b.size() == 276 and b.slice(0, 4).get_string_from_ascii() == "FM3B" and b.decode_u32(4) == 2:
 			# v2: + each car's own steering (physics +3416): the AI cars' steering wheels and drivers' hands turn by it

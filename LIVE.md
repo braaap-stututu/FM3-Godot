@@ -1284,8 +1284,14 @@ The user's last question was whether to chase the remaining uneven steps or call
   replaced). `tools/fm3_effects.py` exports the two textures to out\effects. `FM3_FX=0` off, `FM3_FX_TEST=1` every
   wheel smoking (looks: thin wisps at each wheel), `FM3_SHOT_NOW=1` takes a live picture without waiting for the
   exposure. Not yet compared with the game's own smoke in the same moment (its stage-B frame has none; with stage B
-  switched off for a shot the slide was over). Not yet: dust / grass / dirt off the track (the atlas's other quarters,
-  the surface under the wheel), sparks, the smoke's colour per track (Tracks\<track>\smoke.dds).
+  switched off for a shot the slide was over). **Dust (~20:15):** the wheel blocks hold the surface: dumps of the
+  player's (scratchpad surfdump.ps1: the grid, driving on asphalt, stopped on CrownJewel's gravel trap) differ only at
+  +352 (a float, 0 on asphalt, 1.0 on the gravel), +620 (a byte at +621: 0 / 0x2D, a surface id) and +416 (one wheel);
+  FM3B v3 streams +352 and +621 per wheel for every car, and the viewer kicks up dust (particles.xml tire_dust: the
+  atlas's top-right quarter, alpha up to 120 / 255, lifetimes ~1-2.9 s, growing) from a wheel on a loose surface,
+  more with speed (from 3 m/s; skid marks not laid there). Not checked in a picture yet (the run's car stops in the
+  gravel within a second). Not yet: grass / dirt by surface id, sparks, the smoke's colour per track
+  (Tracks\<track>\smoke.dds).
 - **The crowd's animations (2026-11-27 ~17:45; PLAN-NEXT 2):** the game animates its 3D people on the GPU: its crowd
   vertex shader 6ee601730a7f9f87 (114 draws on the grid: the near people) skins each person from one 1,201,992-byte
   buffer (fetch 94) that the race load builds by sampling every crowd animation through the codec (sub_82AABED0, at
