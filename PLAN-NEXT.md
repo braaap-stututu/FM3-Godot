@@ -5,7 +5,7 @@ that night and what is left. Each item says where to start, the files involved a
 details of everything done; HANDOFF.md the overall state. Updated 2026-11-27 ~01:05 (the in-car fixes: 4).
 
 **Suggested order (by value against the game and how far each is):** (a) done 2026-11-27: the HUD's race values; (b) the crowd's animations (2: the decoder is located);
-(c) the driver's hands (3: dump the Granny files through the recomp); (d) RoadAtlanta's exposure offset (4);
+(c) the driver's hands (3: dump the Granny files through the recomp); (d) done 2026-11-27: RoadAtlanta's exposure;
 (e) done: lamps / lenses on the live cube; (f) slip telemetry (8); (g) the menus (6, 7). Ask the user which first.
 
 ## 1. The cubemap (done for the paint; finish for the other shaders)
@@ -81,10 +81,10 @@ the car-frame acceleration (FM3E v8). Seat position: the cockpit model's driver 
 CrownJewel grid whole frame 13.92-14.12 (boots vary ~0.2), in-car (live_compare cam3) 19.3 / 18.8 / 17.0.
 - In-car: our dash a little darker than the game's (`FM3_COCKPIT_GAIN` for tests: the cockpit shader's light was
   fitted with the old x1.5 in-car exposure, now 1.0), the driver's hands (3), the HUD.
-- RoadAtlanta's exposure: the game's adapted L sits ~0.13 above its scene mean there (Sebring, Motegi, CrownJewel:
-  no offset); our scene matches the game's within 2%. The chain is captured (2026-11-27, LIVE.md): the scene,
-  downsampled by plain sums with exponent-bias resolves, Rec. 709 weights, ToneMapeDelay. Next: the intermediate
-  formats' clamp, the subsample's coverage, and the 32 x 32 result read directly.
+- Done 2026-11-27: RoadAtlanta's exposure. No offset in the game: our W probe ignored the curve's black point
+  (RoadAtlanta's alone is nonzero; `tools/research/wsolve.py` now), and the viewer measured L after its exposure pass,
+  where the brights are clipped; it now measures the scene before it (a small view of the same world). RoadAtlanta's
+  grid 22.9 -> 17.9; LIVE.md has the chain decoded tap by tap.
 - The HUD (top corners, speedometer) in every game picture: ~31% of the grid's remaining difference; ours, in the
   game's layout, could be switched on in the comparisons once it shows the real race values (see 5).
 - The crowd: static now (2); its animation, the game's dark / light crowd shading (x0.7 fitted), pose / second index.

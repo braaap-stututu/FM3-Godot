@@ -2079,6 +2079,10 @@ var _expo_dl := 1.0  # (the last update's change of L)
 # (tests on a frozen game: the adapted state at once, as the frozen game has it; live_compare / live_track set it)
 var _expo_instant := OS.get_environment("FM3_EXPO_INSTANT") == "1"
 var _expo_old := OS.get_environment("FM3_EXPO_OLD") == "1"  # (A/B: adapt per viewer frame, from the start-up view)
+var _expo_vp: SubViewport = null  # (the measuring view: the scene before the exposure pass)
+var _expo_cam: Camera3D = null
+var _expo_vp_drawn := false
+var _expo_post := OS.get_environment("FM3_EXPO_POST") == "1"  # (A/B: L measured from the picture after the exposure pass, as until 2026-11-27)
 
 
 # FM3's track fog: the track's TrackSettings <Fog> settings (<track>_track.json 'Fog', written by fm3_track_export.py),
@@ -2200,6 +2204,19 @@ func _setup_exposure(gltf_path: String) -> void:
 	if OS.get_environment("FM3_EXPO_SSCALE") != "":
 		_expo_mat.set_shader_parameter("s_scale", float(OS.get_environment("FM3_EXPO_SSCALE")))
 	rect.material = _expo_mat
+	if not _expo_post:
+		# The scene before this pass, for the luminance measurement, as the game's luminance pass reads its scene before
+		# the final pass: a small view of the same world through a copy of the camera, drawn only when a measurement is
+		# due (_exposure_update). (Measured on the picture after this pass, FM3_EXPO_POST=1 as until 2026-11-27,
+		# everything above the white point was clipped: RoadAtlanta's L 0.367 where the game's is 0.400, its scene
+		# clipped at W averaging 0.3666; Sebring ~3% low.)
+		_expo_vp = SubViewport.new()
+		_expo_vp.size = Vector2i(128, 72)
+		_expo_vp.world_3d = root.find_world_3d()
+		_expo_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		_expo_cam = Camera3D.new()
+		_expo_vp.add_child(_expo_cam)
+		root.add_child(_expo_vp)
 	layer.add_child(rect)
 	root.add_child(layer)
 	_expo_apply(0.73)  # (until the first measurement: CrownJewel's grid state)
@@ -2261,11 +2278,35 @@ func _exposure_update() -> void:
 		return
 	var n := _frames - _expo_last
 	_expo_last = _frames
+	var sum := 0.0
+	if _expo_vp != null:
+		# (the scene before the exposure pass, from the measuring view drawn at the last update; then the next one asked
+		# for, through the camera as it is now. The game's units: the pass's s_scale)
+		if _expo_vp_drawn:
+			var im := _expo_vp.get_texture().get_image()
+			var ss := float(_expo_mat.get_shader_parameter("s_scale"))
+			for y in im.get_height():
+				for x in im.get_width():
+					var c := im.get_pixel(x, y)
+					sum += c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722
+			_expo_adapt(sum * ss / float(im.get_width() * im.get_height()), n)
+		var cam := root.get_camera_3d()
+		if cam != null:
+			_expo_cam.global_transform = cam.global_transform
+			_expo_cam.fov = cam.fov
+			_expo_cam.near = cam.near
+			_expo_cam.far = cam.far
+			_expo_cam.keep_aspect = cam.keep_aspect
+			_expo_cam.cull_mask = cam.cull_mask
+			_expo_cam.environment = cam.environment
+			_expo_cam.attributes = cam.attributes
+			_expo_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+			_expo_vp_drawn = true
+		return
 	var img := root.get_texture().get_image()
 	if img == null:
 		return
 	img.resize(64, 36, Image.INTERPOLATE_BILINEAR)
-	var sum := 0.0
 	var toe_on := bool(_expo_mat.get_shader_parameter("display_toe"))
 	for y in 36:
 		for x in 64:
@@ -2273,7 +2314,7 @@ func _exposure_update() -> void:
 			if toe_on:
 				# (the display table undone per pixel: the picture's values before it)
 				c = Color(_untoe(c.r), _untoe(c.g), _untoe(c.b))
-			sum += c.r * 0.2 + c.g * 0.7152 + c.b * 0.0722
+			sum += c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722  # (the luminance pass's pc0: Rec. 709)
 	var y_out := sum / (64.0 * 36.0)
 	var k := float(_expo_mat.get_meta("k", 0.73))
 	var cur := _expo_curve(k)
@@ -2285,6 +2326,11 @@ func _exposure_update() -> void:
 		var x := maxf((yp - cur[1]) / wb, maxf((0.1 - cur[1]) / wb, 0.0))
 		var f := pow(maxf(x, 1e-6), cur[2]) / maxf(yp, 0.1)
 		y_s = maxf(y_out - cur[3], 0.0) / maxf(f, 1e-4)
+	_expo_adapt(y_s, n)
+
+
+# The adapted luminance from this measurement of the scene's (y_s, the game's units) and the curve it selects.
+func _expo_adapt(y_s: float, n: int) -> void:
 	var l_before := _expo_L
 	if _expo_L < 0.0 or _expo_instant:
 		_expo_L = y_s
@@ -2303,6 +2349,13 @@ func _exposure_update() -> void:
 		_expo_live_n += 1
 	if _expo_n % 5 == 1:
 		print("world_view: exposure: L %.4f (frame %.4f) k %.3f W %.4f" % [_expo_L, y_s, _expo_k(_expo_L), _expo_curve(_expo_k(_expo_L))[0]])
+
+
+# The viewer's picture as shown (the exposure pass's alpha carries a measurement: dropped).
+func _root_picture() -> Image:
+	var img := root.get_texture().get_image()
+	img.convert(Image.FORMAT_RGB8)
+	return img
 
 
 func _cars_pending() -> bool:
@@ -2700,7 +2753,7 @@ func _live_step() -> void:
 	elif _out != "" and FileAccess.file_exists(_out + ".shot"):
 		_shot_held_since = -1
 		DirAccess.remove_absolute(_out + ".shot")
-		root.get_texture().get_image().save_png(_out)
+		_root_picture().save_png(_out)
 		print("world_view: saved ", _out)
 		if OS.get_environment("FM3_DUMP_LIVE_CUBE") != "":
 			# (debug: the live cube's six faces beside the picture, <out>.cube<k>.png, k = +x -x +y -y +z -z in glTF
@@ -3455,7 +3508,7 @@ func _process(_delta: float) -> bool:
 			"triple" if not _screens.is_empty() else "single", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)])
 		quit(0)
 	if _frames == 5 and _screens.is_empty():
-		var img := root.get_texture().get_image()
+		var img := _root_picture()
 		img.save_png(_out)
 		print("world_view: saved ", _out)
 		if _bench == 0:

@@ -1,5 +1,11 @@
 # HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-27)
 
+**2026-11-27 morning (09:38-11:40):** HUD race values from the game (FM3E v9: race clock, place, segment -> laps;
+FM3-ReGPU 478cd0f), the game's luminance chain decoded tap by tap, and RoadAtlanta's "exposure offset" solved: our W
+probe ignored the curve's black point, and the viewer measured L after its own exposure pass (brights clipped); it
+now measures the scene before it through a small view of the same world (RoadAtlanta 22.9 -> 17.9, CrownJewel grid
+14.0 / chase 14.5 / in-car 17.6, viewer +4% fps). LIVE.md and PLAN-NEXT.md have the details.
+
 **Start the next session here (stopped 2026-11-27 ~01:05, after a full day and night of sessions).** Everything is
 committed and pushed (frame-ir `live-mirror` = master; FM3-ReGPU unchanged since 2026-11-25, `origin/main`).
 **`PLAN-NEXT.md` is the work plan** (the user's list of 2026-11-26 22:50, item by item: what was done, what is left,

@@ -1,7 +1,9 @@
 # The game's exposure on any Free Play track (2026-11-26): boots FM3 to environment -Index (tour.ps1's list), freezes in
 # the countdown, then edits the final pass (ps 5b7efac9b0c87a00) live to output its vertex interpolants, with the display
-# gamma off (REGPU_NO_GAMMA), and saves a shot per mode. input.o[1].y = 0.1 / W (the exposure's white point), so W =
-# 0.4 / (pixel / 255) in mode 1. Compare with the viewer's own W (world_view.gd logs "exposure: L .. k .. W ..").
+# gamma off (REGPU_NO_GAMMA), and saves a shot per mode. input.o[1].y = (0.1 - B) / (W - B) (W the exposure's white
+# point, B its black point: 2026-11-27, from the vertex shader 2a342f670b5bb28a; 0.1 / W only where B = 0, e.g. not
+# RoadAtlanta's light curve, B 10 / 255), so mode 1's pixel / 255 x 0.25 is that: solve for the blend k with the track's
+# dark / light curves (W = lerp(dark white, light white, k) / 255 - 0.0006, B = lerp(..black..) / 255). Compare with the viewer's own W (world_view.gd logs "exposure: L .. k .. W ..").
 param([int]$Index = 17, [string]$Name = 'sebring', [string]$Out = "$env:TEMP\wtrack", [double]$FreezeAfter = 11.0, [string]$Modes = '1,2,3,4,5,6,7')
 $ErrorActionPreference = 'Continue'
 $g = (Resolve-Path "$PSScriptRoot\..\..\..").Path

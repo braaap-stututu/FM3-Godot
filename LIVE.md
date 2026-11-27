@@ -821,7 +821,7 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   0.02 = the 2% measured in its capture): CrownJewel 0.05, RoadAtlanta 0.023, LeMans 0.15, NewYork 0.1, SunsetInfield /
   Tsukuba 1 (no adaptation lag), RoadAmerica 0.01. `fm3_track_export.track_tone` writes it as Tone 'delay' (all 17
   scenes patched); the viewer adapts by it (frozen-frame tests unaffected: they adapt at once).
-  **RoadAtlanta's exposure (open):** the game's W there is 1.024 (`wtrack.ps1 -Index 16`), ours settles at 0.80 on the
+  **RoadAtlanta's exposure (solved 2026-11-27, see below: the probe's formula, then our measurement's clipping):** the game's W there is 1.024 (`wtrack.ps1 -Index 16`), ours settles at 0.80 on the
   same moment: the game's scene before the exposure is ~1.15-1.25x ours (per pixel, uniform over sky / road / walls,
   more in the darks: an offset of ~0.07 fits as well as a scale), while Sebring's matched (0.953 vs 0.946-0.966). A
   x1.25 scene scale made RoadAtlanta worse (23.8 -> 24.8, another boot): not a plain scale. Our darks there are ~14
@@ -854,6 +854,24 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   plain average of the scene, as decoded; RoadAtlanta's L ~0.13 above our measured scene mean stays open. Next: the
   intermediate formats (2_10_10_10: a clamp of bright areas?), the subsample's coverage, and reading the 32 x 32 result
   directly (a ps edit of the bright pass, which reads it as vs:t17).
+  **Solved the same morning.** The shaders, read whole: `98c5` takes 16 bilinear taps per row of the 64 x 32 (u = k /
+  16 + 1 / 32: columns 1-2 of every 4) and averages them (its constant is pc255 = 0.0625 / 0 / 0.03125 / 1, not pc0);
+  the luminance pass takes 16 taps down the middle column (v = k / 16 + 1 / 32: every row pair), averages, weights by
+  Rec. 709 and blends into last frame's L (t1, k_32_FLOAT at 18C25000) by ToneMapeDelay. The chain simulated on the
+  game's own scene (`rap-p6`): 0.3995 against a plain mean of 0.410. A live test (scratchpad `lumstuck.ps1`): the
+  luminance pass edited to output its fresh mean (`ps 4a17014edfabf5f0 float4((r0.x + r0.y).xxx, 1)`): the game's L
+  0.4009 = the simulation. **Two errors were ours:** (1) the W probe: the final pass's vertex shader makes
+  `o[1].y = (0.1 - B) / (W - B)`, not 0.1 / W; B (the curve's black point) is 0 on every track but RoadAtlanta's light
+  curve (10 / 255), so only RoadAtlanta's L read ~0.03-0.06 high (the "offset"). `tools/research/wsolve.py` solves a
+  probe shot for k / W / L with the track's curves. (2) The viewer measured L on its picture *after* the exposure
+  pass, where everything above the white point is clipped: RoadAtlanta's game scene clipped at W averages 0.3666, the
+  viewer read 0.367, the game 0.400. Now (world_view.gd `_expo_vp`) a 128 x 72 SubViewport of the same world through a
+  copy of the camera, drawn once per measurement (every 10 frames), gives the scene before the pass, as the game's
+  chain reads it (`FM3_EXPO_POST=1`: the old way). RoadAtlanta's grid, one boot: game L 0.371 (W 0.661), ours 0.377
+  (W 0.670), before 0.334 (W 0.600); whole frame 22.9 -> 17.9. Also: while the world is frozen (FM3_FREEZE_TIME) the
+  game's L stops adapting (0.390 for 10 s with the fresh mean at 0.401), so a frozen game keeps the L of the moment it
+  froze: the live tests' FM3_EXPO_INSTANT is right only once the view has been still a few seconds (RoadAtlanta's
+  freeze at 8 s lands on a close-up right after a cut, the game's L still at the top of its curve: use 11 s).
   The same-boot probe: scratch `lensiter.ps1 -Probe` (t0 / W / 0.5 shots after the variants); `wtrack.ps1` numbers
   repeated modes (w1, w1-1).
 - **The AI cars' static-cube reflection is looked up wrongly** (2026-11-26 late; the user: the game's Eclipse shows
