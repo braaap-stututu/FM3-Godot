@@ -58,6 +58,7 @@ var _car_accel := {}  # car -> acceleration along its path, m/s2 (smoothed)
 var _car_back := {}  # car -> true while it moves backwards
 var _car_lit := {}  # car -> brake light amount shown (0..1)
 var _player_brake := -1.0  # the player's brake input ("FM3E" v3; -1 = none)
+var _car_steer := {}  # car -> its own steering, -1..1 ("FM3B" v2)
 var _car_brake := {}  # car -> [brake 0..1, msec received] ("FM3B": every car's, from its physics object)
 var _light_mats := {}  # car -> [[material, "brake" | "reverse"], ...]
 # The live reflection cube is the player's car's only (the game's paint shader picks t6 / t7: the player car's cube,
@@ -1827,15 +1828,24 @@ static func wheel_transform(b: PackedByteArray, k: int, axes: PackedFloat32Array
 # from the game's value through carattribs.xml's TickMarks (linear between them, extended past the ends), then the
 # angle (min -> mid for 0..0.5, mid -> max for 0.5..1, fm3_track_export.py needle_turn). Speed: the car's own speed
 # (m/s, from its streamed matrices); tach: the player's engine speed ("FM3E"; idle until one comes); fuel: full.
+var _steer_log_ms := 0
+
+
 func needle_turn(n: Dictionary, car) -> Transform3D:
 	var gauge := String(n.get("gauge", ""))
 	if gauge == "steering":
 		# turning right = clockwise seen from the driver = negative about the axis (which points at the driver)
 		var deg := 0.0
-		if _steer_mode == "input":
+		if car != _live_player and _car_steer.has(car) and OS.get_environment("FM3_AI_STEER") != "0":
+			# (another car: its own steering from its physics object, not the player's stick)
+			deg = float(_car_steer[car]) * float(n.get("game_deg", STEER_GAME_DEG)) * (-1.0 if OS.get_environment("FM3_AI_STEER_FLIP") == "1" else 1.0)
+		elif _steer_mode == "input":
 			deg = _steer * 0.5 * (_steer_lock if _steer_lock > 0.0 else _wheel_lock_arg)
 		elif _steer_mode == "game":
 			deg = _steer * float(n.get("game_deg", STEER_GAME_DEG))
+		if OS.get_environment("FM3_STEER_LOG") == "1" and car == _live_player and Time.get_ticks_msec() - _steer_log_ms > 1000:
+			_steer_log_ms = Time.get_ticks_msec()
+			print("world_view: steering: the player's stick %.3f, its physics object %.3f" % [_steer, float(_car_steer.get(car, 0.0))])
 		var ax: Array = n["axis"]
 		var pv0: Array = n["pivot"]
 		var sb := Basis(Vector3(ax[0], ax[1], ax[2]).normalized(), -deg_to_rad(deg))
@@ -4134,6 +4144,14 @@ func _live_step() -> void:
 			# every car's brake (and throttle) from its own physics object (2026-11-27): the brake lights
 			for i in mini(int(b.decode_u32(8)), 16):
 				_car_brake[int(b.decode_u32(12 + 12 * i))] = [b.decode_float(16 + 12 * i), Time.get_ticks_msec()]
+			continue
+		if b.size() == 276 and b.slice(0, 4).get_string_from_ascii() == "FM3B" and b.decode_u32(4) == 2:
+			# v2: + each car's own steering (physics +3416): the AI cars' steering wheels and drivers' hands turn by it
+			for i in mini(int(b.decode_u32(8)), 16):
+				var o_ := 12 + 16 * i
+				var c_ := int(b.decode_u32(o_))
+				_car_brake[c_] = [b.decode_float(o_ + 4), Time.get_ticks_msec()]
+				_car_steer[c_] = b.decode_float(o_ + 12)
 			continue
 		if b.size() == 2068 and b.slice(0, 4).get_string_from_ascii() == "FM3P" and b.decode_u32(4) == 3:
 			_parts_packet(b)

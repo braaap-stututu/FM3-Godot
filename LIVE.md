@@ -1257,6 +1257,10 @@ The user's last question was whether to chase the remaining uneven steps or call
     its last overlay for those frames and 0.3 s after (the copies lag a frame or two). Cost: a 0.5 s pause of
   stage B after a crash (the game draws everything for those frames). `FM3_PARTS=0` off, `FM3_PARTS_LOG=1` why a
   report was not applied.
+- **Every car's own steering (FM3B v2, 2026-11-27 ~19:40):** the AI cars' steering wheels (and now their drivers'
+  hands) turned with the player's stick. FM3B now carries each car's steering from its physics object (+3416; the
+  player's equals its stick: -1 / -1 at full left), and the viewer turns other cars' wheels by it (FM3_AI_STEER=0: as
+  before; FM3_STEER_LOG=1 prints the player's two values).
 - **Tyre smoke and skid marks (2026-11-27 ~19:30):** the game draws them in the world steps stage B skips (its stage-B
   frame is plain grey: no particles there). The viewer makes its own from each wheel's lateral slip: the angle between
   the wheel's ground velocity (its centre between viewer frames) and its rolling direction (the axle of its streamed
