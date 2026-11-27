@@ -49,7 +49,7 @@ Start-Sleep 2
 function Compare-View([string]$name) {
     Remove-Item $liveOut -ErrorAction SilentlyContinue
     New-Item -ItemType File "$liveOut.shot" -Force | Out-Null
-    for ($i = 0; $i -lt 20 -and -not (Test-Path $liveOut); $i++) { Start-Sleep -Milliseconds 250 }
+    for ($i = 0; $i -lt 80 -and -not (Test-Path $liveOut); $i++) { Start-Sleep -Milliseconds 250 }  # (up to 20 s: the viewer holds a shot until its cars are in and the exposure settled)
     Copy-Item $liveOut "$out\$name-godot.png" -Force
     Save-Fm3Shot "live-$name.png" | Out-Null
     Copy-Item "$r\out\shots\live-$name.png" "$out\$name-game.png" -Force

@@ -1867,6 +1867,31 @@ var _dmg_job := {}  # the deformation in progress (car, table, next part)
 var _dmg_pre := {}  # car -> [lattice key, per part: vertex index, cell, place in the cell, direction]
 var _dmg_moved := {}  # car -> true: its meshes were rebuilt once (a later all-zero table puts them back)
 var _dmg_parts := {}  # car -> [[MeshInstance3D, original vertices, directions], ...]
+var _dmg_pending := {}  # car -> [its scene, <car>_damage.bin]: not loaded until the car is damaged
+var _dmg_zero := PackedByteArray()  # (32,000 zero bytes: an undamaged table)
+
+
+# The car's damage directions and parts, loaded the first time they are needed (a damaged table or a parts report for a
+# damaged car): at attach they cost ~0.27 s a car, for cars that mostly never crash.
+func _damage_ensure(car) -> bool:
+	if _dmg_parts.has(car):
+		return true
+	if not _dmg_pending.has(car):
+		return false
+	var pe: Array = _dmg_pending[car]
+	_dmg_pending.erase(car)
+	if not is_instance_valid(pe[0]):
+		return false
+	var t0 := Time.get_ticks_usec()
+	_damage_parts_load(car, pe[0], String(pe[1]))
+	print("world_view: car %08X damage data loaded (%d ms)" % [car, (Time.get_ticks_usec() - t0) / 1000])
+	return _dmg_parts.has(car)
+
+
+func _damage_any(car) -> bool:
+	if _dmg_zero.size() != 32000:
+		_dmg_zero.resize(32000)
+	return _dmg_raw.has(car) and (_dmg_raw[car] as PackedByteArray) != _dmg_zero
 var _dmg_on := OS.get_environment("FM3_DAMAGE") != "0"
 
 
@@ -2025,7 +2050,7 @@ func _damage_update() -> void:
 		if _dmg_job.is_empty():
 			var start = null
 			for car in _dmg_dirty.keys():
-				if _dmg_parts.has(car) and (not _dmg_applied.has(car) or now - int(_dmg_applied[car]) >= 500):
+				if (_dmg_parts.has(car) or _dmg_pending.has(car)) and (not _dmg_applied.has(car) or now - int(_dmg_applied[car]) >= 500):
 					start = car
 					break
 			if start == null:
@@ -2055,6 +2080,8 @@ func _damage_start(car) -> void:
 			break
 	if not any and not _dmg_moved.has(car):
 		return  # (undamaged and never moved: nothing to do)
+	if not _damage_ensure(car):
+		return
 	_dmg_moved[car] = true
 	var lat: Array = _dmg_lat[car]
 	var key := str(lat)
@@ -2168,8 +2195,8 @@ func _parts_packet(b: PackedByteArray) -> void:
 	if OS.get_environment("FM3_PARTS") == "0":
 		return
 	var car := int(b.decode_u32(8))
-	if not _dmg_groups.has(car):
-		return
+	if not _dmg_groups.has(car) and not (_damage_any(car) and _damage_ensure(car)):
+		return  # (an undamaged car: its parts are all on)
 	var sizes := {}
 	var loose := {}
 	var n_on := mini(int(b.decode_u32(12)), 255)
@@ -3306,7 +3333,7 @@ func _attach_library_car(car) -> void:
 		n += 1
 	if _drop_shadows():
 		_add_drop_shadow(scene_, car, a_att, w_att)
-	_damage_parts_load(car, scene_, base + "_damage.bin")
+	_dmg_pending[car] = [scene_, base + "_damage.bin"]  # (loaded once the car is damaged: ~0.27 s a car, _damage_ensure)
 	_live_player = -2  # (re-evaluate has_live: this car's new paint / glass materials may be the player's)
 	_library_cars[car] = true
 	print("world_view: live car %08X is %s colour %s: %d meshes from the car library (%d ms; paint %s)" % [car, info["name"], key, n, Time.get_ticks_msec() - t0, paint_col])
