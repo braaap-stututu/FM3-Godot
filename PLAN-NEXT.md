@@ -24,7 +24,7 @@ The older items below are updated where done (2, 3).
    read each one's constants with a `REGPU_TRACE_VC=1` capture (the "(read)" marks give the packed ranks) and light
    our subsets per shader. Opt-in modes so far: `FM3_COCKPIT_PRT=1` (the transfer's ambient + n.l x Godot's shadow,
    16.2) and `=2` (the headliner shader for all, 17.4). Only the CR-X si's cockpit has the transfer data (rebuild the
-   library: tools/fm3_car_library.py, 2.5 s a car, ~20 min for all). First settle the catch in LIVE.md "The cockpit's light" (~22:55):
+   library: tools/fm3_car_library.py, 2.5 s a car, ~20 min for all). First settle the catch in LIVE.md "The cockpit's light" (~22:45):
    the headliner draw carries the gauge needle's MinDiffuse / UseDiffuseInsteadOfSH / GaugeEmissiveScale (stale
    registers, or our cockpit subset names off by one); the parameter names per register are now known
    (shaders_v11.fxobj containers 65 / 66 / 71 / 78).

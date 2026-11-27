@@ -1433,7 +1433,7 @@ The user's last question was whether to chase the remaining uneven steps or call
   CockpitSpecularAmount / Amount2 / Power / Power2, CockpitGaugeColor, CockpitBumpScale / Bias, CockpitNormalScale,
   MinDiffuse, UseDiffuseInsteadOfSH, MinShadowValue: start from tools/fm3_trackshader.py, which already reads .fxobj
   parameters for the track shaders, to get each cockpit material's defaults; shadersettings.xml overrides per car.)
-  (~22:55, done: fm3_trackshader.containers over shaders_v11.fxobj, the registers that differed: containers 65 / 66 and
+  (~22:45, done: fm3_trackshader.containers over shaders_v11.fxobj, the registers that differed: containers 65 / 66 and
   71 / 78 are the cockpit pixel shaders: c116 MinDiffuse (default 0), c117 UseDiffuseInsteadOfSH (0), c118 / c119
   CockpitSpecularPower / Power2 (3 / 5), c180 CockpitSpecularAmount (0.3; the draws had 0.09 = TrackSettings
   CockpitSpecularAmount), c189 CockpitSpecularAmount2 (1), c190 MinShadowValue (0.25) or CockpitPlasticPaintScale,
