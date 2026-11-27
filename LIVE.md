@@ -1466,7 +1466,9 @@ The user's last question was whether to chase the remaining uneven steps or call
   744 09716012 rubber, 745 09716012 solid. Open: the same index list is low, out-of-view geometry in our decode;
   vs 6190 reads the position as (t.x, t.w, t.y) x t.z + vc180 from its half4 (fetch swizzle t.y, t.x, t.w, t.z then
   .yzx): compare with the textured family's (618013738ec64643) and with fm3_carbin.vertices (x, y, z) x w; a part /
-  vertex-base mix-up for this subset is the other candidate. Also seen: hiding the
+  vertex-base mix-up for this subset is the other candidate. (~22:55, tested: decoding the subset with 6190's component order
+  instead spreads it over y -0.28 .. 1.16, no roof; the section offset (0, 0.517, 0.488) equals the draw's vc180, so
+  our decode agrees with the game's. Still open.) Also seen: hiding the
   cockpit's `window` gives in-car 16.1 (16.4): the inside of the cockpit glass costs a little. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
   29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
   until the animation is in, the user's call.
