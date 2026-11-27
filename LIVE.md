@@ -1448,10 +1448,11 @@ The user's last question was whether to chase the remaining uneven steps or call
   its one parameter is CockpitHeadlinerColor, c116 = 0.24 in the draw (the CR-X's headliner colour). So the game draws
   the subset at indices 13260 ... (our `leather`) with the headliner shader, and the tint run's roof + pillar magenta
   for 3bb8 fits that; ps 1074f157 (draw #737, indices 3870 ..., our `headliner`) fits containers 65 / 66 / 71 / 78 /
-  74-85 (one of the cockpit families). Our cockpit subset -> material names are probably permuted (the carbin's
-  material table read in the wrong order for the cockpit?). The contradiction left: our vertex positions for the
-  13260 subset lie low (y <= 0.6), not at the roof. Settle that first: if the names are permuted, the roof and pillar
-  get the game's flat headliner colour (0.24) and the whole cabin's materials shift. Also seen: hiding the
+  74-85 (one of the cockpit families). Draws #733-746 all read the same vertex buffer (13CA2160, the interior's
+  23,687 vertices), so the 13260 subset really is the low geometry (y <= 0.6): most likely our names are right and
+  the game draws `leather` with that flat-colour shader (its parameter merely named CockpitHeadlinerColor), the
+  roof + pillar tint being a lagged edit; the alternative (our names permuted) is not excluded. To settle: tint 3bb8
+  again with a long wait and look, or render our 13260 subset alone. Also seen: hiding the
   cockpit's `window` gives in-car 16.1 (16.4): the inside of the cockpit glass costs a little. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
   29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
   until the animation is in, the user's call.
