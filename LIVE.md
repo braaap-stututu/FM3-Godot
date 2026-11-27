@@ -1237,6 +1237,18 @@ The user's last question was whether to chase the remaining uneven steps or call
   on CrownJewel with 842 lightmap textures; packing the lightmaps into atlases in fm3_track_export.py would let the
   groups merge (per material and spatial cell, to keep culling), then rebuild the tracks. The game's per-instance LOD
   distances (.pvs instances, e.g. 80 / 160 / 240 m on ~500 of CrownJewel's 2,635) could then become visibility ranges.
+- **Optimizing, round 2 (2026-11-27 ~16:30; frozen CrownJewel grid, stage B, the game running beside it; scratchpad
+  perfab.ps1 starts one game and several viewers in turn, 50 s each; `FM3_FPS_LOG=1` now also prints draw calls by
+  pass):** base ~40 fps: main view 2,192 draw calls + 1,314 for its shadows, the live cube ~1,000 + ~230 a frame (2 of
+  6 faces). Measured variants: both suns at 2 cascades (`FM3_SUN_SPLITS=2`) ~41, shadows 150 m (`FM3_SHADOW_DIST`)
+  ~40, no shadows ~43, 1 cube face a frame ~45, no 3D crowd ~41, MSAA off ~39: the viewer is CPU-bound (our script
+  ~7.5 ms of a 25 ms frame: exposure 1.3, feed 1.3, packets 0.9, cars 2.7), not GPU-bound. The objects were the lever:
+  8 library cars x ~90 body meshes (+ ~40 wheel / brake). **Car bodies merged by material** (`_merge_car_body`: a car's
+  carbin_<car>_<material>_<n> meshes of one glTF material become one, ~54 -> ~13; lamps, glass, lenses, gauges,
+  mirrors, badges kept apart; the damage directions follow, meta dmg_src): **~40 -> ~50 fps**, main 2,192 -> 1,828,
+  shadows 1,314 -> 898; the picture the same (mean 0.1 between two runs). `FM3_CAR_MERGE=0` off. Visibility ranges
+  for small track meshes (`_visibility_ranges`, <= 6 m across, hidden beyond 40 x size; FM3_VIS_K=0 off) hit only 64
+  of CrownJewel's 1,928 meshes (the track is already merged into big groups): no measurable change, kept.
 - **Lightmap atlas in the track export (fm3_track_export.py atlas_lightmaps, on by default, --no-lm-atlas off):** the
   groups were split by their lightmap texture; the lightmaps whose parts keep their UVs in 0..1 (+-0.01, clamped) are
   packed into 4096-wide pages (lmpage_NN.png, 4 px of their own edge around each) and the groups that then differ only
