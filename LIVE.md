@@ -1479,7 +1479,9 @@ The user's last question was whether to chase the remaining uneven steps or call
   winning, which hides 1074's roof in its tint (but needs our `leather` list at the roof, which our decode does not
   give); or the capture's index print belonging to another draw. Next: render our 13260 list alone in the viewer
   (look-from the in-car camera) and the game's draw #738 alone (`REGPU_SKIP_SHADERS` / a ps edit to discard all but
-  it), and compare where each lands. Also seen: hiding the
+  it), and compare where each lands. (~23:00, tried offline: our decoded vertices through vs 6190's opos arithmetic with draw
+  #738's vc0-3: the leather list lands off-screen, but the headliner list does not come out as a clean roof band either
+  (y 163-697 or 496-587 for the two fetch-order guesses), so the emulation itself is unverified: inconclusive.) Also seen: hiding the
   cockpit's `window` gives in-car 16.1 (16.4): the inside of the cockpit glass costs a little. **The driver measured:** `FM3_DRIVER=0` in-car 16.4 -> 15.6 (hands regions |diff| 33.6 ->
   29.8 and 52.4 -> 31.2): the posed-without-animation arms cost more than they add; kept on (the game shows its driver)
   until the animation is in, the user's call.

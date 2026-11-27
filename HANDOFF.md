@@ -1,6 +1,6 @@
 # HANDOFF: the FM3 renderer-replacement project, where it stands (2026-11-27)
 
-**2026-11-27 evening session (14:09 -> midnight; the user's notes, PLAN-NEXT section 0; status ~22:45; next: PLAN-NEXT section 0's open list):**
+**2026-11-27 evening session (14:09 -> midnight; the user's notes, PLAN-NEXT section 0; status ~23:00, stopped; next: PLAN-NEXT section 0's open list):**
 - From the user's list: brake lights binary per car (FM3B), the countdown vignette key, wheels spinning in stage B,
   glossy badges. **Crash damage, end to end:** each car's damage lattice mapped through a ReGPU fetch watch and
   streamed (FM3D), the library cars bent on the CPU (loaded when a car is first damaged); parts the game knocks off
@@ -48,6 +48,12 @@
   texture there; the game's dash / headliner shader constants decoded, one term still misread). Smoke against the
   game at the same moment: at 26 degrees of slip ours smokes, the game's frame does not yet (one sample). In-car open
   list: the pillar, the warning-lamp panel (game 4.3, ours 90.5), the driver's arms (cost 0.8 of the in-car score).
+- ~22:30-23:00: the cockpit's draws mapped to our subsets (same-boot tint + capture: LIVE.md "The cockpit's light");
+  the cockpit shaders' parameters named from shaders_v11.fxobj (MinDiffuse, UseDiffuseInsteadOfSH, CockpitSpecular*,
+  MinShadowValue, CockpitHeadlinerColor ...); open contradiction: in the game the roof / A-pillar are drawn from the
+  index list our decode places low and out of view (and our roof list is the game's cluster surround). That is the
+  first job next session: it likely explains the cabin's remaining errors. Final regression: grid / chase / in-car
+  14.4 / 15.0 / 16.5; stage B round trip passes.
 
 **2026-11-27 afternoon: stage B, as a switch** (user: boot the game and race without its own rendering costing the
 frame rate). Launcher "Godot renders races (stage B)" / settings.ini `stage_b=1`: in races the game stops drawing the
