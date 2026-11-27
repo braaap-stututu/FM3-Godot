@@ -1419,7 +1419,7 @@ The user's last question was whether to chase the remaining uneven steps or call
   in-car 17.4; k 0.4 18.1 (roof 40.9). The dash subsets are other shaders of that family (e.g. plastic = 4d69c593)
   with their own constants: one formula for all cockpit materials does not hold. Mode 1 stays the better opt-in
   (16.2); the default the old fitted light. (The cockpit glass no longer casts in these modes: no change.)
-  **The key for next time (~22:50):** the cockpit shaders of that family share one constant layout of *material
+  **The key for next time (~22:45):** the cockpit shaders of that family share one constant layout of *material
   parameters*; the headliner (draw #737) and the plastic (draw #742) differ only there: pc116 0.5 / 0, pc117 0.5 / 0,
   pc118 3 / 1, pc119 5 / 1.2, pc180 0.09 / 0.042, pc189 0.7 / 0.16, pc190 0.25 / 0.35, pc191 2 / 0.25 (the rest equal:
   sun pc136, SHDir pc179, camera pc206, pc207 0.301 / 0.501, pc209 1.5). pc116 / pc117 look like the shadersettings
