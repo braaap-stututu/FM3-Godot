@@ -1196,20 +1196,27 @@ func _crowd3d() -> void:
 		var g: Array = groups[key]
 		mm.instance_count = g.size()
 		var xfs := []
+		var bones_ := 17
 		for i in g.size():
 			var q: Array = g[i]
 			var b := Basis(Vector3.UP, float(q[5]) + yaw0)
 			xfs.append(Transform3D(b, Vector3(q[2], q[3], q[4])))
 			mm.set_instance_transform(i, xfs[i])
 			if animated:
-				# the person's animation: its class's idle list (spectators.xml), one picked per person, a start frame
-				# of its own (the game picks too; which one is not in the record)
+				# the person's animations: one from its class's idle list and one from its cheer list (spectators.xml;
+				# the idle again if the class has none), a start frame of its own in the shader (the game picks too;
+				# which one is not in the record)
 				var cl: Dictionary = anim_classes.get(CROWD_CLASSES[clampi(int(q[1]), 0, CROWD_CLASSES.size() - 1)], {})
 				var lst: Array = cl.get("idle", [])
+				var chl: Array = cl.get("cheer", [])
 				var h := absi(int(q[2] * 97.0) * 31 + int(q[4] * 89.0) * 17 + i)
 				if not lst.is_empty() and anims.has(lst[h % lst.size()]):
 					var an: Array = anims[lst[h % lst.size()]]
-					mm.set_instance_custom_data(i, Color(float(an[0]), float(an[1]), float(an[2]), float(h % int(an[1]))))
+					var ch: Array = an
+					if not chl.is_empty() and anims.has(chl[(h / 7) % chl.size()]):
+						ch = anims[chl[(h / 7) % chl.size()]]
+					bones_ = int(an[2])
+					mm.set_instance_custom_data(i, Color(float(an[0]), float(an[1]), float(ch[0]), float(ch[1])))
 				else:
 					mm.set_instance_custom_data(i, Color(0, 0, 0, 0))
 		_crowd_sets.append([mm, xfs])
@@ -1238,6 +1245,10 @@ func _crowd3d() -> void:
 			cs.set_shader_parameter("anim_tex", _crowd_anim_tex)
 			cs.set_shader_parameter("anim_on", true)
 			cs.set_shader_parameter("tex_width", _crowd_anim_w)
+			cs.set_shader_parameter("bones", bones_)
+			cs.set_shader_parameter("cars_tex", _crowd_cars_tex())
+			if OS.get_environment("FM3_CROWD_CHEER_M") != "":
+				cs.set_shader_parameter("cheer_r", float(OS.get_environment("FM3_CROWD_CHEER_M")))
 			mmi.material_override = cs
 		elif OS.get_environment("FM3_CROWD3D_K") != "0" and mesh.get_surface_count() > 0:
 			# (the people's brightness under Godot's light: x0.7 fitted (CrownJewel people 38.8 -> 29.5, mean 69 / 63 / 57
@@ -1258,6 +1269,36 @@ var _crowd_sets := []  # [MultiMesh, [Transform3D per person]]
 const CROWD_SHADER := preload("res://viewer/fm3_crowd.gdshader")
 const CROWD_CLASSES := ["Sitting", "Standing", "Drunk", "Photographer", "Marshall", "PitWorker"]  # (the record's second index)
 var _crowd_anim_tex: ImageTexture = null
+var _cheer_img: Image = null
+var _cheer_tex: ImageTexture = null
+var _cheer_ms := 0
+
+
+# The cars' positions for the crowd's cheering (fm3_crowd.gdshader): one 16 x 1 float texture all crowd materials
+# share, updated ten times a second from the cars' scenes (FM3_CROWD_CHEER_M=<m> the distance, default 60; 0 = never).
+func _crowd_cars_tex() -> ImageTexture:
+	if _cheer_tex == null:
+		_cheer_img = Image.create_empty(16, 1, false, Image.FORMAT_RGBAF)
+		_cheer_img.fill(Color(0, 0, 0, 0))
+		_cheer_tex = ImageTexture.create_from_image(_cheer_img)
+	return _cheer_tex
+
+
+func _crowd_cheer_update() -> void:
+	var now := Time.get_ticks_msec()
+	if _cheer_tex == null or now - _cheer_ms < 100:
+		return
+	_cheer_ms = now
+	_cheer_img.fill(Color(0, 0, 0, 0))
+	var k := 0
+	for c in _car_scene:
+		var sc_ = _car_scene[c]
+		if k >= 16 or not is_instance_valid(sc_) or not (sc_ as Node3D).visible:
+			continue
+		var p := (sc_ as Node3D).global_position
+		_cheer_img.set_pixel(k, 0, Color(p.x, p.y, p.z, 1.0))
+		k += 1
+	_cheer_tex.update(_cheer_img)
 var _crowd_anim_w := 2048
 var _crowd_sd := 0.0  # SpriteDistance (m); 0 = every person in 3D
 
@@ -4909,6 +4950,7 @@ func _update_live_cars(cam: Transform3D, moves: Dictionary, wmoves: Dictionary, 
 				gi.visible = not mine
 	_cars_gone_update()
 	_fx_update(moves, wmoves)
+	_crowd_cheer_update()
 	if (_feed_tag & 0x100) != 0 and OS.get_environment("FM3_WHEEL_SPIN") != "0":
 		_spin_wheels(moves, wmoves)
 	if OS.get_environment("FM3_WHEEL_LOG") == "1" and wmoves.has(player) and moves.has(player):

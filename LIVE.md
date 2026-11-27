@@ -1323,8 +1323,14 @@ The user's last question was whether to chase the remaining uneven steps or call
   same way in `fm3_crowd.gdshader` (the buffer as a 2048 x 147 float texture; bones / weights in the people's UV2,
   `fm3_spectators.py`; per person INSTANCE_CUSTOM = first entry, frames, bones, start frame: its class's idle list,
   one picked per person, looped at 30 a second). Two viewer shots 8 s apart: the pit workers change pose (one arm
-  out, as in the game's frame). Not yet: cheering when cars pass (the classes' cheer lists), which idle the game
-  picks per person. `FM3_CROWD_ANIM=0` still people. (Earlier dead ends, kept in PLAN-NEXT 2: the skeleton
+  out, as in the game's frame). Which idle the game picks per person is not known (one is picked per person here).
+  **Cheering (~20:35):** each person carries one idle and one cheer animation (its class's lists; Drunk, Photographer,
+  Marshall and PitWorker have no cheer list and keep their idle; Sitting's idle is Sit_Cheer_01 anyway) and cheers
+  while a car is within 60 m (`FM3_CROWD_CHEER_M`; the game's distance rule is in its code, not spectators.xml): the
+  cars' positions in one shared 16 x 1 float texture, updated ten times a second, the choice in the vertex shader.
+  Live grid: forced to 1 km the standing people on the right raise their arms (crop mean diff 3.8 against no
+  cheering), the photographer keeps his pose; fps unchanged (~50 both ways). On the real grid few people are within
+  60 m (the seated grandstand and the pit workers), so the default changes little there. `FM3_CROWD_ANIM=0` still people. (Earlier dead ends, kept in PLAN-NEXT 2: the skeleton
   reconstructed from names and weights; not needed, the buffer holds the final transforms.)
 - **The crowd's classes (2026-11-27 ~17:35):** the .crowd record's second index (0-5, the open question of
   2026-11-26) is the person's crowd class in spectators.xml's crowdclass order: Sitting, Standing, Drunk, Photographer,

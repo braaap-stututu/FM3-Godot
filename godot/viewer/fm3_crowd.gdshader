@@ -5,6 +5,10 @@
 // texels an entry, rows of 2048), the vertex's bones in UV2 (x = bone 0 + weight 0 / 2, y = bone 1; fm3_spectators.py),
 // the person's animation in INSTANCE_CUSTOM (first entry, frames, bones, start frame; world_view.gd _crowd3d), 30
 // frames a second, looped.
+// Cheering (2026-11-27 ~20:35): INSTANCE_CUSTOM holds two animations (idle first entry, frames; cheer first entry,
+// frames: the class's idle and cheer lists in spectators.xml, one of each picked per person), the bones per draw in
+// `bones`; a person cheers while a car is within cheer_r of them (car positions in cars_tex, 16 x 1, w > 0 = a car;
+// the game's own distance rule is in its code, not its files). Each person starts at a frame of its own (INSTANCE_ID).
 shader_type spatial;
 render_mode cull_disabled;
 
@@ -14,6 +18,9 @@ uniform sampler2D anim_tex : filter_nearest;
 uniform bool anim_on = false;
 uniform float fps = 30.0;
 uniform int tex_width = 2048;
+uniform int bones = 17;
+uniform sampler2D cars_tex : filter_nearest;
+uniform float cheer_r = 60.0;
 
 vec3 entry(int e, int k) {
 	int t = e * 3 + k;
@@ -22,8 +29,18 @@ vec3 entry(int e, int k) {
 
 void vertex() {
 	if (anim_on && INSTANCE_CUSTOM.y > 0.5) {
-		float frame = mod(floor(TIME * fps + INSTANCE_CUSTOM.w), INSTANCE_CUSTOM.y);
-		int base = int(INSTANCE_CUSTOM.x + 0.5) + int(frame) * int(INSTANCE_CUSTOM.z + 0.5);
+		vec3 me = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+		bool cheer = false;
+		for (int k = 0; k < 16; k++) {
+			vec4 c = texelFetch(cars_tex, ivec2(k, 0), 0);
+			if (c.w > 0.0 && distance(c.xyz, me) < cheer_r) {
+				cheer = true;
+			}
+		}
+		vec2 an = cheer && INSTANCE_CUSTOM.w > 0.5 ? INSTANCE_CUSTOM.zw : INSTANCE_CUSTOM.xy;
+		float ph = fract(sin(float(INSTANCE_ID) * 12.9898) * 43758.5453) * 200.0;
+		float frame = mod(floor(TIME * fps + ph), an.y);
+		int base = int(an.x + 0.5) + int(frame) * bones;
 		int b0 = int(floor(UV2.x + 0.0001));
 		float w0 = clamp(fract(UV2.x + 0.0001) * 2.0, 0.0, 1.0);
 		int b1 = int(UV2.y + 0.5);
