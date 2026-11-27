@@ -1007,6 +1007,10 @@ func _car_solid_material(m: BaseMaterial3D, nm: String, mesh: Mesh, s: int) -> S
 		return null
 	if nm.contains("_interior_") or nm.contains("_seat") or (nm.begins_with("wheel_") and OS.get_environment("FM3_CAR_SH_WHEELS") != "1"):
 		return null
+	if nm.begins_with("cockpit_"):
+		# (the cockpit keeps fm3_cockpit.gdshader (_register_part): it sits on a render layer the sun leaves out, and this
+		# shader's light comes with the directional light only: the in-car cabin went black, 2026-11-27)
+		return null
 	var shs := _track_sh(_gltf_path)
 	if shs.is_empty():
 		return null
@@ -1837,7 +1841,7 @@ func _cockpit_material(bm: BaseMaterial3D) -> ShaderMaterial:
 		sm.set_shader_parameter("albedo_tex", bm.albedo_texture)
 	sm.set_shader_parameter("albedo_color", _vec4(bm.albedo_color))
 	sm.set_shader_parameter("use_vcol", bm.vertex_color_use_as_albedo)
-	sm.set_shader_parameter("gain", COCKPIT_GAIN)
+	sm.set_shader_parameter("gain", float(OS.get_environment("FM3_COCKPIT_GAIN")) if OS.get_environment("FM3_COCKPIT_GAIN") != "" else COCKPIT_GAIN)  # (FM3_COCKPIT_GAIN: tests)
 	if bm.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
 		sm.set_shader_parameter("alpha_cut", bm.alpha_scissor_threshold)
 	return sm

@@ -776,6 +776,11 @@ tail lamp) and the CrownJewel grid's CR-X / Eclipse, one boot per track with sev
   in-car: our cabin is near black where the game's dash is grey (the cockpit shader's light), the hands.
   Then the fitted in-car x1.5 (`IN_CAR_EXPOSURE`, from before the exposure pass) set to 1.0: in-car **23.2 / 22.5 /
   19.5** (grid and chase unchanged).
+  Then a regression of the same night found and fixed: the SH-lit car parts (`fm3_carsolid`) had taken the library
+  cockpit's parts too, before `_register_part` gives them fm3_cockpit.gdshader; their light comes with the directional
+  sun only, which the cockpit's render layer leaves out, so the cabin went black. Cockpit parts are excluded now:
+  in-car 23.2 / 22.5 / 19.5 -> **19.3 / 18.8 / 17.0** (grid 14.3 / 13.9 / 13.4). Over the last hour: in-car 40.8 / 35.6 /
+  30.9 -> 19.3 / 18.8 / 17.0.
 - **The car paint's light, decoded** (2026-11-26 evening; the user: "are we using the game's GI?"). The paint (ps
   e41e183a423e6f1b, vs a102319a5aef757b; register names from shaders_v11.fxobj container 47 and the car vertex
   shaders' tables) computes, in gamma space:
